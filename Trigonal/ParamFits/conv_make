@@ -1,0 +1,9 @@
+g++ -O3 -std=c++11 -I ~/lib Convergence.cpp -o tmp
+./tmp
+rm tmp
+python ../AnalyzeLog.py log1.txt
+python ../AnalyzeLog.py log2.txt
+rm log1.txt
+rm log2.txt
+
+

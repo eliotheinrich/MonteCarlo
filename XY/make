@@ -1,0 +1,11 @@
+g++ -O3 -std=c++11 StiffnessCurve.cpp -o output
+
+rm data/stiffness*
+for L in 4 8 16 32 64 128; do
+    filename=data/stiffness"$L".txt
+    ./output $filename $L
+done
+
+python AnalyzeStiffnessCurve.py
+rm output
+

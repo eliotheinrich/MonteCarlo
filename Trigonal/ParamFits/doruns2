@@ -1,0 +1,13 @@
+num="2";
+g++ -O3 -std=c++11 -I ~/lib SusceptibilityCurve.cpp -o "output$num"
+
+for A in 0.0 0.1 0.5 1.0 2.5 4.0 5.0 6.0; do
+    foldername="sA$num_$A";
+    paramsname="$foldername/params.txt"
+    rm -r "data/$foldername"
+    mkdir "data/$foldername";
+    ./make_params "data/$paramsname" 20 4 1. 0.1 "$A" 0.3 1.0 0. 0. 0. 40 10 8000 60 60;
+    "./output$num" "data/$foldername" "data/$paramsname" 0.5 & 
+done
+rm output"$num"
+wait

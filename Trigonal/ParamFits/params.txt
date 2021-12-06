@@ -1,0 +1,5 @@
+# N, L, J1, J2, A, K, S, Bx, By, Bz
+20, 4, 1., 0.01, 2.5, 0.05, 1.0, 0., 0., 0.
+
+# resolution, num_runs, steps_per_run, num_samples, steps_per_sample
+30, 10, 10000, 100, 100

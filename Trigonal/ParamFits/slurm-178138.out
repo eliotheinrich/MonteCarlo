@@ -1,0 +1,120 @@
+rm: cannot remove 'data/mH0_0.01': No such file or directory
+rm: cannot remove 'data/mH0_0.05': No such file or directory
+J1 = 1
+J2 = 0
+K1 = 1
+K2 = 0.5
+K3 = 0.01
+S = 1
+J1 = 1
+J2 = 0
+K1 = 1
+K2 = 0.5
+K3 = 0.01
+S = 1
+Expected completion time: 288 minutes.
+rm: cannot remove 'data/mH0_0.1': No such file or directory
+J1 = 1
+J2 = 0
+K1 = 1
+K2 = 0.5
+K3 = 0.05
+S = 1
+J1 = 1
+J2 = 0
+K1 = 1
+K2 = 0.5
+K3 = 0.05
+S = 1
+Expected completion time: 288 minutes.
+rm: cannot remove 'data/mH0_0.3': No such file or directory
+J1 = 1
+J2 = 0
+K1 = 1
+K2 = 0.5
+K3 = 0.1
+S = 1
+J1 = 1
+J2 = 0
+K1 = 1
+K2 = 0.5
+K3 = 0.1
+S = 1
+Expected completion time: 288 minutes.
+rm: cannot remove 'data/mH0_0.5': No such file or directory
+J1 = 1
+J2 = 0
+K1 = 1
+K2 = 0.5
+K3 = 0.3
+S = 1
+J1 = 1
+J2 = 0
+K1 = 1
+K2 = 0.5
+K3 = 0.3
+S = 1
+Expected completion time: 288 minutes.
+rm: cannot remove 'data/mH0_1.0': No such file or directory
+J1 = 1
+J2 = 0
+K1 = 1
+K2 = 0.5
+K3 = 0.5
+S = 1
+J1 = 1
+J2 = 0
+K1 = 1
+K2 = 0.5
+K3 = 0.5
+S = 1
+Expected completion time: 288 minutes.
+rm: cannot remove 'data/mH0_2.0': No such file or directory
+J1 = 1
+J2 = 0
+K1 = 1
+K2 = 0.5
+K3 = 1
+S = 1
+J1 = 1
+J2 = 0
+K1 = 1
+K2 = 0.5
+K3 = 1
+S = 1
+Expected completion time: 288 minutes.
+rm: cannot remove 'data/mH0_5.0': No such file or directory
+J1 = 1
+J2 = 0
+K1 = 1
+K2 = 0.5
+K3 = 2
+S = 1
+J1 = 1
+J2 = 0
+K1 = 1
+K2 = 0.5
+K3 = 2
+S = 1
+Expected completion time: 288 minutes.
+J1 = 1
+J2 = 0
+K1 = 1
+K2 = 0.5
+K3 = 5
+S = 1
+J1 = 1
+J2 = 0
+K1 = 1
+K2 = 0.5
+K3 = 5
+S = 1
+Expected completion time: 288 minutes.
+Actual completion time: 355.428 minutes.
+Actual completion time: 356.353 minutes.
+Actual completion time: 357.546 minutes.
+Actual completion time: 362.982 minutes.
+Actual completion time: 365.41 minutes.
+Actual completion time: 365.821 minutes.
+Actual completion time: 379.103 minutes.
+Actual completion time: 379.914 minutes.

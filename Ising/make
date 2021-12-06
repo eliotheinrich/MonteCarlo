@@ -1,0 +1,6 @@
+g++ -O3 -std=c++11 MagnetizationCurve.cpp -o output
+
+./output mag_curve.txt
+rm output
+
+python PlotMag.py mag_curve.txt

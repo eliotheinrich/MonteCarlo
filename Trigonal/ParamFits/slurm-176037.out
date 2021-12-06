@@ -1,0 +1,24 @@
+rm: cannot remove 'data/mH22w_0.01': No such file or directory
+rm: cannot remove 'data/mH22w_0.05': No such file or directory
+Expected completion time: 288 minutes.
+rm: cannot remove 'data/mH22w_0.1': No such file or directory
+Expected completion time: 288 minutes.
+rm: cannot remove 'data/mH22w_0.2': No such file or directory
+Expected completion time: 288 minutes.
+rm: cannot remove 'data/mH22w_0.4': No such file or directory
+Expected completion time: 288 minutes.
+rm: cannot remove 'data/mH22w_0.6': No such file or directory
+Expected completion time: 288 minutes.
+rm: cannot remove 'data/mH22w_0.8': No such file or directory
+Expected completion time: 288 minutes.
+rm: cannot remove 'data/mH22w_1.0': No such file or directory
+Expected completion time: 288 minutes.
+Expected completion time: 288 minutes.
+Actual completion time: 1232.3 minutes.
+Actual completion time: 1234.36 minutes.
+Actual completion time: 1237.39 minutes.
+Actual completion time: 1240.31 minutes.
+Actual completion time: 1244.08 minutes.
+Actual completion time: 1247.04 minutes.
+Actual completion time: 1293.11 minutes.
+Actual completion time: 1299.7 minutes.
