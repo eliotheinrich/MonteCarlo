@@ -48,6 +48,18 @@ class SquareXYModel : public XYModel {
             this->add_bond(Bond{0,-1,0,0,bondfunc});
         }
 
+        SquareXYModel* clone() {
+            SquareXYModel* new_model = new SquareXYModel(N, L, J, B, Bp);
+            for (int n1 = 0; n1 < N; n1++) {
+                for (int n2 = 0; n2 < N; n2++) {
+                    for (int n3 = 0; n3 < L; n3++) {
+                        new_model->spins[n1][n2][n3][0] = this->spins[n1][n2][n3][0];
+                    }
+                }
+            }
+            return new_model;
+        }
+
         const float onsite_energy(int n1, int n2, int n3, int s) {
             float E = 0;
 
@@ -56,7 +68,7 @@ class SquareXYModel : public XYModel {
 
             return E;
         }
-/*
+
         const float bond_energy(int n1, int n2, int n3, int s) {
             float E = 0;
 
@@ -70,6 +82,5 @@ class SquareXYModel : public XYModel {
 
             return 0.5*J*E;
         }
-        */
 };
 

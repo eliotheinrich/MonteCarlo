@@ -38,10 +38,5 @@ int main() {
     cout << to_string(nsteps) << " steps took " << to_string(float(microseconds)/1000000.) << "s." << endl;
     cout << to_string(float(nsteps)/(float(microseconds)/1000000)) << " steps/second." << endl;
 
-//    cout << "over-relax steps: " << model->f1 << endl;
-//    cout << "standard steps: " << model->f2 << endl;
-
-
-
 }
 

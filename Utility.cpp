@@ -70,6 +70,16 @@ vector<string> split(string *s, string delim) {
     return vals;
 }
 
+void write_to_file(string filename, vector<vector<float>> data) {
+    ofstream output(filename);
+    for (int i = 0; i < data.size(); i++) {
+        for (int j = 0; j < data[0].size(); j++) {
+            output << data[i][j] << "\t";
+        }
+        output << endl;
+    }
+}
+
 
 class GaussianDist {
     private:

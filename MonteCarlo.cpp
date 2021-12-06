@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <thread>
 #include <cmath>
 #include "Utility.cpp"
 
@@ -23,6 +24,7 @@ class MCModel {
         virtual void generate_mutation()=0;
         virtual void accept_mutation()=0;
         virtual void reject_mutation()=0;
+        virtual MCModel* clone()=0;
 };
 
 class LogItem {
@@ -138,8 +140,6 @@ class EnergyLogItem : public LogItem {
         }
 };
 
-//template <typename T> string type_name();
-
 template <class LogItemType=EnergyLogItem, class Model>
 void run_MC(Model *model, int nsteps, string cooling = "auto",
                                       float T_max = -1,
@@ -185,5 +185,84 @@ void run_MC(Model *model, int nsteps, string cooling = "auto",
 
     if (record_log) { log.save_log(filename); }
 }
+
+template <class MCModel>
+vector<MCModel*> parallel_tempering(MCModel *model, vector<float> Ts, int steps_per_exchange, int num_exchanges) {
+    int num_threads = Ts.size();
+    vector<thread> threads(num_threads);
+    vector<MCModel*> models(num_threads);
+    vector<MonteCarlo*> mc_models(num_threads);
+
+    // Initialize models
+    for (int i = 0; i < num_threads; i++) {
+        models[i] = model->clone();
+        mc_models[i] = new MonteCarlo(models[i]);
+    }
+
+    int accepted = 0;
+    int rejected = 0;
+
+    float r;
+    float dE;
+    float dB;
+    MonteCarlo *mc_model_buffer;
+    MCModel *model_buffer;
+    for (int k = 0; k < num_exchanges; k++) {
+        // Give threads work
+        for (int i = 0; i < num_threads; i++) {
+            threads[i] = thread(&MonteCarlo::steps, mc_models[i], steps_per_exchange, Ts[i]);
+        }
+
+        // Join threads
+        for (int i = 0; i < num_threads; i++) {
+            threads[i].join();
+        }
+
+        // Make exchanges
+        for (int i = 0; i < num_threads-1; i++) {
+            r = float(rand())/float(RAND_MAX);
+            dE = mc_models[i]->energy - mc_models[i+1]->energy;
+            dB = 1./Ts[i] - 1./Ts[i+1];
+            //cout << "dE = " << dE << ", dB = " << dB << ", dB*dE = " << dB*dE << endl;
+            if (r < exp(dE*dB)) {
+                //cout << "Made a swap between sites " << i << " and " << i+1 << endl;
+                accepted++;
+                mc_model_buffer = mc_models[i];
+                mc_models[i] = mc_models[i+1];
+                mc_models[i+1] = mc_model_buffer;
+
+                model_buffer = models[i];
+                models[i] = models[i+1];
+                models[i+1] = model_buffer;
+            } else {
+                rejected++;
+                //cout << "Swap rejected between " << i << " and " << i+1 << endl;
+            }
+        }
+    }
+
+    //cout << "Accepted: " << accepted << endl;
+    //cout << "Rejected: " << rejected << endl;
+    //cout << "Ratio: " << float(accepted)/(rejected + accepted) << endl;
+
+    // Final equilibration
+    for (int i = 0; i < num_threads; i++) {
+        cout << mc_models[i]->energy << endl;
+        cout << models[i]->energy() << endl;
+    }
+    cout << endl;
+
+    for (int i = 0; i < num_threads; i++) {
+        threads[i] = thread(&MonteCarlo::steps, mc_models[i], 5*steps_per_exchange, Ts[i]);
+    }
+
+    for (int i = 0; i < num_threads; i++) {
+        threads[i].join();
+        cout << models[i]->energy() << endl;
+    }
+    
+    return models;
+}
+
 
 #endif
