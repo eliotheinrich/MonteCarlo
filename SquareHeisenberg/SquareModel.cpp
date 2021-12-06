@@ -36,7 +36,7 @@ class SquareModel : public SpinModel {
         }
 
         const float onsite_energy(int n1, int n2, int n3, int s) {
-            return A*pow(this->spins[n1][n2][n3][s], 2)
+            return A*pow(this->spins[n1][n2][n3][s][2], 2);
         }
 
         const float bond_energy(int n1, int n2, int n3, int s) {

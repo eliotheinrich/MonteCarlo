@@ -288,11 +288,11 @@ class SpinModel : virtual public MCModel {
             }
 
 
-            if (mutation_mode) {
-                over_relaxation_mutation(n1, n2, n3, s);
-            } else {
+//            if (mutation_mode) {
+//                over_relaxation_mutation(n1, n2, n3, s);
+//            } else {
                 metropolis_mutation(n1, n2, n3, s);
-            }
+//            }
         }
 
         void accept_mutation() {
@@ -367,7 +367,6 @@ class SpinModel : virtual public MCModel {
         }
 };
 
-//template<int sublattices>
 class MagnetizationLogItem : public LogItem {
     // Stores total magnetization, acceptance rate, and energy
     public:
