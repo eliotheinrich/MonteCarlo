@@ -354,28 +354,4 @@ class XYModel : virtual public MCModel {
         }        
 };
 
-class MagnetizationLogItem : public LogItem {
-    // Stores total magnetization, acceptance rate, and energy
-    public:
-        Vector2f magnetization;
-        float energy;
-
-        MagnetizationLogItem() {
-            magnetization = Vector2f::Constant(0);
-            energy = 0.;
-        }
-
-        MagnetizationLogItem(MonteCarlo *m, XYModel *model) {
-            magnetization = model->get_magnetization();
-            energy = m->energy;
-        }
-
-        friend ostream& operator<<(ostream& os, const MagnetizationLogItem& logitem) {
-            os << logitem.magnetization[0] << " " << logitem.magnetization[1] << " "
-               << logitem.energy;
-            return os;
-        }
-};
-
-
 #endif

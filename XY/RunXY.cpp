@@ -18,7 +18,16 @@ int main() {
 
     SquareXYModel *model = new SquareXYModel(N, L, J, B, Bp);
 
-    run_MC<MagnetizationLogItem>(model, 500*MCStep, "trig", T, T, true);
+    MonteCarlo<SquareXYModel> *m = new MonteCarlo<SquareXYModel>(model);
+    //m->steps(500*MCStep, T);
+
+    run_MC(m, 500*MCStep, "trig", J, T);
+
+
+    function<float(SquareXYModel*)> stiffness = [T](SquareXYModel *m) { return m->spin_stiffness(T); };
+    float E = m->expectation(stiffness, T, 100, 10);
+    cout << "Energy = " << E << endl;
+
     cout << model->energy() << endl;
 
     model->save_spins("Spins.txt");
