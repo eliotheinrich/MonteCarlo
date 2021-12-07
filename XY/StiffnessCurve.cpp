@@ -15,6 +15,7 @@ int main(int argc, char* argv[]) {
     const float Bp = 0.;
 
     const int MCStep = N*N*L;
+    cout << MCStep << endl;
 
     SquareXYModel *model = new SquareXYModel(N, L, J, B, Bp);
     model->random_selection = true;
@@ -27,7 +28,7 @@ int main(int argc, char* argv[]) {
     int res = 30;
     vector<float> rhos(res);
 
-    int num_samples = 2000;
+    int num_samples = 4000;
     int steps_per_sample = 10;
 
 
@@ -43,18 +44,20 @@ int main(int argc, char* argv[]) {
     vector<thread> threads(res);
 
     function<float(SquareXYModel*)> stiffness;
+    function<void(float, int, int)> func;
     float T;
     for (int i = 0; i < res; i++) {
         T = Ts[i];
         stiffness = [T](SquareXYModel *m) { return m->spin_stiffness(T); };
         m = new MonteCarlo<SquareXYModel>(models[i]);
-        threads[i] = thread([=, &rhos](float T, int n1, int n2) { rhos[i] = m->expectation(stiffness, T, num_samples, steps_per_samples); });
+        func = [i, &rhos, m, stiffness](float T, int n1, int n2) { rhos[i] = m->expectation(stiffness, T, n1, n2); };
+        threads[i] = thread(func, T, num_samples, steps_per_sample);;
         //rhos[i] = m->expectation(stiffness, T, num_samples, steps_per_sample);
     } 
 
     for (int i = 0; i < res; i++) {
         threads[i].join(); 
-        output << T << "\t" << rhos[i] << endl;
+        output << Ts[i] << "\t" << rhos[i] << endl;
     }
 
 
