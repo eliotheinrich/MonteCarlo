@@ -3,20 +3,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 Es = []
-Mxs = []
-Mys = []
+Ms = []
 
 filename = sys.argv[1]
 with open(filename) as f:
     for line in f.readlines():
-        Mx, My, E = line.split(' ')
-        Mxs.append(float(Mx))
-        Mys.append(float(My))
+        M, E = line.split('\t')
+        Ms.append(float(M))
         Es.append(float(E))
 
-Mxs = np.array(Mxs)
-Mys = np.array(Mys)
-Ms = np.array([np.sqrt(Mx**2 + My**2) for (Mx, My) in zip(Mxs, Mys)])
+Ms = np.array(Ms)
 Es = np.array(Es)
 
 

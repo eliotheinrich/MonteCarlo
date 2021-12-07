@@ -20,7 +20,6 @@ class SquareXYModel : public XYModel {
         float Bp;
         float Bx;
         float By;
-        float p;
 
         SquareXYModel(int N, int L, float J, float B, float Bp) : XYModel(1, N, N, L) {
             this->N = N;
@@ -30,11 +29,6 @@ class SquareXYModel : public XYModel {
             this->Bp = Bp;
             this->Bx = B*cos(Bp);
             this->By = B*sin(Bp);
-            float D = 0.2;
-
-            function<float(Vector2f, Vector2f)> bondfunc = [J, D](Vector2f S1, Vector2f S2) {
-                return -J*S1.dot(S2) - D*abs(S1[0]*S2[1] - S1[1]*S2[0]);
-            };
 
             function<float(Vector2f, Vector2f)> bondfunc_J = [J](Vector2f S1, Vector2f S2) {
                 return -J*S1.dot(S2);
@@ -42,14 +36,15 @@ class SquareXYModel : public XYModel {
 
 
 
-            this->add_bond(Bond{1,0,0,0,bondfunc});
-            this->add_bond(Bond{-1,0,0,0,bondfunc});
-            this->add_bond(Bond{0,1,0,0,bondfunc});
-            this->add_bond(Bond{0,-1,0,0,bondfunc});
+            this->add_bond(Bond{1,0,0,0,bondfunc_J});
+            this->add_bond(Bond{-1,0,0,0,bondfunc_J});
+            this->add_bond(Bond{0,1,0,0,bondfunc_J});
+            this->add_bond(Bond{0,-1,0,0,bondfunc_J});
         }
 
         SquareXYModel* clone() {
             SquareXYModel* new_model = new SquareXYModel(N, L, J, B, Bp);
+            new_model->random_selection = random_selection;
             for (int n1 = 0; n1 < N; n1++) {
                 for (int n2 = 0; n2 < N; n2++) {
                     for (int n3 = 0; n3 < L; n3++) {
@@ -69,6 +64,7 @@ class SquareXYModel : public XYModel {
             return E;
         }
 
+        /*
         const float bond_energy(int n1, int n2, int n3, int s) {
             float E = 0;
 
@@ -82,5 +78,6 @@ class SquareXYModel : public XYModel {
 
             return 0.5*J*E;
         }
+        */
 };
 

@@ -13,7 +13,7 @@ int main() {
     const float B = 0.;
     const float Bp = 0.;
 
-    int num_temps = 20;
+    int num_temps = 30;
     vector<float> Ts;
     for (int i = 0; i < num_temps; i++) {
         Ts.push_back(float(i)/num_temps*3.);
@@ -37,7 +37,7 @@ int main() {
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
     int microseconds = duration.count();
 
-    int nsteps = Ts.size()*steps_per_exchange*num_exchanges;
+    int nsteps = num_temps*steps_per_exchange*num_exchanges;
 
     cout << to_string(nsteps) << " steps took " << to_string(float(microseconds)/1000000.) << "s." << endl;
     cout << to_string(float(nsteps)/(float(microseconds)/1000000)) << " steps/second." << endl;

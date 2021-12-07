@@ -74,7 +74,8 @@ void write_to_file(string filename, vector<vector<float>> data) {
     ofstream output(filename);
     for (int i = 0; i < data.size(); i++) {
         for (int j = 0; j < data[0].size(); j++) {
-            output << data[i][j] << "\t";
+            output << data[i][j];
+            if (j < data[0].size() - 1) { output << "\t"; }
         }
         output << endl;
     }

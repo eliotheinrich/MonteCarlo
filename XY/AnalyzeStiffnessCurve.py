@@ -51,52 +51,53 @@ def get_L0(Ls, Ts, ρs, Lmin = 0.5, Lmax = 3., num_Ls=100):
 
     return min_L0, T_KT
 
+def plot_stiffness_curve(Ts, ρs, L0, T_KT):
+    for n, L in enumerate(Ls):
+        plt.plot(Ts, ρs[n]/(1. + 1./(2.*np.log(Ls[n]/L0))), marker='o', label=f'L = {L}')
+
+    plt.plot(Ts, 2./np.pi*Ts, 'k--', label=r'$2T/\pi$')
+#    plt.axvline(T_KT, linestyle='-', color='k', alpha=0.5, label=r'$T_{KT}$')
+
+    plt.legend()
+    plt.xlim(0., max(Ts))
+    plt.ylim(-0.05, 1.1)
+    plt.xlabel(r'$T$', fontsize=15)
+    plt.ylabel(r'$\Upsilon(L)/(1+(2\log(L/L_0))^{-1})$', fontsize=15)
+#    plt.title(r'$T_{KT} = $' + f'{T_KT:.3f}')
+    plt.show()
+
+
 
 if __name__ == "__main__":
     os.chdir(sys.argv[1])
 
     fs = [f for f in os.listdir() if f[:9] == "stiffness"]
-    T, _ = load_stiffness_data(fs[0])
+    Ts, _ = load_stiffness_data(fs[0])
 
     N = len(fs)
-    res = len(T)
+    res = len(Ts)
 
-    Ts = np.zeros((N, res))
     ρs = np.zeros((N, res))
     Ls = np.zeros(N, dtype=int)
 
     for n, f in enumerate(fs):
         if f[:9] == 'stiffness':
             i = f.index('.')
-            T, ρ = load_stiffness_data(f)
-            Ts[n,:] = T
+            _, ρ = load_stiffness_data(f)
             ρs[n,:] = ρ
             Ls[n] = int(f[9:i])
 
     inds = np.argsort(Ls)
-    Ts = Ts[inds]
     ρs = ρs[inds]
     Ls = Ls[inds]
 
 
-    L0, T_KT = get_L0(Ls, Ts[0,:], ρs, 0.1, 0.75, 10000)
-#    L0 = 1/1.4
-#    T_KT = 0.88
+#    L0, T_KT = get_L0(Ls, Ts[0,:], ρs, 0.1, 0.75, 10000)
+    L0 = 1/1.4
+    T_KT = 0.88
     print(L0, T_KT)
+    plot_stiffness_curve(Ts, ρs, L0, T_KT)
 
-    for n, L in enumerate(Ls):
-        plt.plot(Ts[n], ρs[n]/(1. + 1./(2.*np.log(Ls[n]/L0))), marker='o', label=f'L = {L}')
-
-    plt.plot(Ts[0], 2./np.pi*Ts[0], 'k--', label=r'$2T/\pi$')
-#    plt.axvline(T_KT, linestyle='-', color='k', alpha=0.5, label=r'$T_{KT}$')
-
-    plt.legend()
-    plt.xlim(0., max(Ts[0]))
-    plt.ylim(-0.05, 1.1)
-    plt.xlabel(r'$T$', fontsize=15)
-    plt.ylabel(r'$\Upsilon(L)/(1+(2\log(L/L_0))^{-1})$', fontsize=15)
-#    plt.title(r'$T_{KT} = $' + f'{T_KT:.3f}')
-    plt.show()
 
 
 

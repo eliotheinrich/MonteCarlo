@@ -19,9 +19,10 @@ int main() {
     SquareXYModel *model = new SquareXYModel(N, L, J, B, Bp);
 
     MonteCarlo<SquareXYModel> *m = new MonteCarlo<SquareXYModel>(model);
-    //m->steps(500*MCStep, T);
 
-    run_MC(m, 500*MCStep, "trig", J, T);
+    function<vector<float>(SquareXYModel*)> logfunc = [](SquareXYModel* model) { return MagnetizationLogItem(model); };
+    vector<vector<float>> log = run_MC(m, 500*MCStep, T, logfunc, 100);
+    write_to_file("Log.txt", log);
 
 
     function<float(SquareXYModel*)> stiffness = [T](SquareXYModel *m) { return m->spin_stiffness(T); };

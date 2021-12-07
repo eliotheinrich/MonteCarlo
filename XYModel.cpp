@@ -82,6 +82,7 @@ class XYModel : virtual public MCModel {
 
 
     public:
+        int f1; int f2;
         int sl;
         int N1;
         int N2;
@@ -104,6 +105,7 @@ class XYModel : virtual public MCModel {
         XYModel() {}
 
         XYModel(int sl, int N1, int N2 = -1, int N3 = -1) {
+            f1 = 0; f2 = 0;
             this->sl = sl;
             this->N1 = N1;
             if (N2 == -1) { this->N2 = N1; } else { this->N2 = N2; }
@@ -239,6 +241,7 @@ class XYModel : virtual public MCModel {
             this->mut.n1 = n1;
             this->mut.n2 = n2;
             this->mut.n3 = n3;
+            this->mut.s = s;
             this->mut.dS = -2*this->spins[n1][n2][n3][s] + 2.*this->spins[n1][n2][n3][s].dot(H)/pow(H.norm(),2) * H;
         }
 
@@ -277,8 +280,10 @@ class XYModel : virtual public MCModel {
             }
 
             if (mutation_mode) {
+                f1++;
                 over_relaxation_mutation(n1, n2, n3, s);
             } else {
+                f2++;
                 metropolis_mutation(n1, n2, n3, s);
             }
         }
@@ -353,5 +358,10 @@ class XYModel : virtual public MCModel {
             output_file.close();
         }        
 };
+
+template <class XYModel>
+vector<float> MagnetizationLogItem(XYModel *model) {
+    return vector<float>{model->get_magnetization().norm(), model->energy()};
+}
 
 #endif
