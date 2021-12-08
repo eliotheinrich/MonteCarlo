@@ -79,9 +79,9 @@ if __name__ == "__main__":
     Ls = Ls[inds]
 
 
-    L0, T_KT = get_L0(Ls, Ts[0,:], ρs, 0.1, 0.75, 10000)
-#    L0 = 1/1.4
-#    T_KT = 0.88
+#    L0, T_KT = get_L0(Ls, Ts[0,:], ρs, 0.1, 0.75, 10000)
+    L0 = 1/1.4
+    T_KT = 0.88
     print(L0, T_KT)
 
     for n, L in enumerate(Ls):
