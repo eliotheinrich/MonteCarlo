@@ -1,6 +1,6 @@
 #include "SquareXYModel.cpp"
 #include <iostream>
-#include<chrono>
+#include <chrono>
 
 using namespace std;
 
@@ -19,9 +19,6 @@ int main() {
         Ts.push_back(float(i)/num_temps*3.);
     }
 
-    cout << float() << endl;
-
-
     const int MCStep = N*N*L;
 
     SquareXYModel *model = new SquareXYModel(N, L, J, B, Bp);
@@ -32,7 +29,7 @@ int main() {
 
     auto start = chrono::high_resolution_clock::now();
 
-    auto models = parallel_tempering(model, Ts, steps_per_exchange, num_exchanges, equilibration_steps, 4);
+    auto models = parallel_tempering(model, Ts, steps_per_exchange, num_exchanges, equilibration_steps, 8);
 
     auto stop = chrono::high_resolution_clock::now();
     
@@ -42,7 +39,7 @@ int main() {
     int nsteps = num_temps*(steps_per_exchange*num_exchanges + equilibration_steps);
     int nsteps_measured = models[0]->nsteps;
 
-    cout << "Actual nsteps: " << nsteps_measured << endl;
+    cout << "Actual nsteps: " << num_temps*nsteps_measured << endl;
     cout << to_string(nsteps) << " steps took " << to_string(float(microseconds)/1000000.) << "s." << endl;
     cout << to_string(float(nsteps)/(float(microseconds)/1000000)) << " steps/second." << endl;
 

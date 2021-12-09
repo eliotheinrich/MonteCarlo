@@ -166,10 +166,12 @@ vector<MonteCarlo<MCModel>*> parallel_tempering(MCModel *model, vector<float> Ts
                                                                                   int equilibration_steps = -1,
                                                                                   int num_threads = 0) {
 
+    int num_replicas = Ts.size();
+
     if (num_threads == 0) { num_threads = thread::hardware_concurrency(); }
     ctpl::thread_pool threads(num_threads);
+    vector<future<void>> results(num_replicas);
 
-    int num_replicas = Ts.size();
     vector<MonteCarlo<MCModel>*> models(num_replicas);
 
     // Initialize models
@@ -184,22 +186,16 @@ vector<MonteCarlo<MCModel>*> parallel_tempering(MCModel *model, vector<float> Ts
     float dE;
     float dB;
     MonteCarlo<MCModel> *model_buffer;
-
     for (int k = 0; k < num_exchanges; k++) {
         // Give threads work
         for (int i = 0; i < num_replicas; i++) {
-            threads.push([&models, &Ts, steps_per_exchange, i](int) { models[i]->steps(steps_per_exchange, Ts[i]); });
+            results[i] = threads.push([&models, &Ts, steps_per_exchange, i](int) { models[i]->steps(steps_per_exchange, Ts[i]); });
         }
 
         // Joining threads
-        threads.stop(true);
-
-        //for (int i = 0; i < num_replicas; i++) {
-        //    cout << models[i]->nsteps << endl;
-        //}
-        
-
-
+        for (int i = 0; i < num_replicas; i++) {
+            results[i].get();
+        }
 
         // Make exchanges
         for (int i = 0; i < num_threads-1; i++) {
@@ -220,12 +216,14 @@ vector<MonteCarlo<MCModel>*> parallel_tempering(MCModel *model, vector<float> Ts
     // Final equilibration
     if (equilibration_steps != -1) {
         for (int i = 0; i < num_replicas; i++) {
-            threads.push([&models, &Ts, equilibration_steps, i](int) { models[i]->steps(equilibration_steps, Ts[i]); });
+            results[i] = threads.push([&models, &Ts, equilibration_steps, i](int) { models[i]->steps(equilibration_steps, Ts[i]); });
         }
-    
-        threads.stop(true);
+        for (int i = 0; i < num_replicas; i++) {
+            results[i].get();
+        }
     }
 
+    results.empty();
     return models;
 }
 
