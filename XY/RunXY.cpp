@@ -25,11 +25,7 @@ int main() {
     write_to_file("Log.txt", log);
 
 
-    function<float(SquareXYModel*)> stiffness = [T](SquareXYModel *m) { return m->spin_stiffness(T); };
-    float E = m->expectation(stiffness, T, 100, 10);
-    cout << "Energy = " << E << endl;
-
-    cout << model->energy() << endl;
+    cout << "Energy = " << model->energy() << endl;
 
     model->save_spins("Spins.txt");
     

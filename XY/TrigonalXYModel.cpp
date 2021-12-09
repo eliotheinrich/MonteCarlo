@@ -26,12 +26,29 @@ class TrigonalXYModel : public XYModel {
                 return -J*S1.dot(S2);
             };
 
-            this->add_bond(Bond{1,0,0,0,dotfunc});
-            this->add_bond(Bond{-1,0,0,0,dotfunc});
-            this->add_bond(Bond{0,1,0,0,dotfunc});
-            this->add_bond(Bond{0,-1,0,0,dotfunc});
-            this->add_bond(Bond{1,-1,0,0,dotfunc});
-            this->add_bond(Bond{-1,1,0,0,dotfunc});
+            Vector3f v1; v1 << 1., 0., 0.;
+            Vector3f v2; v2 << 0.5, sqrt(3)/2., 0.;
+            Vector3f v3; v3 << 0.5, -sqrt(3)/2., 0.;
+            this->add_bond(Bond{1,0,0,0,v1,dotfunc});
+            this->add_bond(Bond{-1,0,0,0,-v1,dotfunc});
+            this->add_bond(Bond{0,1,0,0,v2,dotfunc});
+            this->add_bond(Bond{0,-1,0,0,-v2,dotfunc});
+            this->add_bond(Bond{1,-1,0,0,v3,dotfunc});
+            this->add_bond(Bond{-1,1,0,0,-v3,dotfunc});
+        }
+
+
+        TrigonalXYModel* clone() {
+            TrigonalXYModel* new_model = new TrigonalXYModel(N, L, J);
+            new_model->random_selection = random_selection;
+            for (int n1 = 0; n1 < N; n1++) {
+                for (int n2 = 0; n2 < N; n2++) {
+                    for (int n3 = 0; n3 < L; n3++) {
+                        new_model->spins[n1][n2][n3][0] = this->spins[n1][n2][n3][0];
+                    }
+                }
+            }
+            return new_model;
         }
 
         const float onsite_energy(int n1, int n2, int n3, int s) {

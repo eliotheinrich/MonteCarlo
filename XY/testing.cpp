@@ -19,6 +19,7 @@ int main() {
         Ts.push_back(float(i)/num_temps*3.);
     }
 
+    cout << float() << endl;
 
 
     const int MCStep = N*N*L;
@@ -30,7 +31,7 @@ int main() {
 
     auto start = chrono::high_resolution_clock::now();
 
-    vector<SquareXYModel*> models = parallel_tempering(model, Ts, steps_per_exchange, num_exchanges);
+    auto models = parallel_tempering(model, Ts, steps_per_exchange, num_exchanges);
 
     auto stop = chrono::high_resolution_clock::now();
     
@@ -45,7 +46,7 @@ int main() {
     vector<vector<float>> data(num_temps, vector<float>(2));
     for (int i = 0; i < num_temps; i++) {
         data[i][0] = Ts[i];
-        data[i][1] = models[i]->energy();
+        data[i][1] = models[i]->model->energy();
     }
 
     write_to_file("Data.txt", data);

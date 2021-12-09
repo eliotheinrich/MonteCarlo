@@ -11,15 +11,16 @@ import sys
 def load_texture(filename):
     with open(filename, 'r') as f:
         firstline = f.readline()
-        (num_sublattices, N) = [int(i.strip()) for i in firstline.split('\t')]
+        (num_sublattices, N) = np.array([int(i.strip()) for i in firstline.split('\t')])[:2]
         spins = np.zeros((N,N,num_sublattices,3))
 
         for i,line in enumerate(f.readlines()):
-            data1 = re.findall("\((.*?)\)", line)
+            data1 = line.split(',')
             data2 = [re.findall("\[(.*?)\]", unitcell) for unitcell in data1]
             for j in range(N):
                 for s in range(num_sublattices):
-                    spins[i,j,s,:] = np.array(data2[j][s].split(' '), dtype=float)
+                    S = [float(x) for x in data2[j][s].split(' ')]
+                    spins[i,j,s] = np.array([S[0], S[1], S[2]])
 
         return spins
 
@@ -28,15 +29,9 @@ def display_trigonal_spins(ax, spins, layer, color=None):
     N = len(spins)
 
     # NN vectors
-    α1 = np.array([-np.sqrt(3)/2., -1/2.])
-    α2 = np.array([np.sqrt(3)/2., -1/2.]) 
-    α3 = np.array([0., 1.])
-
-    # NNN vectors
-    β1 = np.array([np.sqrt(3),0])
-    β2 = np.array([np.sqrt(3)/2,3/2])
-    β3 = np.array([-np.sqrt(3)/2,3/2])
-
+    α1 = np.array([1/2., np.sqrt(3)/2.])
+    α2 = np.array([1/2., -np.sqrt(3)/2.]) 
+    α3 = np.array([1., 0.])
 
 
     xs = np.zeros(N**2)
@@ -47,7 +42,7 @@ def display_trigonal_spins(ax, spins, layer, color=None):
 
     for i in range(N):
         for j in range(N):
-            (x,y) = i*β1 + j*β2
+            (x,y) = i*α1 + j*α2
             xs[i*N + j] = x
             ys[i*N + j] = y
 
@@ -57,12 +52,9 @@ def display_trigonal_spins(ax, spins, layer, color=None):
             spinys[i*N + j] = spin[1]
             spinzs[i*N + j] = spin[2]
 
-            if i < N-1:
-                line(ax, [x,y], np.array([x,y]) + β1, 'k--', alpha=0.5, linewidth=0.5)
-            if j < N-1:
-                line(ax, [x,y], np.array([x,y]) + β2, 'k--', alpha=0.5, linewidth=0.5)
-            if i < N-1 and j > 0:    
-                line(ax, [x,y], np.array([x,y]) + β1 - β2, 'k--', alpha=0.5, linewidth=0.5)
+            line(ax, [x,y], np.array([x,y]) + α1, 'k--', alpha=0.5, linewidth=0.5)
+            line(ax, [x,y], np.array([x,y]) + α2, 'k--', alpha=0.5, linewidth=0.5)
+            line(ax, [x,y], np.array([x,y]) + α3, 'k--', alpha=0.5, linewidth=0.5)
 
 
 

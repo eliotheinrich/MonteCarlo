@@ -1,6 +1,6 @@
-#include "../TrigonalModel.cpp"
-#include<iostream>
-#include<chrono>
+#include "TrigonalModel.cpp"
+#include <iostream>
+#include <chrono>
 
 using namespace std;
 using namespace Eigen;
@@ -15,7 +15,6 @@ int main() {
     const float K1 = 0.8;
     const float K2 = 0.1;
     const float K3 = 0.1;
-    const float S = 3.5;
 
     const float T = 0.155;
 
@@ -26,14 +25,15 @@ int main() {
     const int MCstep = N*N*L;
 
     srand((unsigned)time( NULL ));
-    TrigonalModel *model = new TrigonalModel(N, L, J1, J2, K1, K2, K3, Bm*Bhat1, S);
+    TrigonalModel *model = new TrigonalModel(N, L, J1, J2, K1, K2, K3, Bm*Bhat1);
+    MonteCarlo<TrigonalModel> *m = new MonteCarlo<TrigonalModel>(model);
 
 
     int nsteps = 10000*MCstep;
 
 
     auto start = chrono::high_resolution_clock::now();
-    run_MC(model, nsteps, "trig", 3*J1, T);
+    run_MC(m, nsteps, "trig", 3*J1, T);
     auto stop = chrono::high_resolution_clock::now();
     
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);

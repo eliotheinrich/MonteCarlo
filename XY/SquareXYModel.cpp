@@ -36,10 +36,12 @@ class SquareXYModel : public XYModel {
 
 
 
-            this->add_bond(Bond{1,0,0,0,bondfunc_J});
-            this->add_bond(Bond{-1,0,0,0,bondfunc_J});
-            this->add_bond(Bond{0,1,0,0,bondfunc_J});
-            this->add_bond(Bond{0,-1,0,0,bondfunc_J});
+            Vector3f v1; v1 << 1.,0.,0.;
+            Vector3f v2; v2 << 0.,1.,0.;
+            this->add_bond(Bond{1,0,0,0,v1,bondfunc_J});
+            this->add_bond(Bond{-1,0,0,0,-v1,bondfunc_J});
+            this->add_bond(Bond{0,1,0,0,v2,bondfunc_J});
+            this->add_bond(Bond{0,-1,0,0,-v2,bondfunc_J});
         }
 
         SquareXYModel* clone() {
@@ -59,12 +61,11 @@ class SquareXYModel : public XYModel {
             float E = 0;
 
             // Onsite interactions
-            E -= this->Bx*this->spins[n1][n2][n3][s][0] + this->By*this->spins[n1][n2][n3][s][1];
+            //E -= this->Bx*this->spins[n1][n2][n3][s][0] + this->By*this->spins[n1][n2][n3][s][1];
 
             return E;
         }
 
-        /*
         const float bond_energy(int n1, int n2, int n3, int s) {
             float E = 0;
 
@@ -78,6 +79,5 @@ class SquareXYModel : public XYModel {
 
             return 0.5*J*E;
         }
-        */
 };
 

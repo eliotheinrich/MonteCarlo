@@ -50,25 +50,25 @@ class MonteCarlo {
     public:
         MCModel *model;
         int accepted;
-        int step;
+        long nsteps;
         float energy;
 
         MonteCarlo(MCModel *model) {
             this->model = model;
             this->accepted = 0.;
-            this->step = 0;
+            this->nsteps = 0;
             this->energy = model->energy();
         }
 
         template<class A>
-        A expectation(function<A(MCModel*)> f, float T, int num_samples, int steps_per_sample) {
-            A avg_A = 0.;
+        vector<A> sample(function<A(MCModel*)> f, float T, int num_samples, int steps_per_sample) {
+            vector<A> samples(num_samples);
             for (int i = 0; i < num_samples; i++) {
-                avg_A += f(model)/num_samples;
+                samples[i] = f(model);
                 steps(steps_per_sample, T);
             }
 
-            return avg_A;
+            return samples;
         }
 
 
@@ -96,7 +96,7 @@ class MonteCarlo {
             }
 
 
-            this->step += nsteps;
+            this->nsteps += nsteps;
         }
 };
 
@@ -160,16 +160,17 @@ vector<A> run_MC(MonteCarlo<MCModel> *m, int nsteps, float T, function<A(MCModel
 }
 
 template <class MCModel>
-vector<MCModel*> parallel_tempering(MCModel *model, vector<float> Ts, int steps_per_exchange, int num_exchanges, int equilibration_steps = -1) {
+vector<MonteCarlo<MCModel>*> parallel_tempering(MCModel *model, vector<float> Ts, int steps_per_exchange, 
+                                                                                  int num_exchanges, 
+                                                                                  int equilibration_steps = -1) {
+
     int num_threads = Ts.size();
     vector<thread> threads(num_threads);
-    vector<MCModel*> models(num_threads);
-    vector<MonteCarlo<MCModel>*> mc_models(num_threads);
+    vector<MonteCarlo<MCModel>*> models(num_threads);
 
     // Initialize models
     for (int i = 0; i < num_threads; i++) {
-        models[i] = model->clone();
-        mc_models[i] = new MonteCarlo<MCModel>(models[i]);
+        models[i] = new MonteCarlo<MCModel>(model->clone());
     }
 
     int accepted = 0;
@@ -178,13 +179,12 @@ vector<MCModel*> parallel_tempering(MCModel *model, vector<float> Ts, int steps_
     float r;
     float dE;
     float dB;
-    MonteCarlo<MCModel> *mc_model_buffer;
-    MCModel *model_buffer;
+    MonteCarlo<MCModel> *model_buffer;
 
     for (int k = 0; k < num_exchanges; k++) {
         // Give threads work
         for (int i = 0; i < num_threads; i++) {
-            threads[i] = thread(&MonteCarlo<MCModel>::steps, mc_models[i], steps_per_exchange, Ts[i]);
+            threads[i] = thread(&MonteCarlo<MCModel>::steps, models[i], steps_per_exchange, Ts[i]);
         }
 
         // Join threads
@@ -195,14 +195,10 @@ vector<MCModel*> parallel_tempering(MCModel *model, vector<float> Ts, int steps_
         // Make exchanges
         for (int i = 0; i < num_threads-1; i++) {
             r = float(rand())/float(RAND_MAX);
-            dE = mc_models[i]->energy - mc_models[i+1]->energy;
+            dE = models[i]->energy - models[i+1]->energy;
             dB = 1./Ts[i] - 1./Ts[i+1];
             if (r < exp(dE*dB)) {
                 accepted++;
-                mc_model_buffer = mc_models[i];
-                mc_models[i] = mc_models[i+1];
-                mc_models[i+1] = mc_model_buffer;
-
                 model_buffer = models[i];
                 models[i] = models[i+1];
                 models[i+1] = model_buffer;
@@ -215,7 +211,7 @@ vector<MCModel*> parallel_tempering(MCModel *model, vector<float> Ts, int steps_
     // Final equilibration
     if (equilibration_steps != -1) {
         for (int i = 0; i < num_threads; i++) {
-            threads[i] = thread(&MonteCarlo<MCModel>::steps, mc_models[i], equilibration_steps, Ts[i]);
+            threads[i] = thread(&MonteCarlo<MCModel>::steps, models[i], equilibration_steps, Ts[i]);
         }
 
         for (int i = 0; i < num_threads; i++) {

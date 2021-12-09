@@ -22,10 +22,10 @@ struct Bond {
     int d2;
     int d3;
     int ds;
+    Vector3f v;
     function<float(Vector2f, Vector2f)> bondfunc;
 };
     
-
 class LatticeIterator {
     public:
         int n1; int n2; int n3; int s;
@@ -163,11 +163,12 @@ class XYModel : virtual public MCModel {
             }
         }
 
-        inline float spin_stiffness(float T, int n = 0) {
+        inline vector<double> twist_stiffness() {
+            // Returns the first and second derivative in response to a phase twist
             float alpha = 0.01;
-            Matrix2f R1; R1 << cos(alpha), -sin(alpha),
-                               sin(alpha), cos(alpha);
-            Matrix2f R2 = R1.transpose();
+            float f;
+            Matrix2f R1; 
+            Matrix2f R2;
 
             double E0 = 0.;
             double E1 = 0.;
@@ -183,19 +184,26 @@ class XYModel : virtual public MCModel {
                 for (int n2 = 0; n2 < N2; n2++) {
                     for (int n3 = 0; n3 < N3; n3++) {
                         for (int s = 0; s < sl; s++) {
-                            k1 = neighbors[n1][n2][n3][s][n][0]; k2 = neighbors[n1][n2][n3][s][n][1]; 
-                            k3 = neighbors[n1][n2][n3][s][n][2]; ks = neighbors[n1][n2][n3][s][n][3];
+                            for (int n = 0; n < 3; n++) {
+                                f = bonds[0].v.dot(bonds[n].v);
+                                R1 << cos(f*alpha), -sin(f*alpha),
+                                      sin(f*alpha), cos(f*alpha);
+                                R2 = R1.transpose();
 
-                            S1 = spins[n1][n2][n3][s];
-                            S2 = spins[k1][k2][k3][ks];
+                                k1 = neighbors[n1][n2][n3][s][n][0]; k2 = neighbors[n1][n2][n3][s][n][1]; 
+                                k3 = neighbors[n1][n2][n3][s][n][2]; ks = neighbors[n1][n2][n3][s][n][3];
 
-                            E0 += bonds[n].bondfunc(S1, S2);
+                                S1 = spins[n1][n2][n3][s];
+                                S2 = spins[k1][k2][k3][ks];
 
-                            E1 += bonds[n].bondfunc(S1, R1*S2);
-                            Em1 += bonds[n].bondfunc(S1, R2*S2);
+                                E0 += bonds[n].bondfunc(S1, S2);
 
-                            E2 += bonds[n].bondfunc(S1, R1*R1*S2);
-                            Em2 += bonds[n].bondfunc(S1, R2*R2*S2);
+                                E1 += bonds[n].bondfunc(S1, R1*S2);
+                                Em1 += bonds[n].bondfunc(S1, R2*S2);
+
+                                E2 += bonds[n].bondfunc(S1, R1*R1*S2);
+                                Em2 += bonds[n].bondfunc(S1, R2*R2*S2);
+                            }
                         }
                     }
                 }
@@ -204,8 +212,9 @@ class XYModel : virtual public MCModel {
             // Compute derivates from finite difference
             double dE = (1./12.*Em2 - 2./3.*Em1 + 2./3.*E1 - 1./12.*E2)/alpha;
             double ddE = (-1./12.*Em2 + 4./3.*Em1 - 5./2.*E0 + 4./3.*E1 - 1./12.*E2)/(alpha*alpha);
-
-            return (ddE - (1./T)*dE*dE)/(N1*N2*N3);
+            
+            //return vector<double>{dE, ddE};
+            return vector<double>{dE/2., ddE/2.};
         }
 
         inline Vector2f get_magnetization(int s) {

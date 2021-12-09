@@ -1,4 +1,4 @@
-#include "SquareXYModel.cpp"
+#include "TrigonalXYModel.cpp"
 #include <iostream>
 
 using namespace std;
@@ -15,24 +15,20 @@ int main(int argc, char* argv[]) {
     const float Bp = 0.;
 
     const int MCStep = N*N*L;
-    cout << MCStep << endl;
 
-    SquareXYModel *model = new SquareXYModel(N, L, J, B, Bp);
-    model->random_selection = true;
-    MonteCarlo<SquareXYModel> *m = new MonteCarlo<SquareXYModel>(model);
-    //TrigonalXYModel *model = new TrigonalXYModel(N, L, J);
+    //SquareXYModel *model = new SquareXYModel(N, L, J, B, Bp);
+    TrigonalXYModel *model = new TrigonalXYModel(N, L, J);
+    MonteCarlo<TrigonalXYModel> *m = new MonteCarlo<TrigonalXYModel>(model);
 
 
     const float Tmax = 3.;
     const float Tmin = 0.1;
-    int res = 30;
-    vector<float> rhos(res);
+    int res = 20;
 
-    int num_samples = 4000;
-    int steps_per_sample = 10;
+    int num_samples = 1000;
+    int steps_per_sample = 10*MCStep;
 
 
-    float rho;
     vector<float> Ts(res);
     ofstream output(filename);
 
@@ -40,26 +36,24 @@ int main(int argc, char* argv[]) {
         Ts[i] = float(i)/res*Tmax + float(res - i)/res*Tmin;
     }
 
-    vector<SquareXYModel*> models = parallel_tempering(model, Ts, 100, 100, 4000*MCStep);
-    vector<thread> threads(res);
+    auto models = parallel_tempering(model, Ts, 100, 2*MCStep, 100*MCStep);
 
-    function<float(SquareXYModel*)> stiffness;
-    function<void(float, int, int)> func;
     float T;
+    vector<double> sample;
+
+    // Write header
+    output << res << "\t" << num_samples << endl;
     for (int i = 0; i < res; i++) {
         T = Ts[i];
-        stiffness = [T](SquareXYModel *m) { return m->spin_stiffness(T); };
-        m = new MonteCarlo<SquareXYModel>(models[i]);
-        func = [i, &rhos, m, stiffness](float T, int n1, int n2) { rhos[i] = m->expectation(stiffness, T, n1, n2); };
-        threads[i] = thread(func, T, num_samples, steps_per_sample);;
-        //rhos[i] = m->expectation(stiffness, T, num_samples, steps_per_sample);
+        output << Ts[i] << "\t";
+        for (int j = 0; j < num_samples; j++) {
+            sample = models[i]->model->twist_stiffness();
+            models[i]->steps(steps_per_sample, T);
+            output << "(" << sample[0] << ", " << sample[1] << ")";
+            if (j < num_samples - 1) { output << '\t'; }
+        }
+        output << endl;
     } 
-
-    for (int i = 0; i < res; i++) {
-        threads[i].join(); 
-        output << Ts[i] << "\t" << rhos[i] << endl;
-    }
-
 
     output.close();
 

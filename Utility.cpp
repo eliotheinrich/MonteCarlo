@@ -27,7 +27,7 @@ const inline int mod(int a, int b) {
 template<typename T>
 T avg(vector<T> *v) {
     int L = v->size();
-    T F = 0.;
+    T F = T(0.);
     for (int i = 0; i < L; i++) {
         F = F + (*v)[i];
     }
@@ -37,7 +37,7 @@ T avg(vector<T> *v) {
 template<typename T>
 T stdev(vector<T> *v, T av) {
     int L = v->size();
-    T F = 0.;
+    T F = T(0.);
     T dF;
     for (int i = 0; i < L; i++) {
         dF = (*v)[i] - av;

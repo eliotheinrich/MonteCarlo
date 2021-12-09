@@ -16,40 +16,43 @@ int main(int argc, char* argv[]) {
     const int MCStep = N*N*L;
 
     SquareModel *model = new SquareModel(N, L, J, A);
+    MonteCarlo<SquareModel> *m = new MonteCarlo<SquareModel>(model);
 
 
-    const float Tmax = 2.;
+    const float Tmax = 3.;
     const float Tmin = 0.1;
     int res = 20;
-    vector<float> rhos(res);
 
-    int num_samples = 2000;
-    int steps_per_sample = 10;
+    int num_samples = 5000;
+    int steps_per_sample = 5*MCStep;
 
 
-    float rho;
-    float T;
+    vector<float> Ts(res);
     ofstream output(filename);
+
     for (int i = 0; i < res; i++) {
-        if (i % 5 == 0) {
-            cout << i*100/res << "\% finished" << endl;
-        }
-        model->randomize_spins();
-        T = float(i)/res*Tmax + float(res - i)/res*Tmin;
-        run_MC(model, 2000*MCStep, "trig", T, T, false);
+        Ts[i] = float(i)/res*Tmax + float(res - i)/res*Tmin;
+    }
 
-        rho = 0;
+    auto models = parallel_tempering(model, Ts, 100, 2*MCStep, 100*MCStep);
+
+    float T;
+    vector<double> sample;
+
+    // Write header
+    output << res << "\t" << num_samples << endl;
+    for (int i = 0; i < res; i++) {
+        T = Ts[i];
+        output << Ts[i] << "\t";
         for (int j = 0; j < num_samples; j++) {
-            rho += model->spin_stiffness(T);
-            run_MC(model, steps_per_sample*MCStep, "const", T, T, false);
+            sample = models[i]->model->twist_stiffness();
+            models[i]->steps(steps_per_sample, T);
+            output << "(" << sample[0] << ", " << sample[1] << ")";
+            if (j < num_samples - 1) { output << '\t'; }
         }
-
-        rhos[i] = rho/num_samples;
-
-        output << T << "\t" << rhos[i] << endl;
+        output << endl;
     } 
 
     output.close();
-
 
 }
