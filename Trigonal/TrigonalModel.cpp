@@ -22,14 +22,13 @@ class TrigonalModel : public SpinModel {
         float K3;
 
         Vector3f B; 
-        float S;
 
         Matrix3f R;
         int counter;
 
 
         TrigonalModel(int N, int L, float J1, float J2, float K1, float K2, float K3,
-                                    Vector3f B, float S) : SpinModel(1, N, N, L) {
+                                    Vector3f B) : SpinModel(1, N, N, L) {
 
             this->N = N;
             this->L = L;
@@ -39,13 +38,11 @@ class TrigonalModel : public SpinModel {
             this->K2 = K2;
             this->K3 = K3;
             this->B = B;
-            this->S = S;
             cout << "J1 = " << this->J1 << endl;
             cout << "J2 = " << this->J2 << endl;
             cout << "K1 = " << this->K1 << endl;
             cout << "K2 = " << this->K2 << endl;
             cout << "K3 = " << this->K3 << endl;
-            cout << "S = " << this->S << endl;
 
             this->R << sqrt(3)/2., -0.5, 0.,
                        0.5, sqrt(3)/2., 0.,
@@ -56,13 +53,38 @@ class TrigonalModel : public SpinModel {
                 return -J1*S1.dot(S2);
             };
 
-            this->add_bond(Bond{1,0,0,0, bondfunc});
-            this->add_bond(Bond{-1,0,0,0, bondfunc});
-            this->add_bond(Bond{0,1,0,0, bondfunc});
-            this->add_bond(Bond{0,-1,0,0, bondfunc});
-            this->add_bond(Bond{1,-1,0,0, bondfunc});
-            this->add_bond(Bond{-1,1,0,0, bondfunc});
+            Vector3f v1; v1 << 1., 0., 0.;
+            Vector3f v2; v2 << 0.5, sqrt(3)/2., 0.;
+            Vector3f v3; v3 << 0.5, -sqrt(3)/2., 0.;
+            this->add_bond(Bond{1,0,0,0, v1, bondfunc});
+            this->add_bond(Bond{-1,0,0,0, -v1, bondfunc});
+            this->add_bond(Bond{0,1,0,0, v2, bondfunc});
+            this->add_bond(Bond{0,-1,0,0, -v2, bondfunc});
+            this->add_bond(Bond{1,-1,0,0, v3, bondfunc});
+            this->add_bond(Bond{-1,1,0,0, -v3, bondfunc});
+
+            function<float(Vector3f S1, Vector3f S2)> bondfunc_inter = [J2](Vector3f S1, Vector3f S2) {
+                return -J2*S1.dot(S2);
+            };
+
+            Vector3f v4; v4 << 0., 0., 1.;
+            //this->add_bond(Bond{0,0,1,0, v4, bondfunc_inter});
+            //this->add_bond(Bond{0,0,1,0, -v4, bondfunc_inter});
         }
+
+        TrigonalModel* clone() {
+            TrigonalModel* new_model = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B);
+            new_model->random_selection = random_selection;
+            for (int n1 = 0; n1 < N; n1++) {
+                for (int n2 = 0; n2 < N; n2++) {
+                    for (int n3 = 0; n3 < L; n3++) {
+                        new_model->spins[n1][n2][n3][0] = this->spins[n1][n2][n3][0];
+                    }
+                }
+            }
+            return new_model;
+        }
+
 
 /*
         void generate_mutation() {
@@ -101,13 +123,13 @@ class TrigonalModel : public SpinModel {
             float E = 0;
 
             // Onsite interactions
-            E -= S*B.dot(this->spins[n1][n2][n3][s]);
+            E -= B.dot(this->spins[n1][n2][n3][s]);
             float x = this->spins[n1][n2][n3][s][0];
             float y = this->spins[n1][n2][n3][s][1];
             float z = this->spins[n1][n2][n3][s][2];
-            E += K1*S*S*z*z;
-            E += K2*S*pow(x*x+y*y,2);
-            E += K3*S*cos(6*atan2(y, x))*pow(x*x+y*y,3); // Sixfold magnetocrystalline field
+            E += K1*z*z;
+            E += K2*pow(x*x+y*y,2);
+            E += K3*cos(6*atan2(y, x))*pow(x*x+y*y,3); // Sixfold magnetocrystalline field
 
             return E;
         }
@@ -125,15 +147,15 @@ class TrigonalModel : public SpinModel {
             E *= 0.5*J1;
 
             // PBC on interlayer coupling
-            //E += 0.5*J2*S*S*this->spins[n1][n2][n3][s].dot(this->spins[n1][n2][mod(n3-1, L)][s]);
-            //E += 0.5*J2*S*S*this->spins[n1][n2][n3][s].dot(this->spins[n1][n2][(n3+1)% L][s]);
+            //E += 0.5*J2*this->spins[n1][n2][n3][s].dot(this->spins[n1][n2][mod(n3-1, L)][s]);
+            //E += 0.5*J2*this->spins[n1][n2][n3][s].dot(this->spins[n1][n2][(n3+1)% L][s]);
 
             // OBC on interlayer coupling 
             //if (s > 0) {
-            //    E += 0.5*J2*S*S*this->spins[n1][n2][n3][s].dot(this->spins[n1][n2][n3-1][s]);
+            //    E += 0.5*J2*this->spins[n1][n2][n3][s].dot(this->spins[n1][n2][n3-1][s]);
             //} 
             //if (s < L-1) {
-            //    E += 0.5*J2*S*S*this->spins[n1][n2][n3][s].dot(this->spins[n1][n2][n3+1][s]);
+            //    E += 0.5*J2*this->spins[n1][n2][n3][s].dot(this->spins[n1][n2][n3+1][s]);
             //}
 
             return E;

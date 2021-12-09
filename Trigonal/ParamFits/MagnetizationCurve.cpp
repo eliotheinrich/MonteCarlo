@@ -27,8 +27,6 @@ int main(int argc, char* argv[]) {
     float K1 = stof(paramss[4]);
     float K2 = stof(paramss[5]);
     float K3 = stof(paramss[6]);
-    float S = stof(paramss[7]);
-
 
     getline(paramfile, line);
     getline(paramfile, line);
@@ -54,8 +52,10 @@ int main(int argc, char* argv[]) {
 
 
     srand((unsigned)time( NULL ));
-    TrigonalModel *model1 = new TrigonalModel(N, L, J1, J2, K1, K2, K3, Bhat1, S);
-    TrigonalModel *model2 = new TrigonalModel(N, L, J1, J2, K1, K2, K3, Bhat2, S);
+    TrigonalModel *model1 = new TrigonalModel(N, L, J1, J2, K1, K2, K3, Bhat1);
+    MonteCarlo<TrigonalModel> *m1 = new MonteCarlo(model1);
+    TrigonalModel *model2 = new TrigonalModel(N, L, J1, J2, K1, K2, K3, Bhat2);
+    MonteCarlo<TrigonalModel> *m2 = new MonteCarlo(model2);
 
     Vector3f M1v; Vector3f M2v;
     Vector3f M1v_avg; Vector3f M2v_avg;
@@ -91,12 +91,12 @@ int main(int argc, char* argv[]) {
             model1->randomize_spins();
             model2->randomize_spins();
            
-            run_MC(model1, steps_per_run*MCstep, "trig", J1, T);
-            run_MC(model2, steps_per_run*MCstep, "trig", J1, T);
+            run_MC(m1, steps_per_run*MCstep, "trig", J1, T);
+            run_MC(m2, steps_per_run*MCstep, "trig", J1, T);
 
             for (int k = 0; k < num_samples; k++) {
-                run_MC(model1, steps_per_sample*MCstep, "const", T, T);
-                run_MC(model2, steps_per_sample*MCstep, "const", T, T);
+                run_MC(m1, steps_per_sample*MCstep, T);
+                run_MC(m2, steps_per_sample*MCstep, T);
 
                 ind = j*num_samples + k;
 

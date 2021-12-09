@@ -22,14 +22,14 @@ int main() {
     const int MCstep = N*N*L;
 
     SquareXYModel *model = new SquareXYModel(N, L, J, B, Bp);
-    model->random_selection = false;
+    MonteCarlo<SquareXYModel> *m = new MonteCarlo<SquareXYModel>(model);
 
 
     int nsteps = 1000*MCstep;
 
 
     auto start = chrono::high_resolution_clock::now();
-    run_MC(model, nsteps, "trig", T, T);
+    run_MC(m, nsteps, "trig", J, T);
     auto stop = chrono::high_resolution_clock::now();
     
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
@@ -37,11 +37,6 @@ int main() {
 
     cout << to_string(nsteps) << " steps took " << to_string(float(microseconds)/1000000.) << "s." << endl;
     cout << to_string(float(nsteps)/(float(microseconds)/1000000)) << " steps/second." << endl;
-
-//    cout << "over-relax steps: " << model->f1 << endl;
-//    cout << "standard steps: " << model->f2 << endl;
-
-
 
 }
 

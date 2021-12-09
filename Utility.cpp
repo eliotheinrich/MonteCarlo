@@ -27,7 +27,7 @@ const inline int mod(int a, int b) {
 template<typename T>
 T avg(vector<T> *v) {
     int L = v->size();
-    T F = 0.;
+    T F = T(0.);
     for (int i = 0; i < L; i++) {
         F = F + (*v)[i];
     }
@@ -37,7 +37,7 @@ T avg(vector<T> *v) {
 template<typename T>
 T stdev(vector<T> *v, T av) {
     int L = v->size();
-    T F = 0.;
+    T F = T(0.);
     T dF;
     for (int i = 0; i < L; i++) {
         dF = (*v)[i] - av;
@@ -68,6 +68,17 @@ vector<string> split(string *s, string delim) {
     vals.push_back(str);
 
     return vals;
+}
+
+void write_to_file(string filename, vector<vector<float>> data) {
+    ofstream output(filename);
+    for (int i = 0; i < data.size(); i++) {
+        for (int j = 0; j < data[0].size(); j++) {
+            output << data[i][j];
+            if (j < data[0].size() - 1) { output << "\t"; }
+        }
+        output << endl;
+    }
 }
 
 

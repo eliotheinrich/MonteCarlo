@@ -4,24 +4,6 @@ import sys
 import os
 from matplotlib import animation
 
-def load_stiffness_data(filename):
-    with open(filename) as f:
-        n = 0
-        while f.readline():
-            n += 1
-    
-    T = np.zeros(n)
-    ρ = np.zeros(n)
-    with open(filename) as f:
-        for i in range(n):
-            line = f.readline()
-            Ti, ρi = [float(x) for x in line.split('\t')]
-            T[i] = Ti
-            ρ[i] = ρi
-
-    return T, ρ
-
-
 def make_animation(Ts, ρs, Ls, L0s, fps, filename):
     frn = len(L0s)
 
@@ -58,34 +40,76 @@ def make_animation(Ts, ρs, Ls, L0s, fps, filename):
     ani.save(filename, fps=fps)
 
 
-cwd = os.getcwd()
-os.chdir(sys.argv[1])
 
-fs = [f for f in os.listdir() if f[:9] == "stiffness"]
-T, _ = load_stiffness_data(fs[0])
+def load_stiffness_data(filename):
+    i = filename.index('.')
+    L = int(filename[9:i])
+
+    with open(filename) as f:
+        s = f.readline().split('\t')
+        res = int(s[0])
+        num_samples = int(s[1])
+    
+    Ts = np.zeros(res)
+    rhos = np.zeros(res)
+    dEs = np.zeros((res, num_samples))
+    ddEs = np.zeros((res, num_samples))
+
+    with open(filename) as f:
+        f.readline()
+        for i in range(res):
+            line = f.readline()
+            data = np.array(line.split('\t'))
+            Ti = float(data[0])
+            data = data[1:-1]
+
+            for n,x in enumerate(data):
+                dE, ddE = x.split(',')
+                dEs[i, n] = float(dE[1:])
+                ddEs[i, n] = float(ddE[:-1])
 
 
-N = len(fs)
-res = len(T) - 1
 
-Ts = np.zeros((N, res))
-ρs = np.zeros((N, res))
-Ls = np.zeros(N, dtype=int)
+            Ts[i] = Ti
 
-for n, f in enumerate(fs):
-    if f[:9] == 'stiffness':
-        i = f.index('.')
-        T, ρ = load_stiffness_data(f)
-        Ts[n,:] = T[1:]
-        ρs[n,:] = ρ[1:]
-        Ls[n] = int(f[9:i])
+    return L, Ts, dEs, ddEs
 
-inds = np.argsort(Ls)
-Ts = Ts[inds]
-ρs = ρs[inds]
-Ls = Ls[inds]
-L0s = np.sin(np.linspace(0, 2*np.pi, 50)) + 1.1
+if __name__ == "__main__":
+    cwd = os.getcwd()
+    os.chdir(sys.argv[1])
 
-os.chdir(cwd)
+    fs = [f for f in os.listdir() if f[:9] == "stiffness"]
+    _, _, dEs, _ = load_stiffness_data(fs[0])
 
-make_animation(Ts[0], ρs, Ls, L0s, 15, "animation.gif") 
+    N = len(fs)
+    res, num_samples = dEs.shape
+
+    Ts = np.zeros(res)
+    ρs = np.zeros((N, res))
+    dEs = np.zeros((N, res, num_samples))
+    ddEs = np.zeros((N, res, num_samples))
+    Ls = np.zeros(N, dtype=int)
+
+    for n, f in enumerate(fs):
+        if f[:9] == 'stiffness':
+            i = f.index('.')
+            L, Ts, dE, ddE = load_stiffness_data(f)
+            Ls[n] = L
+            dEs[n,:,:] = dE
+            ddEs[n,:,:] = ddE
+            ρs[n,:] = (np.mean(ddE, axis=1) - np.std(dE, axis=1)**2/Ts)/(L**2)
+
+    inds = np.argsort(Ls)
+    ρs = ρs[inds]
+    Ls = Ls[inds]
+    L0s = np.sin(np.linspace(0, 2*np.pi, 50)) + 1.1
+
+    os.chdir(cwd)
+
+    make_animation(Ts, ρs, Ls, L0s, 15, "animation.gif") 
+
+
+
+
+
+

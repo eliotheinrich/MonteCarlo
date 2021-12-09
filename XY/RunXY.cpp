@@ -18,8 +18,14 @@ int main() {
 
     SquareXYModel *model = new SquareXYModel(N, L, J, B, Bp);
 
-    run_MC<MagnetizationLogItem>(model, 500*MCStep, "trig", T, T, true);
-    cout << model->energy() << endl;
+    MonteCarlo<SquareXYModel> *m = new MonteCarlo<SquareXYModel>(model);
+
+    function<vector<float>(SquareXYModel*)> logfunc = [](SquareXYModel* model) { return MagnetizationLogItem(model); };
+    vector<vector<float>> log = run_MC(m, 500*MCStep, T, logfunc, 100);
+    write_to_file("Log.txt", log);
+
+
+    cout << "Energy = " << model->energy() << endl;
 
     model->save_spins("Spins.txt");
     

@@ -4,21 +4,37 @@ import sys
 import os
 
 def load_stiffness_data(filename):
-    with open(filename) as f:
-        n = 0
-        while f.readline():
-            n += 1
-    
-    T = np.zeros(n)
-    ρ = np.zeros(n)
-    with open(filename) as f:
-        for i in range(n):
-            line = f.readline()
-            Ti, ρi = [float(x) for x in line.split('\t')]
-            T[i] = Ti
-            ρ[i] = ρi
+    i = filename.index('.')
+    L = int(filename[9:i])
 
-    return T, ρ
+    with open(filename) as f:
+        s = f.readline().split('\t')
+        res = int(s[0])
+        num_samples = int(s[1])
+    
+    Ts = np.zeros(res)
+    rhos = np.zeros(res)
+    dEs = np.zeros((res, num_samples))
+    ddEs = np.zeros((res, num_samples))
+
+    with open(filename) as f:
+        f.readline()
+        for i in range(res):
+            line = f.readline()
+            data = np.array(line.split('\t'))
+            Ti = float(data[0])
+            data = data[1:-1]
+
+            for n,x in enumerate(data):
+                dE, ddE = x.split(',')
+                dEs[i, n] = float(dE[1:])
+                ddEs[i, n] = float(ddE[:-1])
+
+
+
+            Ts[i] = Ti
+
+    return L, Ts, dEs, ddEs
 
 def get_L0(Ls, Ts, ρs, Lmin = 0.5, Lmax = 3., num_Ls=100):
     ρsL = np.zeros_like(ρs)
@@ -51,52 +67,59 @@ def get_L0(Ls, Ts, ρs, Lmin = 0.5, Lmax = 3., num_Ls=100):
 
     return min_L0, T_KT
 
+def plot_stiffness_curve(Ts, ρs, L0, T_KT):
+    ρsL = np.array([ρs[n]/(1. + 1./(2.*np.log(Ls[n]/L0))) for n in range(len(ρs))])
+    for n, L in enumerate(Ls):
+        plt.plot(Ts, ρsL[n], marker='o', label=f'L = {L}')
+
+    plt.plot(Ts, 2./np.pi*Ts, 'k--', label=r'$2T/\pi$')
+#    plt.axvline(T_KT, linestyle='-', color='k', alpha=0.5, label=r'$T_{KT}$')
+
+    plt.legend()
+    plt.xlim(0., max(Ts))
+    plt.ylim(-0.05, np.max(ρsL) + 0.2)
+    plt.xlabel(r'$T$', fontsize=15)
+    plt.ylabel(r'$\Upsilon(L)/(1+(2\log(L/L_0))^{-1})$', fontsize=15)
+#    plt.title(r'$T_{KT} = $' + f'{T_KT:.3f}')
+    plt.show()
+
+
 
 if __name__ == "__main__":
     os.chdir(sys.argv[1])
 
     fs = [f for f in os.listdir() if f[:9] == "stiffness"]
-    T, _ = load_stiffness_data(fs[0])
+    _, _, dEs, _ = load_stiffness_data(fs[0])
 
     N = len(fs)
-    res = len(T)
+    res, num_samples = dEs.shape
 
-    Ts = np.zeros((N, res))
+    Ts = np.zeros(res)
     ρs = np.zeros((N, res))
+    dEs = np.zeros((N, res, num_samples))
+    ddEs = np.zeros((N, res, num_samples))
     Ls = np.zeros(N, dtype=int)
 
     for n, f in enumerate(fs):
         if f[:9] == 'stiffness':
             i = f.index('.')
-            T, ρ = load_stiffness_data(f)
-            Ts[n,:] = T
-            ρs[n,:] = ρ
-            Ls[n] = int(f[9:i])
+            L, Ts, dE, ddE = load_stiffness_data(f)
+            Ls[n] = L
+            dEs[n,:,:] = dE
+            ddEs[n,:,:] = ddE
+            ρs[n,:] = (np.mean(ddE, axis=1) - np.std(dE, axis=1)**2/Ts)/(L**2)
 
     inds = np.argsort(Ls)
-    Ts = Ts[inds]
     ρs = ρs[inds]
     Ls = Ls[inds]
 
 
-#    L0, T_KT = get_L0(Ls, Ts[0,:], ρs, 0.1, 0.75, 10000)
-    L0 = 1/1.4
-    T_KT = 0.88
+    L0, T_KT = get_L0(Ls, Ts, ρs, 0.001, 1, 10000)
+#    L0 = 1/1.4
+#    T_KT = 0.88
     print(L0, T_KT)
+    plot_stiffness_curve(Ts, ρs, L0, T_KT)
 
-    for n, L in enumerate(Ls):
-        plt.plot(Ts[n], ρs[n]/(1. + 1./(2.*np.log(Ls[n]/L0))), marker='o', label=f'L = {L}')
-
-    plt.plot(Ts[0], 2./np.pi*Ts[0], 'k--', label=r'$2T/\pi$')
-#    plt.axvline(T_KT, linestyle='-', color='k', alpha=0.5, label=r'$T_{KT}$')
-
-    plt.legend()
-    plt.xlim(0., max(Ts[0]))
-    plt.ylim(-0.05, 1.1)
-    plt.xlabel(r'$T$', fontsize=15)
-    plt.ylabel(r'$\Upsilon(L)/(1+(2\log(L/L_0))^{-1})$', fontsize=15)
-#    plt.title(r'$T_{KT} = $' + f'{T_KT:.3f}')
-    plt.show()
 
 
 

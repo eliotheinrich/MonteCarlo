@@ -1,9 +1,11 @@
 #ifndef MONTECARLO
 #define MONTECARLO
 
+#include <unistd.h>
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <thread>
 #include <cmath>
 #include "Utility.cpp"
 
@@ -11,6 +13,7 @@
 
 using namespace std;
 
+template <class MCModel>
 class MonteCarlo;
 
 class MCModel {
@@ -23,45 +26,7 @@ class MCModel {
         virtual void generate_mutation()=0;
         virtual void accept_mutation()=0;
         virtual void reject_mutation()=0;
-};
-
-class LogItem {
-    // Stores some datatype specified by child classes
-    public:
-        LogItem() {}
-        LogItem(MonteCarlo *m, MCModel *model) {}
-        friend ostream& operator<<(ostream& os, const LogItem& logitem);
-};
-
-template <class LogItemType>
-class Log {
-    // Stores an array of some LogItem updated at some specified frequency in simulation
-    public:
-        int len;
-        vector<LogItemType> items;
-
-        Log() {
-            this->len = 0;
-            items = vector<LogItemType>(0);
-        }
-
-        Log(int len) {
-            this->len = len;
-            items = vector<LogItemType>(len);
-        }
-
-        LogItemType & operator[](int i) {
-            return items[i];
-        }
-
-        void save_log(string filename) {
-            ofstream output_file;
-            output_file.open(filename);
-            for (int i = 0; i<len; i++) {
-                    output_file << items[i] << endl; 
-            }
-            output_file.close();
-        }
+        virtual MCModel* clone()=0;
 };
 
 float const_T(int n, int n_max, float T_min, float T_max) {
@@ -76,6 +41,7 @@ float linear_T(int n, int n_max, float T_min, float T_max) {
     return T_min + (T_max - T_min)*(n_max - n)/float(n_max);
 }
 
+template<class MCModel>
 class MonteCarlo {
     // MonteCarlo is a wrapper for a MCModel
     // Equipped with tools for doing Monte-Carlo simulation on generic systems
@@ -84,15 +50,27 @@ class MonteCarlo {
     public:
         MCModel *model;
         int accepted;
-        int step;
+        long nsteps;
         float energy;
 
         MonteCarlo(MCModel *model) {
             this->model = model;
             this->accepted = 0.;
-            this->step = 0;
+            this->nsteps = 0;
             this->energy = model->energy();
         }
+
+        template<class A>
+        vector<A> sample(function<A(MCModel*)> f, float T, int num_samples, int steps_per_sample) {
+            vector<A> samples(num_samples);
+            for (int i = 0; i < num_samples; i++) {
+                samples[i] = f(model);
+                steps(steps_per_sample, T);
+            }
+
+            return samples;
+        }
+
 
         void steps(int nsteps, float T) {
             // Performs MC simulation
@@ -102,8 +80,7 @@ class MonteCarlo {
             float r;
             float dE;
 
-            for (int step = 0; step<nsteps; step++) {
-
+            for (int i = 0; i < nsteps; i++) {
                 model->generate_mutation();
                 dE = model->energy_change();
 
@@ -118,37 +95,18 @@ class MonteCarlo {
                 }
             }
 
-            this->step += nsteps;
+
+            this->nsteps += nsteps;
         }
 };
 
-class EnergyLogItem : public LogItem {
-    public:
-        float energy;
-
-        EnergyLogItem() {}
-
-        EnergyLogItem(MonteCarlo *m, MCModel *model) {
-            this->energy = m->energy;
-        }
-
-        friend ostream& operator<<(ostream& os, const EnergyLogItem& logitem) {
-            os << logitem.energy;
-            return os;
-        }
-};
-
-//template <typename T> string type_name();
-
-template <class LogItemType=EnergyLogItem, class Model>
-void run_MC(Model *model, int nsteps, string cooling = "auto",
-                                      float T_max = -1,
-                                      float T_min = -1,
-                                      bool record_log = false,
-                                      int num_updates = 100, 
-                                      string filename = "Log.txt") {
-
-    MonteCarlo *m = new MonteCarlo(model);
+// run_MC with everything
+template <class MCModel, class A>
+vector<A> run_MC(MonteCarlo<MCModel> *m, int nsteps, string cooling,
+                                                     float T_max,
+                                                     float T_min,
+                                                     int num_updates, 
+                                                     function<A(MCModel*)> f) {
 
     // Establish cooling schedule
     float (*update_T)(int n, int n_max, float T_min, float T_max);
@@ -158,7 +116,6 @@ void run_MC(Model *model, int nsteps, string cooling = "auto",
     } else {
         if (T_max == -1 || T_min == -1) {
             cout << "Need to supply T_max and T_min!" << endl;
-            return;
         }
         if (cooling == "trig") {
             update_T = *trig_T;
@@ -168,9 +125,8 @@ void run_MC(Model *model, int nsteps, string cooling = "auto",
             update_T = *const_T;
         }
     }
-
-    Log<LogItemType> log = Log<LogItemType>(num_updates);
-
+    
+    vector<A> log(num_updates);
     int update_freq = nsteps/num_updates;
 
     float T;
@@ -178,12 +134,93 @@ void run_MC(Model *model, int nsteps, string cooling = "auto",
         T = update_T(i, num_updates, T_min, T_max);
         m->steps(update_freq, T); 
 
-        if (record_log) {
-            log[i] = LogItemType(m, model);
+        log[i] = f(m->model);
+    }
+
+    return log;
+}
+
+
+// Basic run_MC
+template <class MCModel>
+void run_MC(MonteCarlo<MCModel> *m, int nsteps, float T) {
+    m->steps(nsteps, T);
+}
+
+// run_MC with cooling schedule
+template <class MCModel>
+void run_MC(MonteCarlo<MCModel> *m, int nsteps, string cooling, float Tmin, float Tmax, int num_updates = 100) {
+    run_MC(m, nsteps, cooling, Tmin, Tmax, num_updates, function<int(MCModel*)>([](MCModel* g) { return 0; }));
+}
+
+// run_MC with logging function
+template <class MCModel, class A>
+vector<A> run_MC(MonteCarlo<MCModel> *m, int nsteps, float T, function<A(MCModel*)> f, int num_logitems) {
+    return run_MC(m, nsteps, "const", T, T, num_logitems, f);
+}
+
+template <class MCModel>
+vector<MonteCarlo<MCModel>*> parallel_tempering(MCModel *model, vector<float> Ts, int steps_per_exchange, 
+                                                                                  int num_exchanges, 
+                                                                                  int equilibration_steps = -1) {
+
+    int num_threads = Ts.size();
+    vector<thread> threads(num_threads);
+    vector<MonteCarlo<MCModel>*> models(num_threads);
+
+    // Initialize models
+    for (int i = 0; i < num_threads; i++) {
+        models[i] = new MonteCarlo<MCModel>(model->clone());
+    }
+
+    int accepted = 0;
+    int rejected = 0;
+
+    float r;
+    float dE;
+    float dB;
+    MonteCarlo<MCModel> *model_buffer;
+
+    for (int k = 0; k < num_exchanges; k++) {
+        // Give threads work
+        for (int i = 0; i < num_threads; i++) {
+            threads[i] = thread(&MonteCarlo<MCModel>::steps, models[i], steps_per_exchange, Ts[i]);
+        }
+
+        // Join threads
+        for (int i = 0; i < num_threads; i++) {
+            threads[i].join();
+        }
+
+        // Make exchanges
+        for (int i = 0; i < num_threads-1; i++) {
+            r = float(rand())/float(RAND_MAX);
+            dE = models[i]->energy - models[i+1]->energy;
+            dB = 1./Ts[i] - 1./Ts[i+1];
+            if (r < exp(dE*dB)) {
+                accepted++;
+                model_buffer = models[i];
+                models[i] = models[i+1];
+                models[i+1] = model_buffer;
+            } else {
+                rejected++;
+            }
         }
     }
 
-    if (record_log) { log.save_log(filename); }
+    // Final equilibration
+    if (equilibration_steps != -1) {
+        for (int i = 0; i < num_threads; i++) {
+            threads[i] = thread(&MonteCarlo<MCModel>::steps, models[i], equilibration_steps, Ts[i]);
+        }
+
+        for (int i = 0; i < num_threads; i++) {
+            threads[i].join();
+        }
+    }
+
+    return models;
 }
+
 
 #endif
