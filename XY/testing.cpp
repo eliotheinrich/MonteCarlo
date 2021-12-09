@@ -26,20 +26,23 @@ int main() {
 
     SquareXYModel *model = new SquareXYModel(N, L, J, B, Bp);
 
-    int steps_per_exchange = 1000*MCStep;
+    int steps_per_exchange = 10*MCStep;
     int num_exchanges = 100;
+    int equilibration_steps = 1000*MCStep;
 
     auto start = chrono::high_resolution_clock::now();
 
-    auto models = parallel_tempering(model, Ts, steps_per_exchange, num_exchanges);
+    auto models = parallel_tempering(model, Ts, steps_per_exchange, num_exchanges, equilibration_steps, 4);
 
     auto stop = chrono::high_resolution_clock::now();
     
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
     int microseconds = duration.count();
 
-    int nsteps = num_temps*steps_per_exchange*num_exchanges;
+    int nsteps = num_temps*(steps_per_exchange*num_exchanges + equilibration_steps);
+    int nsteps_measured = models[0]->nsteps;
 
+    cout << "Actual nsteps: " << nsteps_measured << endl;
     cout << to_string(nsteps) << " steps took " << to_string(float(microseconds)/1000000.) << "s." << endl;
     cout << to_string(float(nsteps)/(float(microseconds)/1000000)) << " steps/second." << endl;
 

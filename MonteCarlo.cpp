@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <ctpl_stl.h>
 #include <thread>
 #include <cmath>
 #include "Utility.cpp"
@@ -162,14 +163,17 @@ vector<A> run_MC(MonteCarlo<MCModel> *m, int nsteps, float T, function<A(MCModel
 template <class MCModel>
 vector<MonteCarlo<MCModel>*> parallel_tempering(MCModel *model, vector<float> Ts, int steps_per_exchange, 
                                                                                   int num_exchanges, 
-                                                                                  int equilibration_steps = -1) {
+                                                                                  int equilibration_steps = -1,
+                                                                                  int num_threads = 0) {
 
-    int num_threads = Ts.size();
-    vector<thread> threads(num_threads);
-    vector<MonteCarlo<MCModel>*> models(num_threads);
+    if (num_threads == 0) { num_threads = thread::hardware_concurrency(); }
+    ctpl::thread_pool threads(num_threads);
+
+    int num_replicas = Ts.size();
+    vector<MonteCarlo<MCModel>*> models(num_replicas);
 
     // Initialize models
-    for (int i = 0; i < num_threads; i++) {
+    for (int i = 0; i < num_replicas; i++) {
         models[i] = new MonteCarlo<MCModel>(model->clone());
     }
 
@@ -183,14 +187,19 @@ vector<MonteCarlo<MCModel>*> parallel_tempering(MCModel *model, vector<float> Ts
 
     for (int k = 0; k < num_exchanges; k++) {
         // Give threads work
-        for (int i = 0; i < num_threads; i++) {
-            threads[i] = thread(&MonteCarlo<MCModel>::steps, models[i], steps_per_exchange, Ts[i]);
+        for (int i = 0; i < num_replicas; i++) {
+            threads.push([&models, &Ts, steps_per_exchange, i](int) { models[i]->steps(steps_per_exchange, Ts[i]); });
         }
 
-        // Join threads
-        for (int i = 0; i < num_threads; i++) {
-            threads[i].join();
-        }
+        // Joining threads
+        threads.stop(true);
+
+        //for (int i = 0; i < num_replicas; i++) {
+        //    cout << models[i]->nsteps << endl;
+        //}
+        
+
+
 
         // Make exchanges
         for (int i = 0; i < num_threads-1; i++) {
@@ -210,13 +219,11 @@ vector<MonteCarlo<MCModel>*> parallel_tempering(MCModel *model, vector<float> Ts
 
     // Final equilibration
     if (equilibration_steps != -1) {
-        for (int i = 0; i < num_threads; i++) {
-            threads[i] = thread(&MonteCarlo<MCModel>::steps, models[i], equilibration_steps, Ts[i]);
+        for (int i = 0; i < num_replicas; i++) {
+            threads.push([&models, &Ts, equilibration_steps, i](int) { models[i]->steps(equilibration_steps, Ts[i]); });
         }
-
-        for (int i = 0; i < num_threads; i++) {
-            threads[i].join();
-        }
+    
+        threads.stop(true);
     }
 
     return models;
