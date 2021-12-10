@@ -5,11 +5,9 @@
 
 using namespace std;
 
-int main(int argc, char* argv[]) {    
-    string filename = argv[1];
+void func(string filename, int N, int num_threads) {
     srand((unsigned)time( NULL ));
 
-    int N = stoi(argv[2]);
     cout << "N = " << N << endl;
     const int L = 1;
     const float J = 1.;
@@ -26,8 +24,6 @@ int main(int argc, char* argv[]) {
     const float Tmax = 3.;
     const float Tmin = 0.1;
     int res = 20;
-
-    int num_threads = 4;
 
     vector<float> Ts(res);
     ofstream output(filename);
@@ -75,4 +71,24 @@ int main(int argc, char* argv[]) {
     }
 
     output.close();
+    cout << "Total steps: " << res*(num_samples*steps_per_sample + num_exchanges*steps_per_exchange + equilibration_steps) << endl;
 }
+
+int main(int argc, char* argv[]) {    
+    string filename = argv[1];
+    int N = stoi(argv[2]);
+    int num_threads = 4;
+
+    auto start = chrono::high_resolution_clock::now();
+
+    func(filename, N, num_threads);
+
+    auto stop = chrono::high_resolution_clock::now();
+    
+    auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+    int microseconds = duration.count();
+
+    cout << "Duration: " << microseconds/1e6 << endl;
+
+}
+
