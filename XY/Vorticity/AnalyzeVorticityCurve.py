@@ -5,7 +5,6 @@ import os
 
 def load_vorticity_data(filename):
     i = filename.index('.')
-    L = int(filename[9:i])
 
     with open(filename) as f:
         s = f.readline().split('\t')
@@ -33,56 +32,66 @@ def load_vorticity_data(filename):
 
             Ts[i] = Ti
 
-    return L, Ts, v1s, v2s
+    return Ts, v1s, v2s
 
-def plot_vorticity_curve(Ts, Ls, v1s, v2s):
-    for n, L in enumerate(Ls):
-        plt.plot(Ts, v1s[n,:], marker='o', label=f'L = {L}, ' + r'$\nu = +$')
-        plt.plot(Ts, v2s[n,:], marker='o', label=f'L = {L}, ' + r'$\nu = -$')
+def get_mu(Ts, v1s, v2s, minn=None, maxn=None):
+    vs = np.abs(v1s) + np.abs(v2s)
+    betas = 1/Ts
 
+    inds = np.argsort(betas)
+    betas = betas[inds]
+
+    logv = np.log(vs)
+    logv = logv[inds]
+
+    if minn is None:
+        minn = 0
+    if maxn is None:
+        maxn = len(Ts)
+
+    p = np.polyfit(betas[minn:maxn], logv[minn:maxn], 1) 
+    mu = -p[0]
+
+    plt.plot(betas, logv)
+    plt.plot(betas, p[0]*betas + p[1], 'r--', label=r'$\log \rho = -\mu/T + const, \quad \mu/J = $' + f'{mu:.2f}')
     plt.legend()
-    plt.xlabel(r'$T$', fontsize=15)
-    plt.ylabel(r'$\nu_{\pm}$', fontsize=15)
+    plt.xlabel(r'$T^{-1}$', fontsize=15)
+    plt.ylabel(r'$\log \rho$', fontsize=15)
     plt.show()
+
+    print(mu)
+
+def plot_vorticity_curve(Ts, v1s, v2s, label=None, T_KT=0.88, ax=None):
+    if ax is None:
+        ax = plt.gca()
+    if label is None:
+        ax.plot(Ts, np.abs(v1s) + np.abs(v2s), marker='o')
+    else:
+        ax.plot(Ts, np.abs(v1s) + np.abs(v2s), marker='o', label=label)
+
+    if T_KT is not None:
+        ax.axvline(T_KT, color='k', linestyle='--', alpha=0.5)
+    if label is not None:
+        ax.legend()
+    ax.set_xlabel(r'$T$', fontsize=15)
+    ax.set_ylabel(r'$\rho$', fontsize=15)
 
 
 
 if __name__ == "__main__":
-    os.chdir('data')
+    filename = sys.argv[1]
+    Ts, v1s, v2s = load_vorticity_data(filename)
 
-    fs = [f for f in os.listdir() if f[:9] == "vorticity"]
-    _, _, v1s, _ = load_vorticity_data(fs[0])
-
-    N = len(fs)
     res, num_samples = v1s.shape
 
-    Ts = np.zeros(res)
-    v1s = np.zeros((N, res, num_samples))
-    v2s = np.zeros((N, res, num_samples))
-    Ls = np.zeros(N, dtype=int)
+    avg_v1s = np.mean(v1s, axis=1)
+    avg_v2s = np.mean(v2s, axis=1)
 
-    for n, f in enumerate(fs):
-        if f[:9] == 'vorticity':
-            i = f.index('.')
-            L, Ts, v1, v2 = load_vorticity_data(f)
-            Ls[n] = L
-            v1s[n,:,:] = v1
-            v2s[n,:,:] = v2
+#    plot_vorticity_curve(Ts, avg_v1s, avg_v2s, "L = 64, square lattice", 0.883)
+#    plt.show()
 
-    print(Ts)
-    inds = np.argsort(Ls)
-    v1s = v1s[inds]
-    v2s = v2s[inds]
-    Ls = Ls[inds]
-
-    avg_v1s = np.mean(v1s, axis=2)
-    avg_v2s = np.mean(v2s, axis=2)
-
-    print(avg_v1s)
-
-
-    plot_vorticity_curve(Ts, Ls, avg_v1s, avg_v2s)
-
+    get_mu(Ts, avg_v1s, avg_v2s, 43)
+    plt.show()
 
 
 

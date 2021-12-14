@@ -51,7 +51,7 @@ class MonteCarlo {
     public:
         MCModel *model;
         int accepted;
-        long nsteps;
+        unsigned long long int nsteps;
         float energy;
 
         MonteCarlo(MCModel *model) {

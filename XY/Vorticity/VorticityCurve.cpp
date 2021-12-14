@@ -1,3 +1,4 @@
+#include "../TrigonalXYModel.cpp"
 #include "../SquareXYModel.cpp"
 #include <ctpl_stl.h>
 #include <iostream>
@@ -17,12 +18,13 @@ void func(string filename, int N, int num_threads) {
     const int MCStep = N*N*L;
 
     SquareXYModel *model = new SquareXYModel(N, L, J, B, Bp);
+    //TrigonalXYModel *model = new TrigonalXYModel(N, L, J);
     MonteCarlo<SquareXYModel> *m = new MonteCarlo<SquareXYModel>(model);
 
 
-    const float Tmax = 3.;
-    const float Tmin = 0.1;
-    int res = 20;
+    const float Tmax = 4.0;
+    const float Tmin = 0.3;
+    int res = 50;
 
     vector<float> Ts(res);
     ofstream output(filename);
@@ -31,13 +33,17 @@ void func(string filename, int N, int num_threads) {
         Ts[i] = float(i)/res*Tmax + float(res - i)/res*Tmin;
     }
 
-    int num_exchanges = 100;
-    int steps_per_exchange = 2*MCStep;
-    int equilibration_steps = 100*MCStep;
+    //int num_exchanges = 5000;
+    //int steps_per_exchange = 5*MCStep;
+    //int equilibration_steps = 5000*MCStep;
+
+    int num_exchanges = 1000;
+    int steps_per_exchange = 4*MCStep;
+    int equilibration_steps = 1000*MCStep;
     auto models = parallel_tempering(model, Ts, num_exchanges, steps_per_exchange, equilibration_steps, num_threads);
 
-    int num_samples = 1000;
-    int steps_per_sample = 10*MCStep;
+    int num_samples = 3000;
+    int steps_per_sample = 5*MCStep;
     ctpl::thread_pool threads(num_threads);
     vector<future<vector<vector<double>>>> results(res);
     vector<vector<double>> samples(num_samples);

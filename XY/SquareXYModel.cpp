@@ -31,7 +31,11 @@ class SquareXYModel : public XYModel {
             this->Bx = B*cos(Bp);
             this->By = B*sin(Bp);
 
-            function<float(Vector2f, Vector2f)> bondfunc_J = [J](Vector2f S1, Vector2f S2) {
+            //function<float(Vector2f, Vector2f)> bondfunc = [J](Vector2f S1, Vector2f S2) {
+            //    return -J*S1.dot(S2) - 0.3*abs(S1[0]*S2[1] - S1[1]*S2[0]);
+            //};
+
+            function<float(Vector2f, Vector2f)> bondfunc = [J](Vector2f S1, Vector2f S2) {
                 return -J*S1.dot(S2);
             };
 
@@ -39,10 +43,10 @@ class SquareXYModel : public XYModel {
 
             Vector3f v1; v1 << 1.,0.,0.;
             Vector3f v2; v2 << 0.,1.,0.;
-            this->add_bond(Bond{1,0,0,0,v1,bondfunc_J});
-            this->add_bond(Bond{-1,0,0,0,-v1,bondfunc_J});
-            this->add_bond(Bond{0,1,0,0,v2,bondfunc_J});
-            this->add_bond(Bond{0,-1,0,0,-v2,bondfunc_J});
+            this->add_bond(Bond{1,0,0,0,   v1, bondfunc});
+            this->add_bond(Bond{-1,0,0,0, -v1, bondfunc});
+            this->add_bond(Bond{0,1,0,0,   v2, bondfunc});
+            this->add_bond(Bond{0,-1,0,0, -v2, bondfunc});
         }
 
         SquareXYModel* clone() {
@@ -96,8 +100,7 @@ class SquareXYModel : public XYModel {
             float E = 0;
 
             // Onsite interactions
-            //E -= this->Bx*this->spins[n1][n2][n3][s][0] + this->By*this->spins[n1][n2][n3][s][1];
-
+            E -= this->Bx*this->spins[n1][n2][n3][s][0] + this->By*this->spins[n1][n2][n3][s][1];
             return E;
         }
 

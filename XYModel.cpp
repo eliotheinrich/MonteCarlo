@@ -184,7 +184,7 @@ class XYModel : virtual public MCModel {
                 for (int n2 = 0; n2 < N2; n2++) {
                     for (int n3 = 0; n3 < N3; n3++) {
                         for (int s = 0; s < sl; s++) {
-                            for (int n = 0; n < 3; n++) {
+                            for (int n = 0; n < bonds.size(); n++) {
                                 f = bonds[0].v.dot(bonds[n].v);
                                 R1 << cos(f*alpha), -sin(f*alpha),
                                       sin(f*alpha), cos(f*alpha);
@@ -213,7 +213,6 @@ class XYModel : virtual public MCModel {
             double dE = (1./12.*Em2 - 2./3.*Em1 + 2./3.*E1 - 1./12.*E2)/alpha;
             double ddE = (-1./12.*Em2 + 4./3.*Em1 - 5./2.*E0 + 4./3.*E1 - 1./12.*E2)/(alpha*alpha);
             
-            //return vector<double>{dE, ddE};
             return vector<double>{dE/2., ddE/2.};
         }
 

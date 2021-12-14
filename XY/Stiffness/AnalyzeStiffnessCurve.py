@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import cm
 import sys
 import os
 
@@ -18,12 +19,13 @@ def load_stiffness_data(filename):
     ddEs = np.zeros((res, num_samples))
 
     with open(filename) as f:
-        f.readline()
+        line = f.readline()
         for i in range(res):
             line = f.readline()
-            data = np.array(line.split('\t'))
+
+            data = np.array([x.strip('\n') for x in line.split('\t')])
             Ti = float(data[0])
-            data = data[1:-1]
+            data = data[1:]
 
             for n,x in enumerate(data):
                 dE, ddE = x.split(',')
@@ -49,7 +51,7 @@ def get_L0(Ls, Ts, ρs, Lmin = 0.5, Lmax = 3., num_Ls=100):
         for n,L in enumerate(Ls):
             ρsL[n] = ρs[n]/(1. + 1/(2.*np.log(L/L0)))
 
-            ind = np.argwhere(np.diff(np.sign(ρsL[n] - 2*Ts/np.pi))).flatten()
+            ind = np.argwhere(np.diff(np.sign(ρsL[n] - 2*Ts/np.pi))).flatten()[-1]
 
             inds[n] = ind
             x1 = Ts[ind]
@@ -79,14 +81,25 @@ def plot_stiffness_curve(Ts, ρs, L0, T_KT):
     plt.xlim(0., max(Ts))
     plt.ylim(-0.05, np.max(ρsL) + 0.2)
     plt.xlabel(r'$T$', fontsize=15)
-    plt.ylabel(r'$\Upsilon(L)/(1+(2\log(L/L_0))^{-1})$', fontsize=15)
-#    plt.title(r'$T_{KT} = $' + f'{T_KT:.3f}')
+    plt.ylabel(r'$\Upsilon(L,T)/(1+(2\log(L/L_0))^{-1})$', fontsize=15)
+#    plt.ylabel(r'$\Upsilon(L,T)$', fontsize=15)
+    plt.show()
+
+def plot_dEs(Ts, dEs, ddEs, l=0):
+    fig, axs = plt.subplots(nrows = 1, ncols = 2)
+    colors = cm.seismic
+    res = len(dEs[0])
+    for n in range(res):
+        axs[0].plot(ddEs[l,n,:], color = colors(n/res))
+        axs[1].plot(dEs[l,n,:], color = colors(n/res))
     plt.show()
 
 
-
 if __name__ == "__main__":
-    os.chdir(sys.argv[1])
+    if len(sys.argv) == 1:
+        os.chdir('data')
+    else:
+        os.chdir(sys.argv[1])
 
     fs = [f for f in os.listdir() if f[:9] == "stiffness"]
     _, _, dEs, _ = load_stiffness_data(fs[0])
@@ -110,11 +123,13 @@ if __name__ == "__main__":
             ρs[n,:] = (np.mean(ddE, axis=1) - np.std(dE, axis=1)**2/Ts)/(L**2)
 
     inds = np.argsort(Ls)
+    dEs = dEs[inds]
+    ddEs = ddEs[inds]
     ρs = ρs[inds]
     Ls = Ls[inds]
 
 
-    L0, T_KT = get_L0(Ls, Ts, ρs, 0.001, 1, 10000)
+    L0, T_KT = get_L0(Ls, Ts, ρs, 0.0001, 0.001, 10000)
 #    L0 = 1/1.4
 #    T_KT = 0.88
     print(L0, T_KT)

@@ -76,7 +76,7 @@ def load_stiffness_data(filename):
 
 if __name__ == "__main__":
     cwd = os.getcwd()
-    os.chdir(sys.argv[1])
+    os.chdir('data')
 
     fs = [f for f in os.listdir() if f[:9] == "stiffness"]
     _, _, dEs, _ = load_stiffness_data(fs[0])
