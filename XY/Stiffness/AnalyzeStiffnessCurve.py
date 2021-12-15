@@ -80,7 +80,7 @@ def plot_stiffness_curve(Ts, ρs, L0, T_KT):
     plt.legend()
     plt.xlim(0., max(Ts))
     plt.ylim(-0.05, np.max(ρsL) + 0.2)
-    plt.xlabel(r'$T$', fontsize=15)
+    plt.xlabel(r'$T/J$', fontsize=15)
     plt.ylabel(r'$\Upsilon(L,T)/(1+(2\log(L/L_0))^{-1})$', fontsize=15)
 #    plt.ylabel(r'$\Upsilon(L,T)$', fontsize=15)
     plt.show()

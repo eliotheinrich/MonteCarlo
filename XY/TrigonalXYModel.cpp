@@ -16,11 +16,13 @@ class TrigonalXYModel : public XYModel {
         int N;
         int L;
         float J;
+        float A;
 
-        TrigonalXYModel(int N, int L, float J) : XYModel(1, N, N, L) {
+        TrigonalXYModel(int N, int L, float J, float A) : XYModel(1, N, N, L) {
             this->N = N;
             this->L = L;
             this->J = J;
+            this->A = A;
 
             function<float(Vector2f, Vector2f)> dotfunc = [J](Vector2f S1, Vector2f S2) {
                 return -J*S1.dot(S2);
@@ -39,7 +41,7 @@ class TrigonalXYModel : public XYModel {
 
 
         TrigonalXYModel* clone() {
-            TrigonalXYModel* new_model = new TrigonalXYModel(N, L, J);
+            TrigonalXYModel* new_model = new TrigonalXYModel(N, L, J, A);
             new_model->random_selection = random_selection;
             for (int n1 = 0; n1 < N; n1++) {
                 for (int n2 = 0; n2 < N; n2++) {
@@ -87,7 +89,7 @@ class TrigonalXYModel : public XYModel {
 
         const float onsite_energy(int n1, int n2, int n3, int s) {
             float phi = atan2(spins[n1][n2][n3][s][1], spins[n1][n2][n3][s][0]);
-            return 0.3*cos(6*phi);
+            return A*cos(6*phi);
             //return 0.;
         }
 
