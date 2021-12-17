@@ -50,6 +50,7 @@ class MonteCarlo {
 
     public:
         MCModel *model;
+        minstd_rand r;
         int accepted;
         unsigned long long int nsteps;
         float energy;
@@ -59,6 +60,7 @@ class MonteCarlo {
             this->accepted = 0.;
             this->nsteps = 0;
             this->energy = model->energy();
+            this->r.seed(rand());
         }
 
         template<class A>
@@ -78,16 +80,15 @@ class MonteCarlo {
             // nsteps: number of MC steps to perform
             // T: temperature
 
-            float r;
+            float rf;
             float dE;
 
             for (int i = 0; i < nsteps; i++) {
                 model->generate_mutation();
                 dE = model->energy_change();
                 
-                // TODO thread safe
-                r = float(rand())/float(RAND_MAX);
-                if (r < exp(-dE/T)) {
+                rf = float(r())/float(RAND_MAX);
+                if (rf < exp(-dE/T)) {
                     accepted++;
 
                     model->accept_mutation();
@@ -200,8 +201,7 @@ vector<MonteCarlo<MCModel>*> parallel_tempering(MCModel *model, vector<float> Ts
 
         // Make exchanges
         for (int i = 0; i < num_threads-1; i++) {
-            // TODO thread safe
-            r = float(rand())/float(RAND_MAX);
+            r = float(models[i]->r())/float(RAND_MAX);
             dE = models[i]->energy - models[i+1]->energy;
             dB = 1./Ts[i] - 1./Ts[i+1];
             if (r < exp(dE*dB)) {

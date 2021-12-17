@@ -95,6 +95,8 @@ class XYModel : virtual public MCModel {
 
         bool random_selection;
         LatticeIterator* iter;
+        minstd_rand r;
+
 
         int mut_counter;
         bool mutation_mode;
@@ -127,6 +129,7 @@ class XYModel : virtual public MCModel {
             this->sigma = 0.25;
 
             this->iter = new LatticeIterator(N1, N2, N3, sl);
+            this->r.seed(rand());
 
             this->mut_counter = 0;
             this->mutation_mode = true;
@@ -140,8 +143,7 @@ class XYModel : virtual public MCModel {
                     for (int n3 = 0; n3 < N3; n3++) {
                         for (int s = 0; s < sl; s++) {
                             // For each site, initialize spin randomly
-                            // TODO thread safe
-                            p = 2*PI*float(rand())/float(RAND_MAX);
+                            p = 2*PI*float(r())/float(RAND_MAX);
                             this->spins[n1][n2][n3][s] << cos(p), sin(p);
                         }
                     }
@@ -255,8 +257,7 @@ class XYModel : virtual public MCModel {
         }
 
         void metropolis_mutation(int n1, int n2, int n3, int s) {
-            // TODO thread safe
-            float dp = sigma*(float(rand())/float(RAND_MAX) - 0.5)*2.*PI;
+            float dp = sigma*(float(r())/float(RAND_MAX) - 0.5)*2.*PI;
             Vector2f S; S << cos(dp)*this->spins[n1][n2][n3][s][0]
                            - sin(dp)*this->spins[n1][n2][n3][s][1],
                              cos(dp)*this->spins[n1][n2][n3][s][1]
@@ -276,12 +277,11 @@ class XYModel : virtual public MCModel {
 
             int n1; int n2; int n3; int s;
             if (random_selection) {
-                // TODO thread safe
-                n1 = rand() % N1;
-                n2 = rand() % N2;
-                if (this->N3 == 1) { n3 = 0; } else { n3 = rand() % N3; }
+                n1 = r() % N1;
+                n2 = r() % N2;
+                if (this->N3 == 1) { n3 = 0; } else { n3 = r() % N3; }
 
-                if (sl == 1) { s = 0; } else { s = rand() % sl; }
+                if (sl == 1) { s = 0; } else { s = r() % sl; }
             } else {
                 n1 = iter->n1;
                 n2 = iter->n2;
