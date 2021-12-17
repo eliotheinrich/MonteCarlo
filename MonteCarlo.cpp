@@ -5,7 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <ctpl_stl.h>
+#include <ctpl.h>
 #include <thread>
 #include <cmath>
 #include "Utility.cpp"
@@ -84,7 +84,8 @@ class MonteCarlo {
             for (int i = 0; i < nsteps; i++) {
                 model->generate_mutation();
                 dE = model->energy_change();
-
+                
+                // TODO thread safe
                 r = float(rand())/float(RAND_MAX);
                 if (r < exp(-dE/T)) {
                     accepted++;
@@ -199,6 +200,7 @@ vector<MonteCarlo<MCModel>*> parallel_tempering(MCModel *model, vector<float> Ts
 
         // Make exchanges
         for (int i = 0; i < num_threads-1; i++) {
+            // TODO thread safe
             r = float(rand())/float(RAND_MAX);
             dE = models[i]->energy - models[i+1]->energy;
             dB = 1./Ts[i] - 1./Ts[i+1];

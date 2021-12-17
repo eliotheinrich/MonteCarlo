@@ -1,6 +1,6 @@
 #include "../TrigonalXYModel.cpp"
 #include "../SquareXYModel.cpp"
-#include <ctpl_stl.h>
+#include <ctpl.h>
 #include <iostream>
 #include <chrono>
 
@@ -37,12 +37,12 @@ void func(string filename, int N, int num_threads) {
     //int steps_per_exchange = 5*MCStep;
     //int equilibration_steps = 5000*MCStep;
 
-    int num_exchanges = 1000;
+    int num_exchanges = 100;
     int steps_per_exchange = 4*MCStep;
-    int equilibration_steps = 1000*MCStep;
+    int equilibration_steps = 100*MCStep;
     auto models = parallel_tempering(model, Ts, num_exchanges, steps_per_exchange, equilibration_steps, num_threads);
 
-    int num_samples = 3000;
+    int num_samples = 100;
     int steps_per_sample = 5*MCStep;
     ctpl::thread_pool threads(num_threads);
     vector<future<vector<vector<double>>>> results(res);
@@ -80,9 +80,11 @@ void func(string filename, int N, int num_threads) {
 }
 
 int main(int argc, char* argv[]) {    
-    string filename = argv[1];
-    int N = stoi(argv[2]);
     int num_threads = 4;
+    //string filename = argv[1];
+//    int N = stoi(argv[2]);
+    string filename = "data/vorticity16.txt";
+    int N = 16;
 
     auto start = chrono::high_resolution_clock::now();
 
