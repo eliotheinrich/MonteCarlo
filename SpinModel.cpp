@@ -22,7 +22,7 @@ struct Bond {
     int d3;
     int ds;
     Vector3f v;
-    function<float(Vector2f, Vector2f)> bondfunc;
+    function<float(Vector3f, Vector3f)> bondfunc;
 };
     
 class LatticeIterator {
