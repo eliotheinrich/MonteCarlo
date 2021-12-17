@@ -1,32 +1,28 @@
-#include "SquareModel.cpp"
-#include <ctpl_stl.h>
+#include "../EasyPlaneHeis.cpp"
+#include "../XXZHeis.cpp"
+#include <ctpl.h>
 #include <iostream>
 #include <chrono>
 
 using namespace std;
 
-int main(int argc, char* argv[]) {    
-    string filename = argv[1];
+void func(string filename, int N, int num_threads) {
     srand((unsigned)time( NULL ));
 
-    int N = stoi(argv[2]);
     cout << "N = " << N << endl;
     const int L = 1;
     const float J = 1.;
-    const float A = 2.;
+    const float K = 0.3;
 
     const int MCStep = N*N*L;
 
-    SquareModel *model = new SquareModel(N, L, J);
-    MonteCarlo<SquareModel> *m = new MonteCarlo<SquareModel>(model);
+    EasyPlaneHeis *model = new EasyPlaneHeis(N, L, J, K);
+    MonteCarlo<EasyPlaneHeis> *m = new MonteCarlo<EasyPlaneHeis>(model);
 
 
     const float Tmax = 3.;
     const float Tmin = 0.1;
-    int res = 20;
-
-    int num_threads = 4;
-
+    int res = 30;
 
     vector<float> Ts(res);
     ofstream output(filename);
@@ -35,15 +31,13 @@ int main(int argc, char* argv[]) {
         Ts[i] = float(i)/res*Tmax + float(res - i)/res*Tmin;
     }
 
-    int num_exchanges = 100;
-    int steps_per_exchange = 2*MCStep;
-    int equilibration_steps = 100*MCStep;
+    int num_exchanges = 5000;
+    int steps_per_exchange = 5*MCStep;
+    int equilibration_steps = 5000*MCStep;
     auto models = parallel_tempering(model, Ts, num_exchanges, steps_per_exchange, equilibration_steps, num_threads);
 
-
-
-    int num_samples = 1000;
-    int steps_per_sample = 10*MCStep;
+    int num_samples = 3000;
+    int steps_per_sample = 5*MCStep;
     ctpl::thread_pool threads(num_threads);
     vector<future<vector<vector<double>>>> results(res);
     vector<vector<double>> samples(num_samples);
@@ -76,4 +70,24 @@ int main(int argc, char* argv[]) {
     }
 
     output.close();
+    cout << "Total steps: " << res*(num_samples*steps_per_sample + num_exchanges*steps_per_exchange + equilibration_steps) << endl;
 }
+
+int main(int argc, char* argv[]) {    
+    string filename = argv[1];
+    int N = stoi(argv[2]);
+    int num_threads = 4;
+
+    auto start = chrono::high_resolution_clock::now();
+
+    func(filename, N, num_threads);
+
+    auto stop = chrono::high_resolution_clock::now();
+    
+    auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+    int microseconds = duration.count();
+
+    cout << "Duration: " << microseconds/1e6 << endl;
+
+}
+

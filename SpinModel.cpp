@@ -24,7 +24,7 @@ struct Bond {
     Vector3f v;
     function<float(Vector3f, Vector3f)> bondfunc;
 };
-
+    
 class LatticeIterator {
     public:
         int n1; int n2; int n3; int s;
@@ -95,6 +95,7 @@ class SpinModel : virtual public MCModel {
 
         bool random_selection;
         LatticeIterator* iter;
+        minstd_rand r;
 
         int mut_counter;
         bool mutation_mode;
@@ -127,6 +128,7 @@ class SpinModel : virtual public MCModel {
 
             this->dist = new GaussianDist(0., 1.0);
             this->iter = new LatticeIterator(N1, N2, N3, sl);
+            this->r.seed(rand());
 
             this->mut_counter = 0;
             this->mutation_mode = true;
@@ -185,7 +187,7 @@ class SpinModel : virtual public MCModel {
                 for (int n2 = 0; n2 < N2; n2++) {
                     for (int n3 = 0; n3 < N3; n3++) {
                         for (int s = 0; s < sl; s++) {
-                            for (int n = 0; n < 3; n++) {
+                            for (int n = 0; n < bonds.size(); n++) {
                                 f = bonds[0].v.dot(bonds[n].v);
                                 R1 << cos(f*alpha), -sin(f*alpha), 0,
                                       sin(f*alpha), cos(f*alpha), 0.,
@@ -284,11 +286,11 @@ class SpinModel : virtual public MCModel {
 
             int n1; int n2; int n3; int s;
             if (random_selection) {
-                n1 = rand() % N1;
-                n2 = rand() % N2;
-                if (this->N3 == 1) { n3 = 0; } else { n3 = rand() % N3; }
+                n1 = r() % N1;
+                n2 = r() % N2;
+                if (this->N3 == 1) { n3 = 0; } else { n3 = r() % N3; }
 
-                if (sl == 1) { s = 0; } else { s = rand() % sl; }
+                if (sl == 1) { s = 0; } else { s = r() % sl; }
             } else {
                 n1 = iter->n1;
                 n2 = iter->n2;

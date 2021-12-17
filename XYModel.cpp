@@ -82,7 +82,6 @@ class XYModel : virtual public MCModel {
 
 
     public:
-        int f1; int f2;
         int sl;
         int N1;
         int N2;
@@ -95,6 +94,7 @@ class XYModel : virtual public MCModel {
 
         bool random_selection;
         LatticeIterator* iter;
+        minstd_rand r;
 
         int mut_counter;
         bool mutation_mode;
@@ -105,7 +105,6 @@ class XYModel : virtual public MCModel {
         XYModel() {}
 
         XYModel(int sl, int N1, int N2 = -1, int N3 = -1) {
-            f1 = 0; f2 = 0;
             this->sl = sl;
             this->N1 = N1;
             if (N2 == -1) { this->N2 = N1; } else { this->N2 = N2; }
@@ -127,6 +126,7 @@ class XYModel : virtual public MCModel {
             this->sigma = 0.25;
 
             this->iter = new LatticeIterator(N1, N2, N3, sl);
+            this->r.seed(rand());
 
             this->mut_counter = 0;
             this->mutation_mode = true;
@@ -140,7 +140,7 @@ class XYModel : virtual public MCModel {
                     for (int n3 = 0; n3 < N3; n3++) {
                         for (int s = 0; s < sl; s++) {
                             // For each site, initialize spin randomly
-                            p = 2*PI*float(rand())/float(RAND_MAX);
+                            p = 2*PI*float(r())/float(RAND_MAX);
                             this->spins[n1][n2][n3][s] << cos(p), sin(p);
                         }
                     }
@@ -184,7 +184,7 @@ class XYModel : virtual public MCModel {
                 for (int n2 = 0; n2 < N2; n2++) {
                     for (int n3 = 0; n3 < N3; n3++) {
                         for (int s = 0; s < sl; s++) {
-                            for (int n = 0; n < 3; n++) {
+                            for (int n = 0; n < bonds.size(); n++) {
                                 f = bonds[0].v.dot(bonds[n].v);
                                 R1 << cos(f*alpha), -sin(f*alpha),
                                       sin(f*alpha), cos(f*alpha);
@@ -213,7 +213,6 @@ class XYModel : virtual public MCModel {
             double dE = (1./12.*Em2 - 2./3.*Em1 + 2./3.*E1 - 1./12.*E2)/alpha;
             double ddE = (-1./12.*Em2 + 4./3.*Em1 - 5./2.*E0 + 4./3.*E1 - 1./12.*E2)/(alpha*alpha);
             
-            //return vector<double>{dE, ddE};
             return vector<double>{dE/2., ddE/2.};
         }
 
@@ -255,7 +254,7 @@ class XYModel : virtual public MCModel {
         }
 
         void metropolis_mutation(int n1, int n2, int n3, int s) {
-            float dp = sigma*(float(rand())/float(RAND_MAX) - 0.5)*2.*PI;
+            float dp = sigma*(float(r())/float(RAND_MAX) - 0.5)*2.*PI;
             Vector2f S; S << cos(dp)*this->spins[n1][n2][n3][s][0]
                            - sin(dp)*this->spins[n1][n2][n3][s][1],
                              cos(dp)*this->spins[n1][n2][n3][s][1]
@@ -275,11 +274,11 @@ class XYModel : virtual public MCModel {
 
             int n1; int n2; int n3; int s;
             if (random_selection) {
-                n1 = rand() % N1;
-                n2 = rand() % N2;
-                if (this->N3 == 1) { n3 = 0; } else { n3 = rand() % N3; }
+                n1 = r() % N1;
+                n2 = r() % N2;
+                if (this->N3 == 1) { n3 = 0; } else { n3 = r() % N3; }
 
-                if (sl == 1) { s = 0; } else { s = rand() % sl; }
+                if (sl == 1) { s = 0; } else { s = r() % sl; }
             } else {
                 n1 = iter->n1;
                 n2 = iter->n2;
@@ -289,10 +288,8 @@ class XYModel : virtual public MCModel {
             }
 
             if (mutation_mode) {
-                f1++;
                 over_relaxation_mutation(n1, n2, n3, s);
             } else {
-                f2++;
                 metropolis_mutation(n1, n2, n3, s);
             }
         }

@@ -1,32 +1,30 @@
-#include "SquareModel.cpp"
-#include <ctpl_stl.h>
+#include "../TrigonalXYModel.cpp"
+#include "../SquareXYModel.cpp"
+#include <ctpl.h>
 #include <iostream>
 #include <chrono>
 
 using namespace std;
 
-int main(int argc, char* argv[]) {    
-    string filename = argv[1];
+void func(string filename, int N, int num_threads) {
     srand((unsigned)time( NULL ));
 
-    int N = stoi(argv[2]);
     cout << "N = " << N << endl;
     const int L = 1;
     const float J = 1.;
-    const float A = 2.;
+    const float B = 0.;
+    const float Bp = 0.;
 
     const int MCStep = N*N*L;
 
-    SquareModel *model = new SquareModel(N, L, J);
-    MonteCarlo<SquareModel> *m = new MonteCarlo<SquareModel>(model);
+    SquareXYModel *model = new SquareXYModel(N, L, J, B, Bp);
+    //TrigonalXYModel *model = new TrigonalXYModel(N, L, J);
+    MonteCarlo<SquareXYModel> *m = new MonteCarlo<SquareXYModel>(model);
 
 
-    const float Tmax = 3.;
-    const float Tmin = 0.1;
-    int res = 20;
-
-    int num_threads = 4;
-
+    const float Tmax = 4.0;
+    const float Tmin = 0.3;
+    int res = 50;
 
     vector<float> Ts(res);
     ofstream output(filename);
@@ -35,15 +33,17 @@ int main(int argc, char* argv[]) {
         Ts[i] = float(i)/res*Tmax + float(res - i)/res*Tmin;
     }
 
+    //int num_exchanges = 5000;
+    //int steps_per_exchange = 5*MCStep;
+    //int equilibration_steps = 5000*MCStep;
+
     int num_exchanges = 100;
-    int steps_per_exchange = 2*MCStep;
+    int steps_per_exchange = 4*MCStep;
     int equilibration_steps = 100*MCStep;
     auto models = parallel_tempering(model, Ts, num_exchanges, steps_per_exchange, equilibration_steps, num_threads);
 
-
-
-    int num_samples = 1000;
-    int steps_per_sample = 10*MCStep;
+    int num_samples = 100;
+    int steps_per_sample = 5*MCStep;
     ctpl::thread_pool threads(num_threads);
     vector<future<vector<vector<double>>>> results(res);
     vector<vector<double>> samples(num_samples);
@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
     auto twist_sampling = [&models, &Ts, steps_per_sample, num_samples](int id, int i) {
         vector<vector<double>> samples(num_samples);
         for (int j = 0; j < num_samples; j++) {
-            samples[j] = models[i]->model->twist_stiffness();
+            samples[j] = models[i]->model->vorticity();
             models[i]->steps(steps_per_sample, Ts[i]);
         }
         return samples;
@@ -76,4 +76,26 @@ int main(int argc, char* argv[]) {
     }
 
     output.close();
+    cout << "Total steps: " << res*(num_samples*steps_per_sample + num_exchanges*steps_per_exchange + equilibration_steps) << endl;
 }
+
+int main(int argc, char* argv[]) {    
+    int num_threads = 4;
+    //string filename = argv[1];
+//    int N = stoi(argv[2]);
+    string filename = "data/vorticity16.txt";
+    int N = 16;
+
+    auto start = chrono::high_resolution_clock::now();
+
+    func(filename, N, num_threads);
+
+    auto stop = chrono::high_resolution_clock::now();
+    
+    auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+    int microseconds = duration.count();
+
+    cout << "Duration: " << microseconds/1e6 << endl;
+
+}
+

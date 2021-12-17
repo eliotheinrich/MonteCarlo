@@ -1,0 +1,10 @@
+g++ -O3 -std=c++11 VorticityCurve.cpp -o output
+
+rm data/vorticity*
+for L in 64; do
+    filename=data/vorticity"$L".txt
+    ./output $filename $L
+done
+
+rm output
+

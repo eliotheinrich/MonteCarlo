@@ -4,38 +4,28 @@
 #include <string>
 #include <stdlib.h>
 #include <Eigen/Dense>
-#include <complex>
-#include "../XYModel.cpp"
+#include "../SpinModel.cpp"
 #include "../Utility.cpp"
 
 
 using namespace std;
 using namespace Eigen;
 
-class SquareXYModel : public XYModel {
+class EasyPlaneHeis : public SpinModel {
     public:
         int N;
         int L;
         float J;
-        float B;
-        float Bp;
-        float Bx;
-        float By;
+        float K;
 
-        SquareXYModel(int N, int L, float J, float B, float Bp) : XYModel(1, N, N, L) {
+        EasyPlaneHeis(int N, int L, float J, float K) : SpinModel(1, N, N, L) {
             this->N = N;
             this->L = L;
             this->J = J;
-            this->B = B;
-            this->Bp = Bp;
-            this->Bx = B*cos(Bp);
-            this->By = B*sin(Bp);
+            this->K = K;
 
-            //function<float(Vector2f, Vector2f)> bondfunc = [J](Vector2f S1, Vector2f S2) {
-            //    return -J*S1.dot(S2) - 0.3*abs(S1[0]*S2[1] - S1[1]*S2[0]);
-            //};
 
-            function<float(Vector2f, Vector2f)> bondfunc = [J](Vector2f S1, Vector2f S2) {
+            function<float(Vector3f, Vector3f)> bondfunc = [J](Vector3f S1, Vector3f S2) {
                 return -J*S1.dot(S2);
             };
 
@@ -49,8 +39,8 @@ class SquareXYModel : public XYModel {
             this->add_bond(Bond{0,-1,0,0, -v2, bondfunc});
         }
 
-        SquareXYModel* clone() {
-            SquareXYModel* new_model = new SquareXYModel(N, L, J, B, Bp);
+        EasyPlaneHeis* clone() {
+            EasyPlaneHeis* new_model = new EasyPlaneHeis(N, L, J, K);
             new_model->random_selection = random_selection;
             for (int n1 = 0; n1 < N; n1++) {
                 for (int n2 = 0; n2 < N; n2++) {
@@ -97,11 +87,8 @@ class SquareXYModel : public XYModel {
         }
 
         const float onsite_energy(int n1, int n2, int n3, int s) {
-            float E = 0;
-
             // Onsite interactions
-            E -= this->Bx*this->spins[n1][n2][n3][s][0] + this->By*this->spins[n1][n2][n3][s][1];
-            return E;
+            return K*pow(this->spins[n1][n2][n3][s][2], 2);
         }
 
         const float bond_energy(int n1, int n2, int n3, int s) {

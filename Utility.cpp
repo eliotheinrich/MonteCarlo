@@ -84,13 +84,14 @@ void write_to_file(string filename, vector<vector<float>> data) {
 
 class GaussianDist {
     private:
-        random_device rd;
+        minstd_rand rd;
         default_random_engine gen;
         normal_distribution<> dist;
 
     public:
 
         GaussianDist(float mean, float std) {
+            this->rd.seed(rand());
             this->gen = default_random_engine(rd());
             this->dist = normal_distribution<>(mean, std);
         }

@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <ctpl.h>
 #include <thread>
 #include <cmath>
 #include "Utility.cpp"
@@ -49,8 +50,9 @@ class MonteCarlo {
 
     public:
         MCModel *model;
+        minstd_rand r;
         int accepted;
-        long nsteps;
+        unsigned long long int nsteps;
         float energy;
 
         MonteCarlo(MCModel *model) {
@@ -58,6 +60,7 @@ class MonteCarlo {
             this->accepted = 0.;
             this->nsteps = 0;
             this->energy = model->energy();
+            this->r.seed(rand());
         }
 
         template<class A>
@@ -77,15 +80,15 @@ class MonteCarlo {
             // nsteps: number of MC steps to perform
             // T: temperature
 
-            float r;
+            float rf;
             float dE;
 
             for (int i = 0; i < nsteps; i++) {
                 model->generate_mutation();
                 dE = model->energy_change();
-
-                r = float(rand())/float(RAND_MAX);
-                if (r < exp(-dE/T)) {
+                
+                rf = float(r())/float(RAND_MAX);
+                if (rf < exp(-dE/T)) {
                     accepted++;
 
                     model->accept_mutation();
@@ -162,14 +165,19 @@ vector<A> run_MC(MonteCarlo<MCModel> *m, int nsteps, float T, function<A(MCModel
 template <class MCModel>
 vector<MonteCarlo<MCModel>*> parallel_tempering(MCModel *model, vector<float> Ts, int steps_per_exchange, 
                                                                                   int num_exchanges, 
-                                                                                  int equilibration_steps = -1) {
+                                                                                  int equilibration_steps = -1,
+                                                                                  int num_threads = 0) {
 
-    int num_threads = Ts.size();
-    vector<thread> threads(num_threads);
-    vector<MonteCarlo<MCModel>*> models(num_threads);
+    int num_replicas = Ts.size();
+
+    if (num_threads == 0) { num_threads = thread::hardware_concurrency(); }
+    ctpl::thread_pool threads(num_threads);
+    vector<future<void>> results(num_replicas);
+
+    vector<MonteCarlo<MCModel>*> models(num_replicas);
 
     // Initialize models
-    for (int i = 0; i < num_threads; i++) {
+    for (int i = 0; i < num_replicas; i++) {
         models[i] = new MonteCarlo<MCModel>(model->clone());
     }
 
@@ -180,21 +188,20 @@ vector<MonteCarlo<MCModel>*> parallel_tempering(MCModel *model, vector<float> Ts
     float dE;
     float dB;
     MonteCarlo<MCModel> *model_buffer;
-
     for (int k = 0; k < num_exchanges; k++) {
         // Give threads work
-        for (int i = 0; i < num_threads; i++) {
-            threads[i] = thread(&MonteCarlo<MCModel>::steps, models[i], steps_per_exchange, Ts[i]);
+        for (int i = 0; i < num_replicas; i++) {
+            results[i] = threads.push([&models, &Ts, steps_per_exchange, i](int) { models[i]->steps(steps_per_exchange, Ts[i]); });
         }
 
-        // Join threads
-        for (int i = 0; i < num_threads; i++) {
-            threads[i].join();
+        // Joining threads
+        for (int i = 0; i < num_replicas; i++) {
+            results[i].get();
         }
 
         // Make exchanges
         for (int i = 0; i < num_threads-1; i++) {
-            r = float(rand())/float(RAND_MAX);
+            r = float(models[i]->r())/float(RAND_MAX);
             dE = models[i]->energy - models[i+1]->energy;
             dB = 1./Ts[i] - 1./Ts[i+1];
             if (r < exp(dE*dB)) {
@@ -210,15 +217,15 @@ vector<MonteCarlo<MCModel>*> parallel_tempering(MCModel *model, vector<float> Ts
 
     // Final equilibration
     if (equilibration_steps != -1) {
-        for (int i = 0; i < num_threads; i++) {
-            threads[i] = thread(&MonteCarlo<MCModel>::steps, models[i], equilibration_steps, Ts[i]);
+        for (int i = 0; i < num_replicas; i++) {
+            results[i] = threads.push([&models, &Ts, equilibration_steps, i](int) { models[i]->steps(equilibration_steps, Ts[i]); });
         }
-
-        for (int i = 0; i < num_threads; i++) {
-            threads[i].join();
+        for (int i = 0; i < num_replicas; i++) {
+            results[i].get();
         }
     }
 
+    results.empty();
     return models;
 }
 
