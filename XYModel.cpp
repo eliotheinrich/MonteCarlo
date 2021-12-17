@@ -82,7 +82,6 @@ class XYModel : virtual public MCModel {
 
 
     public:
-        int f1; int f2;
         int sl;
         int N1;
         int N2;
@@ -97,7 +96,6 @@ class XYModel : virtual public MCModel {
         LatticeIterator* iter;
         minstd_rand r;
 
-
         int mut_counter;
         bool mutation_mode;
 
@@ -107,7 +105,6 @@ class XYModel : virtual public MCModel {
         XYModel() {}
 
         XYModel(int sl, int N1, int N2 = -1, int N3 = -1) {
-            f1 = 0; f2 = 0;
             this->sl = sl;
             this->N1 = N1;
             if (N2 == -1) { this->N2 = N1; } else { this->N2 = N2; }
@@ -291,10 +288,8 @@ class XYModel : virtual public MCModel {
             }
 
             if (mutation_mode) {
-                f1++;
                 over_relaxation_mutation(n1, n2, n3, s);
             } else {
-                f2++;
                 metropolis_mutation(n1, n2, n3, s);
             }
         }
