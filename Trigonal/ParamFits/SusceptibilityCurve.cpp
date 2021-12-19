@@ -1,16 +1,20 @@
 #include "../TrigonalModel.cpp"
 #include "../../Utility.cpp"
-#include<iostream>
-#include<math.h>
+#include <iostream>
+#include <math.h>
+
+#define BOLTZMANN_CONSTANT 0.08617
 
 using namespace std;
 using namespace Eigen;
 
-void take_data(TrigonalModel *model, vector<float> *Ts, int equilibration_steps, 
-                                                        int num_samples, 
-                                                        int steps_per_sample) {
+vector<vector<float>> take_data(TrigonalModel *model, vector<float> *Ts, int equilibration_steps, 
+                                                                         int num_samples, 
+                                                                         int steps_per_sample,
+                                                                         int num_threads) {
 
     int resolution = Ts->size();
+    model->randomize_spins();
     MonteCarlo<TrigonalModel> *m = new MonteCarlo<TrigonalModel>(model);
 
     vector<MonteCarlo<TrigonalModel>*> ms(resolution);
@@ -33,7 +37,6 @@ void take_data(TrigonalModel *model, vector<float> *Ts, int equilibration_steps,
         }
     };
 
-    int num_threads = 4;
     ctpl::thread_pool threads(num_threads);
     vector<future<void>> results(resolution);
     for (int i = 0; i < resolution; i++) {
@@ -45,23 +48,26 @@ void take_data(TrigonalModel *model, vector<float> *Ts, int equilibration_steps,
     }
     
 
-    return X
+    return X;
 }
 
 void write_data(vector<vector<vector<float>>> Xs, vector<float> Ts, string filename) {
     ofstream output_file(filename);
 
+    int num_runs = Xs.size();
+    int resolution = Xs[0].size();
+    int num_samples = Xs[0][0].size();
+
     // Write header
     output_file << resolution << "\t" << num_samples << endl;
 
     float avg_X;
-    int num_runs = Xs.size();
     for (int i = 0; i < resolution; i++) {
-        output_file << (*Ts)[i]/BOLTZMANN_CONSTANT << "\t";
+        output_file << Ts[i]/BOLTZMANN_CONSTANT << "\t";
         for (int j = 0; j < num_samples; j++) {
             avg_X = 0.;
             for (int n = 0; n < num_runs; n++) {
-                avg_X += X[n][i][j];
+                avg_X += Xs[n][i][j];
             }
             avg_X = avg_X/num_runs;
             output_file << "(" << avg_X << ")";
@@ -113,6 +119,7 @@ int main(int argc, char* argv[]) {
     int steps_per_run = stoi(paramss[1])*MCStep;
     int num_samples = stoi(paramss[2]);
     int steps_per_sample = stoi(paramss[3])*MCStep;
+    int num_runs = stoi(paramss[4]);
 
     float T_max = 60*BOLTZMANN_CONSTANT; // In Kelvin
     float T_min = 0.1*BOLTZMANN_CONSTANT;
@@ -142,6 +149,7 @@ int main(int argc, char* argv[]) {
     string filename2 = foldername + "/SusceptibilityCurve2.txt";
     string filename3 = foldername + "/SusceptibilityCurve3.txt";
 
+    int num_threads = 30;
     unsigned long long int nsteps = 3*resolution*num_runs*(steps_per_run + num_samples*steps_per_sample);
 
     cout << "Number steps: " << nsteps << endl;
@@ -151,9 +159,9 @@ int main(int argc, char* argv[]) {
 
 
     for (int i = 0; i < num_runs; i++) {
-        X1s[i] = take_data(model1, &Ts, steps_per_run, num_samples, steps_per_sample);
-        X2s[i] = take_data(model2, &Ts, steps_per_run, num_samples, steps_per_sample);
-        X3s[i] = take_data(model3, &Ts, steps_per_run, num_samples, steps_per_sample);
+        X1s[i] = take_data(model1, &Ts, steps_per_run, num_samples, steps_per_sample, num_threads);
+        X2s[i] = take_data(model2, &Ts, steps_per_run, num_samples, steps_per_sample, num_threads);
+        X3s[i] = take_data(model3, &Ts, steps_per_run, num_samples, steps_per_sample, num_threads);
     }
 
     write_data(X1s, Ts, filename1);

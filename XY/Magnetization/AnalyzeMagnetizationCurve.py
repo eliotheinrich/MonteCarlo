@@ -76,7 +76,7 @@ if __name__ == "__main__":
     Ms = Ms[inds]
 
 
-    plot_magnetization_curve(Ts, Ls, Ms, 1.38)
+    plot_magnetization_curve(Ts, Ls, Ms)
 
 
 
