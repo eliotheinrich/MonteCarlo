@@ -6,27 +6,103 @@
 using namespace std;
 using namespace Eigen;
 
+void take_data(TrigonalModel *model, vector<float> *Ts, int equilibration_steps, 
+                                                        int num_samples, 
+                                                        int steps_per_sample) {
+
+    int resolution = Ts->size();
+    MonteCarlo<TrigonalModel> *m = new MonteCarlo<TrigonalModel>(model);
+
+    vector<MonteCarlo<TrigonalModel>*> ms(resolution);
+
+    for (int i = 0; i < resolution; i++) {
+        ms[i] = new MonteCarlo<TrigonalModel>(model->clone());
+    }
+
+    vector<vector<float>> X = vector<vector<float>>(resolution, vector<float>(num_samples));
+
+    auto start = chrono::high_resolution_clock::now();
+
+    auto susceptibility_samples = [equilibration_steps, num_samples, steps_per_sample](int id, int i, float T, 
+                                                                                      MonteCarlo<TrigonalModel> *m, 
+                                                                                      vector<float> *samples) {
+        m->steps(equilibration_steps, T);
+        for (int j = 0; j < num_samples; j++) {
+            (*samples)[j] = m->model->get_magnetization().dot(m->model->B)/pow(m->model->B.norm(), 2);
+            m->steps(steps_per_sample, T);
+        }
+    };
+
+    int num_threads = 4;
+    ctpl::thread_pool threads(num_threads);
+    vector<future<void>> results(resolution);
+    for (int i = 0; i < resolution; i++) {
+        results[i] = threads.push(susceptibility_samples, i, (*Ts)[i], ms[i], &X[i]);
+    }
+
+    for (int i = 0; i < resolution; i++) {
+        results[i].get();
+    }
+    
+
+    return X
+}
+
+void write_data(vector<vector<vector<float>>> Xs, vector<float> Ts, string filename) {
+    ofstream output_file(filename);
+
+    // Write header
+    output_file << resolution << "\t" << num_samples << endl;
+
+    float avg_X;
+    int num_runs = Xs.size();
+    for (int i = 0; i < resolution; i++) {
+        output_file << (*Ts)[i]/BOLTZMANN_CONSTANT << "\t";
+        for (int j = 0; j < num_samples; j++) {
+            avg_X = 0.;
+            for (int n = 0; n < num_runs; n++) {
+                avg_X += X[n][i][j];
+            }
+            avg_X = avg_X/num_runs;
+            output_file << "(" << avg_X << ")";
+            if (j < num_samples - 1) { output_file << '\t'; }
+        }
+        output_file << endl;
+    }
+
+    output_file.close();
+}
+
 
 int main(int argc, char* argv[]) {
-    
+    srand((unsigned)time( NULL ));
+
+    // Folder to store data
     string foldername = argv[1];
 
     // Load params config file
     ifstream paramfile(argv[2]);
-    string Bs = argv[3];
-    string line;
 
+    float S = 3.5;
+
+    // Magnetic field strength
+    float Bm = S*stof(argv[3]);
+
+    // Load paramfile line by line
+    string line;
     getline(paramfile, line);
     getline(paramfile, line);
     vector<string> paramss = split(&line, ",");
 
     int N = stoi(paramss[0]);
     int L = stoi(paramss[1]);
-    float J1 = stof(paramss[2]);
-    float J2 = stof(paramss[3]);
-    float K1 = stof(paramss[4]);
-    float K2 = stof(paramss[5]);
-    float K3 = stof(paramss[6]);
+    const int MCStep = N*N*L;
+
+    float J1 = S*S*stof(paramss[2]);
+    float J2 = S*S*stof(paramss[3]);
+    float K1 = S*stof(paramss[4]);
+    float K2 = S*stof(paramss[5]);
+    float K3 = S*stof(paramss[6]);
 
     getline(paramfile, line);
     getline(paramfile, line);
@@ -34,123 +110,61 @@ int main(int argc, char* argv[]) {
     paramss = split(&line, ",");
 
     int resolution = stoi(paramss[0]);
-    int num_runs = stoi(paramss[1]);
-    int steps_per_run = stoi(paramss[2]);
-    int num_samples = stoi(paramss[3]);
-    int steps_per_sample = stoi(paramss[4]);
-    const int MCstep = N*N*L;
+    int steps_per_run = stoi(paramss[1])*MCStep;
+    int num_samples = stoi(paramss[2]);
+    int steps_per_sample = stoi(paramss[3])*MCStep;
 
+    float T_max = 60*BOLTZMANN_CONSTANT; // In Kelvin
+    float T_min = 0.1*BOLTZMANN_CONSTANT;
+    vector<float> Ts(resolution);
+    for (int i = 0; i < resolution; i++) {
+        Ts[i] = T_max*i/resolution + T_min*(resolution - i)/resolution;
+    }
 
+    cout << J2 << endl;
 
     Vector3f Bhat1; Bhat1 << 0.866025, 0.5, 0;
     Vector3f Bhat2; Bhat2 << 1., 0., 0.;
     Vector3f Bhat3; Bhat3 << 0., 0., 1.;
-    float Bm = stof(Bs);
     Vector3f B1 = Bm*Bhat1;
     Vector3f B2 = Bm*Bhat2; 
     Vector3f B3 = Bm*Bhat3;
-    
-    float T_max = 30;
-    float T_min = 0.2;
-    float T;
 
+    TrigonalModel *model1 = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B1);
+    TrigonalModel *model2 = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B2);
+    TrigonalModel *model3 = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B3);
 
-    srand((unsigned)time( NULL ));
-    TrigonalModel *model1 = new TrigonalModel(N, L, J1, J2, K1, K2, K3, Bhat1);
-    MonteCarlo<TrigonalModel> *m1 = new MonteCarlo(model1);
-    TrigonalModel *model2 = new TrigonalModel(N, L, J1, J2, K1, K2, K3, Bhat2);
-    MonteCarlo<TrigonalModel> *m2 = new MonteCarlo(model2);
-    TrigonalModel *model3 = new TrigonalModel(N, L, J1, J2, K1, K2, K3, Bhat3);
-    MonteCarlo<TrigonalModel> *m3 = new MonteCarlo(model3);
+    vector<vector<vector<float>>> X1s = vector<vector<vector<float>>>(num_runs, vector<vector<float>>(resolution, vector<float>(num_samples)));
+    vector<vector<vector<float>>> X2s = vector<vector<vector<float>>>(num_runs, vector<vector<float>>(resolution, vector<float>(num_samples)));
+    vector<vector<vector<float>>> X3s = vector<vector<vector<float>>>(num_runs, vector<vector<float>>(resolution, vector<float>(num_samples)));
 
-    Vector3f M1v; Vector3f M2v; Vector3f M3v;
-    Vector3f M1v_avg; Vector3f M2v_avg; Vector3f M3v_avg;
+    string filename1 = foldername + "/SusceptibilityCurve1.txt";
+    string filename2 = foldername + "/SusceptibilityCurve2.txt";
+    string filename3 = foldername + "/SusceptibilityCurve3.txt";
 
-    vector<float> M1(num_runs*num_samples); vector<float> M1squared(num_runs*num_samples);
-    vector<float> M2(num_runs*num_samples); vector<float> M2squared(num_runs*num_samples);
-    vector<float> M3(num_runs*num_samples); vector<float> M3squared(num_runs*num_samples);
-    float M1_avg; float M2_avg; float M3_avg;
-    float dM1; float dM2; float dM3;
+    unsigned long long int nsteps = 3*resolution*num_runs*(steps_per_run + num_samples*steps_per_sample);
 
-
-
-    ofstream output_file1(foldername + "/SusceptibilityCurve1.txt");
-    ofstream output_file2(foldername + "/SusceptibilityCurve2.txt");
-    ofstream output_file3(foldername + "/SusceptibilityCurve3.txt");
-
-    double seconds = 3.3*resolution*(num_runs*steps_per_run + num_samples*steps_per_sample)*N*N*L/3000000.;
-    cout << "Expected completion time: " << seconds/60. << " minutes." << endl;
+    cout << "Number steps: " << nsteps << endl;
+    cout << "Expected completion time: " << 2*nsteps/3300000./4./60. << " minutes. " << endl;
 
     auto start = chrono::high_resolution_clock::now();
 
-    int ind;
 
-    for (int i = 0; i < resolution; i++) {
-        T = T_max*i/resolution + T_min*(resolution - i)/resolution;
-
-        for (int j = 0; j < num_runs; j++) {
-            model1->randomize_spins();
-            model2->randomize_spins();
-            model3->randomize_spins();
-           
-            run_MC(m1, steps_per_run*MCstep, "trig", J1, T);
-            run_MC(m2, steps_per_run*MCstep, "trig", J1, T);
-            run_MC(m3, steps_per_run*MCstep, "trig", J1, T);
-
-            for (int k = 0; k < num_samples; k++) {
-                run_MC(m1, steps_per_sample*MCstep, T);
-                run_MC(m2, steps_per_sample*MCstep, T);
-                run_MC(m3, steps_per_sample*MCstep, T);
-
-                ind = j*num_samples + k;
-
-                M1v = model1->get_magnetization();
-                M1v_avg += M1v;
-                M1[ind] = M1v.dot(Bhat1);
-                M1squared[ind] = M1[ind]*M1[ind];
-
-                M2v = model2->get_magnetization();
-                M2v_avg += M2v;
-                M2[ind] = M2v.dot(Bhat2);
-                M2squared[ind] = M2[ind]*M2[ind];
-
-                M3v = model3->get_magnetization();
-                M3v_avg += M3v;
-                M3[ind] = M3v.dot(Bhat3);
-                M3squared[ind] = M3[ind]*M3[ind];
-            }
-        }
-
-        M1_avg = avg(&M1);
-        M2_avg = avg(&M2);
-        M3_avg = avg(&M3);
-
-
-        M1v_avg = M1v_avg/(num_runs*num_samples);
-        M2v_avg = M2v_avg/(num_runs*num_samples);
-        M3v_avg = M3v_avg/(num_runs*num_samples);
-
-        dM1 = sqrt(abs(avg(&M1squared) - M1_avg*M1_avg));
-        dM2 = sqrt(abs(avg(&M2squared) - M2_avg*M2_avg));
-        dM3 = sqrt(abs(avg(&M3squared) - M3_avg*M3_avg));
-
-        output_file1 << T << "\t" << "[" << M1v_avg[0] << "," << M1v_avg[1] << "," << M1v_avg[2] << "]\t" 
-                     << M1_avg/Bm << "\t" << dM1/Bm << "\t" << model1->energy() << endl;
-        output_file2 << T << "\t" << "[" << M2v_avg[0] << "," << M2v_avg[1] << "," << M2v_avg[2] << "]\t"
-                     << M2_avg/Bm << "\t" << dM2/Bm << "\t" << model2->energy() << endl;
-        output_file3 << T << "\t" << "[" << M3v_avg[0] << "," << M3v_avg[1] << "," << M3v_avg[2] << "]\t"
-                     << M3_avg/Bm << "\t" << dM3/Bm << "\t" << model3->energy() << endl;
+    for (int i = 0; i < num_runs; i++) {
+        X1s[i] = take_data(model1, &Ts, steps_per_run, num_samples, steps_per_sample);
+        X2s[i] = take_data(model2, &Ts, steps_per_run, num_samples, steps_per_sample);
+        X3s[i] = take_data(model3, &Ts, steps_per_run, num_samples, steps_per_sample);
     }
 
-    output_file1.close();
-    output_file2.close();
-    output_file3.close();
+    write_data(X1s, Ts, filename1);
+    write_data(X2s, Ts, filename2);
+    write_data(X3s, Ts, filename3);
 
     auto stop = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
-    seconds = duration.count()/1000000.;
+    int seconds = duration.count()/1000000.;
 
-    cout << "Actual completion time: " << seconds/60. << " minutes." << endl;
+    cout << "Completion time: " << seconds/60. << " minutes." << endl;
 
 
 }

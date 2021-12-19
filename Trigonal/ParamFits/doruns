@@ -1,0 +1,11 @@
+num="";
+g++ -O3 -std=c++11 -I ~/lib SusceptibilityCurve.cpp -o "output$num"
+
+foldername=sH"$num";
+paramsname="$foldername/params.txt"
+rm -r "data/$foldername"
+mkdir "data/$foldername";
+./make_params "data/$paramsname" 20 4 0.1 0.005 0.05 0. 0.03 0. 0. 0. 30 2000 1000 5 5;
+"./output$num" "data/$foldername" "data/$paramsname" 0.04 
+
+rm output"$num"

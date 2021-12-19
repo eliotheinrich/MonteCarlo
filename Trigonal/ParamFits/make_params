@@ -1,5 +1,5 @@
 echo "# N, L, J1, J2, K1, K2, K3, Bx, By, Bz" > "$1"
-echo "$2, $3, $4, $5, $6, $7, $8, ${10},${11},${12}" >> "$1"
+echo "$2, $3, $4, $5, $6, $7, $8, $9,${10},${11}" >> "$1"
 echo "" >> "$1"
-echo "# resolution, num_runs, steps_per_run, num_samples, steps_per_sample" >> "$1"
-echo "${13}, ${14}, ${15}, ${16}, ${17}" >> "$1"
+echo "# resolution, steps_per_run, num_samples, steps_per_sample, num_runs" >> "$1"
+echo "${12}, ${13}, ${14}, ${15}, ${16}" >> "$1"

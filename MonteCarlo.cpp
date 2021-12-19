@@ -11,6 +11,8 @@
 #include "Utility.cpp"
 
 #define PI 3.14159265
+#define BOLTZMANN_CONSTANT 0.08617
+
 
 using namespace std;
 

@@ -282,7 +282,7 @@ class SpinModel : virtual public MCModel {
 
         void generate_mutation() {
             mut_counter++;
-            if ((mut_counter % (N1*N2*N3*sl))%5 == 0) { mutation_mode = false; mut_counter = 1; } else { mutation_mode = true; }
+            //if ((mut_counter % (N1*N2*N3*sl))%5 == 0) { mutation_mode = false; mut_counter = 1; } else { mutation_mode = true; }
 
             int n1; int n2; int n3; int s;
             if (random_selection) {
@@ -300,7 +300,7 @@ class SpinModel : virtual public MCModel {
             }
 
 
-            if (mutation_mode) {
+            if (!mutation_mode) {
                 over_relaxation_mutation(n1, n2, n3, s);
             } else {
                 metropolis_mutation(n1, n2, n3, s);
