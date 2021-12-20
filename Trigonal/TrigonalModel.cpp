@@ -20,11 +20,9 @@ class TrigonalModel : public SpinModel {
         float K1;
         float K2;
         float K3;
-
         Vector3f B; 
 
         Matrix3f R;
-        int counter;
 
 
         TrigonalModel(int N, int L, float J1, float J2, float K1, float K2, float K3,
@@ -42,7 +40,6 @@ class TrigonalModel : public SpinModel {
             this->R << sqrt(3)/2., -0.5, 0.,
                        0.5, sqrt(3)/2., 0.,
                        0., 0., 1.;
-            this->counter = 0;
 
             function<float(Vector3f S1, Vector3f S2)> bondfunc = [J1](Vector3f S1, Vector3f S2) {
                 return -J1*S1.dot(S2);
@@ -96,9 +93,23 @@ class TrigonalModel : public SpinModel {
             this->mut.dS = -2*this->spins[n1][n2][n3][s] + 2.*this->spins[n1][n2][n3][s].dot(H)/pow(H.norm(),2) * H;
         }
 
+        void rotation_mutation(int n1, int n2, int n3, int s) {
+            Vector3f S2;
+            if (r() % 2) {
+                S2 = R*this->spins[n1][n2][n3][s];
+            } else {
+                S2 = R.transpose()*this->spins[n1][n2][n3][s];
+            }
+
+            this->mut.n1 = n1;
+            this->mut.n2 = n2;
+            this->mut.n3 = n3;
+            this->mut.s = s;
+            this->mut.dS = S2 - this->spins[n1][n2][n3][s];
+        }
+
         void generate_mutation() {
             mut_counter++;
-            if ((mut_counter % (N1*N2*N3*sl))%5 == 0) { mutation_mode = false; mut_counter = 1; } else { mutation_mode = true; }
 
             int n1; int n2; int n3; int s;
             if (random_selection) {
@@ -115,11 +126,16 @@ class TrigonalModel : public SpinModel {
                 iter->next();
             }
 
-            if (mutation_mode) {
-                over_relaxation_mutation(n1, n2, n3, s);
-            } else {
-                metropolis_mutation(n1, n2, n3, s);
-            }
+                int mutation_type = mut_counter % (N*N*L*sl);
+                if (mutation_type < 4) {
+                    over_relaxation_mutation(n1, n2, n3, s);
+                } else if (mutation_type < 5) {
+                    rotation_mutation(n1, n2, n3, s);
+                } else if (mutation_type < 6) {
+                    metropolis_mutation(n1, n2, n3, s);
+                } else {
+                    mutation_type = 0;
+                }
         }
 
         const float onsite_energy(int n1, int n2, int n3, int s) {
