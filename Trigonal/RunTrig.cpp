@@ -9,12 +9,12 @@ int main() {
     const int N = 8;
     const int L = 1;
     const float J1 = 1.;
-    const float J2 = 1.;
-    const float K1 = 1.;
+    const float J2 = 0.01;
+    const float K1 = 0.5;
     const float K2 = 0.;
-    const float K3 = 0.;
+    const float K3 = 0.03;
     Vector3f B; B << 0., 0., 0.;
-    const float T = 0.01;
+    const float T = 0.1;
 
 
     const int MCStep = N*N*L;
@@ -27,8 +27,5 @@ int main() {
     write_to_file("Log.txt", log);
 
     cout << "Energy = " << model->energy() << endl;
-
-    model->save_spins("Spins.txt");
-    
 
 }

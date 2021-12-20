@@ -3,23 +3,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 Es = []
-Mxs = []
-Mys = []
-Mzs = []
+Ms = []
 
 filename = sys.argv[1]
 with open(filename) as f:
     for line in f.readlines():
-        Mx, My, Mz, E = line.split('\t')
-        Mxs.append(float(Mx))
-        Mys.append(float(My))
-        Mzs.append(float(Mz))
+        M, E = line.split('\t')
+        Ms.append(float(M))
         Es.append(float(E))
 
-Mxs = np.array(Mxs)
-Mys = np.array(Mys)
-Mzs = np.array(Mzs)
-Ms = np.array([np.linalg.norm(M) for M in zip(Mxs, Mys, Mzs)])
+Ms = np.array(Ms)
 Es = np.array(Es)
 
 

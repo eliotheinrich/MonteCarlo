@@ -130,11 +130,13 @@ class TrigonalModel : public SpinModel {
                 if (mutation_type < 4) {
                     over_relaxation_mutation(n1, n2, n3, s);
                 } else if (mutation_type < 5) {
-                    rotation_mutation(n1, n2, n3, s);
+//                    rotation_mutation(n1, n2, n3, s);
+                    metropolis_mutation(n1, n2, n3, s);
                 } else if (mutation_type < 6) {
                     metropolis_mutation(n1, n2, n3, s);
                 } else {
-                    mutation_type = 0;
+                    metropolis_mutation(n1, n2, n3, s);
+                    mutation_type = 1;
                 }
         }
 
