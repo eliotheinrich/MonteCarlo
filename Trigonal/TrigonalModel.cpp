@@ -23,6 +23,7 @@ class TrigonalModel : public SpinModel {
         Vector3f B; 
 
         Matrix3f R;
+        int mut_type;
 
 
         TrigonalModel(int N, int L, float J1, float J2, float K1, float K2, float K3,
@@ -40,6 +41,7 @@ class TrigonalModel : public SpinModel {
             this->R << sqrt(3)/2., -0.5, 0.,
                        0.5, sqrt(3)/2., 0.,
                        0., 0., 1.;
+            this->mut_type = 0;
 
             function<float(Vector3f S1, Vector3f S2)> bondfunc = [J1](Vector3f S1, Vector3f S2) {
                 return -J1*S1.dot(S2);
@@ -125,19 +127,23 @@ class TrigonalModel : public SpinModel {
                 s = iter->s;
                 iter->next();
             }
+            
+            if (mut_counter % (N*N*L*sl) == 0) {
+                mut_counter = 0;
+                mut_type++;
+            }
 
-                int mutation_type = mut_counter % (N*N*L*sl);
-                if (mutation_type < 4) {
-                    over_relaxation_mutation(n1, n2, n3, s);
-                } else if (mutation_type < 5) {
-//                    rotation_mutation(n1, n2, n3, s);
-                    metropolis_mutation(n1, n2, n3, s);
-                } else if (mutation_type < 6) {
-                    metropolis_mutation(n1, n2, n3, s);
-                } else {
-                    metropolis_mutation(n1, n2, n3, s);
-                    mutation_type = 1;
-                }
+            cout << mut_type << endl;
+            if (mut_type < 4) {
+                over_relaxation_mutation(n1, n2, n3, s);
+            } else if (mut_type < 5) {
+                rotation_mutation(n1, n2, n3, s);
+            } else if (mut_type < 6) {
+                metropolis_mutation(n1, n2, n3, s);
+            } else {
+                metropolis_mutation(n1, n2, n3, s);
+                mut_type = 0;
+            }
         }
 
         const float onsite_energy(int n1, int n2, int n3, int s) {
