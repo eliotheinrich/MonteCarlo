@@ -30,33 +30,30 @@ def load_susceptibility_data(filename):
 
     return Ts, Xs
 
-def curie_fit(Ts, M1s, M2s, M3s):
+def curie_fit(Ts, X1, X2, X3):
     def curie_weiss(T, C, Tc):
         return (T - Tc)/C
 
-    avg_X1 = np.mean(M1s, axis=1)
-    avg_X2 = np.mean(M2s, axis=1)
-    avg_X3 = np.mean(M3s, axis=1)
-    N = len(avg_X1)//2
+    N = len(X1)//2
 
-    popt, _ = spo.curve_fit(curie_weiss, Ts[N:], 1/avg_X1[N:])
+    popt, _ = spo.curve_fit(curie_weiss, Ts[N:], 1/X1[N:])
     (C1, T1c) = popt
-    popt, _ = spo.curve_fit(curie_weiss, Ts[N:], 1/avg_X2[N:])
+    popt, _ = spo.curve_fit(curie_weiss, Ts[N:], 1/X2[N:])
     (C2, T2c) = popt
-    popt, _ = spo.curve_fit(curie_weiss, Ts[N:], 1/avg_X3[N:])
+    popt, _ = spo.curve_fit(curie_weiss, Ts[N:], 1/X3[N:])
     (C3, T3c) = popt
 
     print(C1, T1c)
     print(C2, T2c)
     print(C3, T3c)
-    print(max(avg_X3))
-    print(max(avg_X1))
+    print(max(X3))
+    print(max(X1))
 
-    plt.plot(Ts, 1/avg_X1, 'k-')
+    plt.plot(Ts, 1/X1, 'k-')
     plt.plot(Ts, (Ts - T1c)/C1, 'k--')
-    plt.plot(Ts, 1/avg_X2, 'r-')
+    plt.plot(Ts, 1/X2, 'r-')
     plt.plot(Ts, (Ts - T2c)/C2, 'r--')
-    plt.plot(Ts, 1/avg_X3, 'b-')
+    plt.plot(Ts, 1/X3, 'b-')
     plt.plot(Ts, (Ts - T3c)/C3, 'b--')
     plt.xlabel(r'$T$', fontsize=20)
     plt.ylabel(r'$\chi^{-1}$', fontsize=20)
@@ -65,36 +62,71 @@ def curie_fit(Ts, M1s, M2s, M3s):
 
 
 
-def plot_susceptibility_curve(Ts, M1s, M2s, M3s, ax = None):
+def plot_susceptibility_curve(Ts, X1, X2, X3, dX1, dX2, dX3, ax = None):
     if ax is None:
         ax = plt.gca()
-    
-    avg_X1 = np.mean(X1s, axis=1)
-    avg_X2 = np.mean(X2s, axis=1)
-    avg_X3 = np.mean(X3s, axis=1)
 
-    err_X1 = np.std(X1s, axis=1)
-    err_X2 = np.std(X2s, axis=1)
-    err_X3 = np.std(X3s, axis=1)
-
-    ax.errorbar(Ts, avg_X1, yerr = err_X1, color = 'k', linestyle = '-', label = r'$B \parallel ab$')
-    ax.errorbar(Ts, avg_X2, yerr = err_X2, color = 'r', linestyle = '-', label = r'$B \parallel a$')
-    ax.errorbar(Ts, avg_X3, yerr = err_X3, color = 'b', linestyle = '-', label = r'$B \parallel c$')
+    ax.errorbar(Ts, X1, yerr = dX1, color = 'k', linestyle = '-', label = r'$B \parallel ab$')
+    ax.errorbar(Ts, X2, yerr = dX2, color = 'r', linestyle = '-', label = r'$B \parallel a$')
+    ax.errorbar(Ts, X3, yerr = dX3, color = 'b', linestyle = '-', label = r'$B \parallel c$')
     ax.set_xlabel(r'$T$ (K)', fontsize=20)
     ax.set_ylabel(r'$\chi$', fontsize=20)
     ax.legend()
 
+def get_run(X1, X2, X3, nrun):
+    dX1 = np.std(X1[nrun], axis=1)
+    dX2 = np.std(X2[nrun], axis=1)
+    dX3 = np.std(X3[nrun], axis=1)
+
+    avg_X1 = np.mean(X1[nrun], axis=1)
+    avg_X2 = np.mean(X2[nrun], axis=1)
+    avg_X3 = np.mean(X3[nrun], axis=1)
+
+    return (avg_X1, avg_X2, avg_X3, dX1, dX2, dX3)
 
 if __name__ == "__main__":
     os.chdir(sys.argv[1])
 
-    _, X1s = load_susceptibility_data("SusceptibilityCurve1.txt")
-    _, X2s = load_susceptibility_data("SusceptibilityCurve2.txt")
-    Ts, X3s = load_susceptibility_data("SusceptibilityCurve3.txt")
+    filenames = [x for x in os.listdir() if x != "params.txt"]
+    filenames1 = [x for x in filenames if x[19] == "1"]
+    filenames2 = [x for x in filenames if x[19] == "2"]
+    filenames3 = [x for x in filenames if x[19] == "3"]
 
-    curie_fit(Ts, X1s, X2s, X3s)
+    X1 = []
+    X2 = []
+    X3 = []
+    for (f1, f2, f3) in zip(filenames1, filenames2, filenames3):
+        Ts, X1t = load_susceptibility_data(f1)
+        Ts, X2t = load_susceptibility_data(f2)
+        Ts, X3t = load_susceptibility_data(f3)
 
-    plot_susceptibility_curve(Ts, X1s, X2s, X3s)
+        X1.append(X1t)
+        X2.append(X2t)
+        X3.append(X3t)
+
+    X1 = np.array(X1)
+    X2 = np.array(X2)
+    X3 = np.array(X3)
+
+    avg = input("Average all runs? y/n: ") == "y"
+    if avg:
+        dX1 = np.std(X1, axis=(0,2))
+        dX2 = np.std(X2, axis=(0,2))
+        dX3 = np.std(X3, axis=(0,2))
+
+        avg_X1 = np.mean(X1, axis=(0,2))
+        avg_X2 = np.mean(X2, axis=(0,2))
+        avg_X3 = np.mean(X3, axis=(0,2))
+
+        curie_fit(Ts, avg_X1, avg_X2, avg_X3)
+        plot_susceptibility_curve(Ts, avg_X1, avg_X2, avg_X3, dX1, dX2, dX3)
+
+    else:
+
+        plot_susceptibility_curve(Ts, *get_run(X1, X2, X3, 0))
+        plot_susceptibility_curve(Ts, *get_run(X1, X2, X3, 1))
+        plot_susceptibility_curve(Ts, *get_run(X1, X2, X3, 2))
+
     plt.show()
 
 

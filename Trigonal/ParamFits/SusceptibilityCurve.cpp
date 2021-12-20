@@ -51,12 +51,11 @@ vector<vector<float>> take_data(TrigonalModel *model, vector<float> *Ts, int equ
     return X;
 }
 
-void write_data(vector<vector<vector<float>>> Xs, vector<float> Ts, string filename) {
+void write_data(vector<vector<float>> X, vector<float> Ts, string filename) {
     ofstream output_file(filename);
 
-    int num_runs = Xs.size();
-    int resolution = Xs[0].size();
-    int num_samples = Xs[0][0].size();
+    int resolution = X.size();
+    int num_samples = X[0].size();
 
     // Write header
     output_file << resolution << "\t" << num_samples << endl;
@@ -65,12 +64,7 @@ void write_data(vector<vector<vector<float>>> Xs, vector<float> Ts, string filen
     for (int i = 0; i < resolution; i++) {
         output_file << Ts[i]/BOLTZMANN_CONSTANT << "\t";
         for (int j = 0; j < num_samples; j++) {
-            avg_X = 0.;
-            for (int n = 0; n < num_runs; n++) {
-                avg_X += Xs[n][i][j];
-            }
-            avg_X = avg_X/num_runs;
-            output_file << "(" << avg_X << ")";
+            output_file << "(" << X[i][j] << ")";
             if (j < num_samples - 1) { output_file << '\t'; }
         }
         output_file << endl;
@@ -128,9 +122,7 @@ int main(int argc, char* argv[]) {
         Ts[i] = T_max*i/resolution + T_min*(resolution - i)/resolution;
     }
 
-    cout << J2 << endl;
-
-    Vector3f Bhat1; Bhat1 << 0.866025, 0.5, 0;
+    Vector3f Bhat1; Bhat1 << 0., 1., 0.;
     Vector3f Bhat2; Bhat2 << 1., 0., 0.;
     Vector3f Bhat3; Bhat3 << 0., 0., 1.;
     Vector3f B1 = Bm*Bhat1;
@@ -141,32 +133,29 @@ int main(int argc, char* argv[]) {
     TrigonalModel *model2 = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B2);
     TrigonalModel *model3 = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B3);
 
-    vector<vector<vector<float>>> X1s = vector<vector<vector<float>>>(num_runs, vector<vector<float>>(resolution, vector<float>(num_samples)));
-    vector<vector<vector<float>>> X2s = vector<vector<vector<float>>>(num_runs, vector<vector<float>>(resolution, vector<float>(num_samples)));
-    vector<vector<vector<float>>> X3s = vector<vector<vector<float>>>(num_runs, vector<vector<float>>(resolution, vector<float>(num_samples)));
-
-    string filename1 = foldername + "/SusceptibilityCurve1.txt";
-    string filename2 = foldername + "/SusceptibilityCurve2.txt";
-    string filename3 = foldername + "/SusceptibilityCurve3.txt";
+    vector<vector<float>> X1 = vector<vector<float>>(resolution, vector<float>(num_samples));
+    vector<vector<float>> X2 = vector<vector<float>>(resolution, vector<float>(num_samples));
+    vector<vector<float>> X3 = vector<vector<float>>(resolution, vector<float>(num_samples));
 
     int num_threads = 30;
     unsigned long long int nsteps = 3*resolution*num_runs*(steps_per_run + num_samples*steps_per_sample);
 
     cout << "Number steps: " << nsteps << endl;
-    cout << "Expected completion time: " << 2*nsteps/3300000./4./60. << " minutes. " << endl;
+    cout << "Expected completion time: " << (long long) 2*nsteps/3300000./num_threads/60. << " minutes. " << endl;
 
     auto start = chrono::high_resolution_clock::now();
 
 
     for (int i = 0; i < num_runs; i++) {
-        X1s[i] = take_data(model1, &Ts, steps_per_run, num_samples, steps_per_sample, num_threads);
-        X2s[i] = take_data(model2, &Ts, steps_per_run, num_samples, steps_per_sample, num_threads);
-        X3s[i] = take_data(model3, &Ts, steps_per_run, num_samples, steps_per_sample, num_threads);
+        X1 = take_data(model1, &Ts, steps_per_run, num_samples, steps_per_sample, num_threads);
+        X2 = take_data(model2, &Ts, steps_per_run, num_samples, steps_per_sample, num_threads);
+        X3 = take_data(model3, &Ts, steps_per_run, num_samples, steps_per_sample, num_threads);
+
+        write_data(X1, Ts, foldername + "/SusceptibilityCurve1_run" + to_string(i) + ".txt");
+        write_data(X2, Ts, foldername + "/SusceptibilityCurve2_run" + to_string(i) + ".txt");
+        write_data(X3, Ts, foldername + "/SusceptibilityCurve3_run" + to_string(i) + ".txt");
     }
 
-    write_data(X1s, Ts, filename1);
-    write_data(X2s, Ts, filename2);
-    write_data(X3s, Ts, filename3);
 
     auto stop = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
