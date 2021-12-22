@@ -12,17 +12,20 @@ void func(string filename, int N, int num_threads) {
     cout << "N = " << N << endl;
     const int L = 1;
     const float J = 1.;
-    const float K = 0.3;
+    const float K = 2.0;
 
     const int MCStep = N*N*L;
 
     EasyPlaneHeis *model = new EasyPlaneHeis(N, L, J, K);
     MonteCarlo<EasyPlaneHeis> *m = new MonteCarlo<EasyPlaneHeis>(model);
 
+    //XXZHeis *model = new XXZHeis(N, L, J, K);
+    //MonteCarlo<XXZHeis> *m = new MonteCarlo<XXZHeis>(model);
+
 
     const float Tmax = 3.;
     const float Tmin = 0.1;
-    int res = 30;
+    unsigned long long int res = 30;
 
     vector<float> Ts(res);
     ofstream output(filename);
@@ -31,13 +34,13 @@ void func(string filename, int N, int num_threads) {
         Ts[i] = float(i)/res*Tmax + float(res - i)/res*Tmin;
     }
 
-    int num_exchanges = 5000;
-    int steps_per_exchange = 5*MCStep;
-    int equilibration_steps = 5000*MCStep;
+    unsigned long long int num_exchanges = 5000;
+    unsigned long long int steps_per_exchange = 5*MCStep;
+    unsigned long long int equilibration_steps = 5000*MCStep;
     auto models = parallel_tempering(model, Ts, num_exchanges, steps_per_exchange, equilibration_steps, num_threads);
 
-    int num_samples = 3000;
-    int steps_per_sample = 5*MCStep;
+    unsigned long long int num_samples = 3000;
+    unsigned long long int steps_per_sample = 10*MCStep;
     ctpl::thread_pool threads(num_threads);
     vector<future<vector<vector<double>>>> results(res);
     vector<vector<double>> samples(num_samples);
@@ -76,7 +79,7 @@ void func(string filename, int N, int num_threads) {
 int main(int argc, char* argv[]) {    
     string filename = argv[1];
     int N = stoi(argv[2]);
-    int num_threads = 4;
+    int num_threads = 30;
 
     auto start = chrono::high_resolution_clock::now();
 

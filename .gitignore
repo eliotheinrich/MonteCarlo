@@ -4,3 +4,5 @@
 *.pyc
 *.txt
 __pycache__
+*.out
+*.sl

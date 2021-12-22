@@ -1,11 +1,15 @@
-g++ -O3 -std=c++11 StiffnessCurve.cpp -o output
+outputfile=outputp3
+path=data/easy_plane3
 
-rm data/stiffness*
+rm -r $path
+mkdir $path
+
+g++ -pthread -I ~/lib -O3 -std=c++11 StiffnessCurve.cpp -o $outputfile
+
 for L in 4 8 16 32 64 128; do
-    filename=data/stiffness"$L".txt
-    ./output $filename $L
+    filename=$path/stiffness"$L".txt
+    ./$outputfile $filename $L
 done
 
-#python3 AnalyzeStiffnessCurve.py
-rm output
+rm $outputfile
 

@@ -129,7 +129,7 @@ if __name__ == "__main__":
     Ls = Ls[inds]
 
 
-    L0, T_KT = get_L0(Ls, Ts, ρs, 0.01, 2.0, 10000)
+    L0, T_KT = get_L0(Ls, Ts, ρs, 0.0001, 0.001, 10000)
 #    L0 = 1/1.4
 #    T_KT = 0.88
     print(L0, T_KT)

@@ -133,7 +133,6 @@ class TrigonalModel : public SpinModel {
                 mut_type++;
             }
 
-            cout << mut_type << endl;
             if (mut_type < 4) {
                 over_relaxation_mutation(n1, n2, n3, s);
             } else if (mut_type < 5) {
