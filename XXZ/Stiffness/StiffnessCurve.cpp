@@ -1,96 +1,55 @@
 #include "../EasyPlaneHeis.cpp"
-#include "../XXZHeis.cpp"
-#include <ctpl.h>
+#include "../../Utility.cpp"
+#include "../../Routines.cpp"
 #include <iostream>
-#include <chrono>
+#include <math.h>
 
 using namespace std;
+using namespace Eigen;
 
-void func(string filename, int N, int num_threads) {
+int main(int argc, char* argv[]) {
     srand((unsigned)time( NULL ));
+
+    string filename = argv[1];
+    int N = stoi(argv[2]);
+    int num_threads = 4;
 
     cout << "N = " << N << endl;
     const int L = 1;
     const float J = 1.;
-    const float K = 2.0;
+    const float A = 0.3;
 
     const int MCStep = N*N*L;
 
-    EasyPlaneHeis *model = new EasyPlaneHeis(N, L, J, K);
-    MonteCarlo<EasyPlaneHeis> *m = new MonteCarlo<EasyPlaneHeis>(model);
-
-    //XXZHeis *model = new XXZHeis(N, L, J, K);
-    //MonteCarlo<XXZHeis> *m = new MonteCarlo<XXZHeis>(model);
-
+    EasyPlaneHeis *model = new EasyPlaneHeis(N, L, J, A);
 
     const float Tmax = 3.;
     const float Tmin = 0.1;
     unsigned long long int res = 30;
 
-    vector<float> Ts(res);
+    vector<float> T(res);
     ofstream output(filename);
 
     for (int i = 0; i < res; i++) {
-        Ts[i] = float(i)/res*Tmax + float(res - i)/res*Tmin;
+        T[i] = float(i)/res*Tmax + float(res - i)/res*Tmin;
     }
 
-    unsigned long long int num_exchanges = 5000;
-    unsigned long long int steps_per_exchange = 5*MCStep;
-    unsigned long long int equilibration_steps = 5000*MCStep;
-    auto models = parallel_tempering(model, Ts, num_exchanges, steps_per_exchange, equilibration_steps, num_threads);
+    unsigned long long int num_runs = 5;
+    unsigned long long int steps_per_run = 5000*MCStep;
 
-    unsigned long long int num_samples = 3000;
+    unsigned long long int num_samples = 1000;
     unsigned long long int steps_per_sample = 10*MCStep;
-    ctpl::thread_pool threads(num_threads);
-    vector<future<vector<vector<double>>>> results(res);
-    vector<vector<double>> samples(num_samples);
-
-    auto twist_sampling = [&models, &Ts, steps_per_sample, num_samples](int id, int i) {
-        vector<vector<double>> samples(num_samples);
-        for (int j = 0; j < num_samples; j++) {
-            samples[j] = models[i]->model->twist_stiffness();
-            models[i]->steps(steps_per_sample, Ts[i]);
-        }
-        return samples;
-    };
-
-    // Write header
-    output << res << "\t" << num_samples << endl;
-
-    // Give threads jobs
-    for (int i = 0; i < res; i++) {
-        results[i] = threads.push(twist_sampling, i);
-    } 
-
-    for (int i = 0; i < res; i++) {
-        samples = results[i].get();
-        output << Ts[i] << "\t";
-        for (int j = 0; j < num_samples; j++) {
-            output << "(" << samples[j][0] << ", " << samples[j][1] << ")";
-            if (j < num_samples - 1) { output << '\t'; }
-        }
-        output << endl;
-    }
-
-    output.close();
-    cout << "Total steps: " << res*(num_samples*steps_per_sample + num_exchanges*steps_per_exchange + equilibration_steps) << endl;
-}
-
-int main(int argc, char* argv[]) {    
-    string filename = argv[1];
-    int N = stoi(argv[2]);
-    int num_threads = 30;
 
     auto start = chrono::high_resolution_clock::now();
 
-    func(filename, N, num_threads);
+    stiffness_run(model, &T, num_runs, steps_per_run, num_samples, steps_per_sample, num_threads, filename);
 
     auto stop = chrono::high_resolution_clock::now();
-    
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
-    int microseconds = duration.count();
+    int seconds = duration.count()/1000000.;
 
-    cout << "Duration: " << microseconds/1e6 << endl;
+    cout << "Completion time: " << seconds/60. << " minutes." << endl;
+
 
 }
 

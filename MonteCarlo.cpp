@@ -227,9 +227,11 @@ vector<MonteCarlo<MCModel>*> parallel_tempering(MCModel *model, vector<float> Ts
         }
     }
 
-    results.empty();
     return models;
 }
+
+
+
 
 
 #endif

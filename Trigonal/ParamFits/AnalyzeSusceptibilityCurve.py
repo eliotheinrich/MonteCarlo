@@ -9,10 +9,12 @@ def load_susceptibility_data(filename):
     with open(filename) as f:
         s = f.readline().split('\t')
         res = int(s[0])
-        num_samples = int(s[1])
     
-    Ts = np.zeros(res)
-    Xs = np.zeros((res, num_samples))
+    T = np.zeros(res)
+    X = np.zeros(res)
+    dX = np.zeros(res)
+    E = np.zeros(res)
+    dE = np.zeros(res)
 
     with open(filename) as f:
         line = f.readline()
@@ -20,15 +22,15 @@ def load_susceptibility_data(filename):
             line = f.readline()
 
             data = np.array([x.strip('\n') for x in line.split('\t')])
-            Ti = float(data[0])
-            data = data[1:]
+            T[i] = float(data[0])
+            X[i] = float(data[1])
+            dX[i] = float(data[2])
+            E[i] = float(data[3])
+            dE[i] = float(data[4])
 
-            for n,x in enumerate(data):
-                Xs[i,n] = x[1:-1]
 
-            Ts[i] = Ti
+    return T, X, dX, E, dE
 
-    return Ts, Xs
 
 def curie_fit(Ts, X1, X2, X3):
     def curie_weiss(T, C, Tc):
@@ -62,71 +64,55 @@ def curie_fit(Ts, X1, X2, X3):
 
 
 
-def plot_susceptibility_curve(Ts, X1, X2, X3, dX1, dX2, dX3, ax = None):
-    if ax is None:
+def plot_susceptibility_curve(T, X1, X2, X3, dX1, dX2, dX3, ax = None):
+    ax_none = ax is None
+    if ax_none:
         ax = plt.gca()
 
-    ax.errorbar(Ts, X1, yerr = dX1, color = 'k', linestyle = '-', label = r'$B \parallel ab$')
-    ax.errorbar(Ts, X2, yerr = dX2, color = 'r', linestyle = '-', label = r'$B \parallel a$')
-    ax.errorbar(Ts, X3, yerr = dX3, color = 'b', linestyle = '-', label = r'$B \parallel c$')
-    ax.set_xlabel(r'$T$ (K)', fontsize=20)
-    ax.set_ylabel(r'$\chi$', fontsize=20)
-    ax.legend()
+    ax.errorbar(T, X1, yerr = dX1, color = 'k', linestyle = '-', label = r'$B \parallel ab$')
+    ax.errorbar(T, X2, yerr = dX2, color = 'r', linestyle = '-', label = r'$B \parallel a$')
+    ax.errorbar(T, X3, yerr = dX3, color = 'b', linestyle = '-', label = r'$B \parallel c$')
+    if ax_none:
+        ax.set_xlabel(r'$T$ $(J)$', fontsize=20)
+        ax.set_ylabel(r'$\chi$', fontsize=20)
+        ax.legend()
 
-def get_run(X1, X2, X3, nrun):
-    dX1 = np.std(X1[nrun], axis=1)
-    dX2 = np.std(X2[nrun], axis=1)
-    dX3 = np.std(X3[nrun], axis=1)
+def plot_energy_curve(T, E1, E2, E3, dE1, dE2, dE3, ax = None):
+    ax_none = ax is None
+    if ax_none:
+        ax = plt.gca()
 
-    avg_X1 = np.mean(X1[nrun], axis=1)
-    avg_X2 = np.mean(X2[nrun], axis=1)
-    avg_X3 = np.mean(X3[nrun], axis=1)
+    ax.errorbar(T, E1, yerr = dE1, color = 'k', linestyle = '-', label = r'$B \parallel ab$')
+    ax.errorbar(T, E2, yerr = dE2, color = 'r', linestyle = '-', label = r'$B \parallel a$')
+    ax.errorbar(T, E3, yerr = dE3, color = 'b', linestyle = '-', label = r'$B \parallel c$')
+    if ax_none:
+        ax.set_xlabel(r'$T$ $(J)$', fontsize=20)
+        ax.set_ylabel(r'$U(T)$', fontsize=20)
+        ax.legend()
 
-    return (avg_X1, avg_X2, avg_X3, dX1, dX2, dX3)
+def plot_heat_capacity(T, dE1, dE2, dE3, ax = None):
+    ax_none = ax is None
+    if ax_none:
+        ax = plt.gca()
+
+    ax.plot(T, (dE1/T)**2, 'k-', label=r'$B \parallel ab$')
+    ax.plot(T, (dE2/T)**2, 'r-', label=r'$B \parallel a$')
+    ax.plot(T, (dE3/T)**2, 'b-', label=r'$B \parallel c$')
+    if ax_none:
+        ax.set_xlabel(r'$T$ $(J)$', fontsize=20)
+        ax.set_ylabel(r'$E$', fontsize=20)
+        ax.legend()
 
 if __name__ == "__main__":
     os.chdir(sys.argv[1])
 
-    filenames = [x for x in os.listdir() if x != "params.txt"]
-    filenames1 = [x for x in filenames if x[19] == "1"]
-    filenames2 = [x for x in filenames if x[19] == "2"]
-    filenames3 = [x for x in filenames if x[19] == "3"]
+    T, X1, dX1, E1, dE1 = load_susceptibility_data("SusceptibilityCurve1.txt")
+    T, X2, dX2, E2, dE2 = load_susceptibility_data("SusceptibilityCurve2.txt")
+    T, X3, dX3, E3, dE3 = load_susceptibility_data("SusceptibilityCurve3.txt")
 
-    X1 = []
-    X2 = []
-    X3 = []
-    for (f1, f2, f3) in zip(filenames1, filenames2, filenames3):
-        Ts, X1t = load_susceptibility_data(f1)
-        Ts, X2t = load_susceptibility_data(f2)
-        Ts, X3t = load_susceptibility_data(f3)
-
-        X1.append(X1t)
-        X2.append(X2t)
-        X3.append(X3t)
-
-    X1 = np.array(X1)
-    X2 = np.array(X2)
-    X3 = np.array(X3)
-
-    avg = input("Average all runs? y/n: ") == "y"
-    if avg:
-        dX1 = np.std(X1, axis=(0,2))
-        dX2 = np.std(X2, axis=(0,2))
-        dX3 = np.std(X3, axis=(0,2))
-
-        avg_X1 = np.mean(X1, axis=(0,2))
-        avg_X2 = np.mean(X2, axis=(0,2))
-        avg_X3 = np.mean(X3, axis=(0,2))
-
-        curie_fit(Ts, avg_X1, avg_X2, avg_X3)
-        plot_susceptibility_curve(Ts, avg_X1, avg_X2, avg_X3, dX1, dX2, dX3)
-
-    else:
-
-        plot_susceptibility_curve(Ts, *get_run(X1, X2, X3, 0))
-        plot_susceptibility_curve(Ts, *get_run(X1, X2, X3, 1))
-        plot_susceptibility_curve(Ts, *get_run(X1, X2, X3, 2))
-
+    plot_susceptibility_curve(T, X1, X2, X3, dX1, dX2, dX3)
+    plt.show()
+    plot_heat_capacity(T, dE1, dE2, dE3)
     plt.show()
 
 

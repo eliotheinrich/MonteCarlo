@@ -1,4 +1,0 @@
-g++ -ffast-math -O3 -std=c++11 -I ~/lib Timing.cpp -o a.out
-
-./a.out
-rm a.out

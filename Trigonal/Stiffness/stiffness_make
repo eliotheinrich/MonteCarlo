@@ -1,0 +1,15 @@
+outputfile=outputp3
+path=data/easy_plane3
+
+rm -r $path
+mkdir $path
+
+g++ -pthread -I ~/lib -O3 -std=c++11 StiffnessCurve.cpp -o $outputfile
+
+for L in 4 8; do
+    filename=$path/stiffness"$L".txt
+    ./$outputfile $filename $L
+done
+
+rm $outputfile
+
