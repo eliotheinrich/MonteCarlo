@@ -87,6 +87,8 @@ class SpinModel : virtual public MCModel {
         int N1;
         int N2;
         int N3;
+        int V;
+
         float acceptance;
         float sigma;
         vector<vector<vector<vector<Vector3f>>>> spins;
@@ -110,6 +112,7 @@ class SpinModel : virtual public MCModel {
             this->N1 = N1;
             if (N2 == -1) { this->N2 = N1; } else { this->N2 = N2; }
             if (N3 == -1) { this->N3 = N1; } else { this->N3 = N3; }
+            this->V = N1*N2*N3*sl;
             this->spins = vector<vector<vector<vector<Vector3f>>>>(this->N1,
                                  vector<vector<vector<Vector3f>>>(this->N2,
                                         vector<vector<Vector3f>>(this->N3,
@@ -282,14 +285,12 @@ class SpinModel : virtual public MCModel {
 
         void generate_mutation() {
             mut_counter++;
-            //if ((mut_counter % (N1*N2*N3*sl))%5 == 0) { mutation_mode = false; mut_counter = 1; } else { mutation_mode = true; }
 
             int n1; int n2; int n3; int s;
             if (random_selection) {
                 n1 = r() % N1;
                 n2 = r() % N2;
-                if (this->N3 == 1) { n3 = 0; } else { n3 = r() % N3; }
-
+                if (N3 == 1) { n3 = 0; } else { n3 = r() % N3; }
                 if (sl == 1) { s = 0; } else { s = r() % sl; }
             } else {
                 n1 = iter->n1;

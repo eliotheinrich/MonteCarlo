@@ -86,6 +86,8 @@ class XYModel : virtual public MCModel {
         int N1;
         int N2;
         int N3;
+        int V;
+
         float acceptance;
         float sigma;
         vector<vector<vector<vector<Vector2f>>>> spins;
@@ -109,6 +111,8 @@ class XYModel : virtual public MCModel {
             this->N1 = N1;
             if (N2 == -1) { this->N2 = N1; } else { this->N2 = N2; }
             if (N3 == -1) { this->N3 = N1; } else { this->N3 = N3; }
+            this->V = N1*N2*N3*sl;
+
             this->spins = vector<vector<vector<vector<Vector2f>>>>(this->N1,
                                  vector<vector<vector<Vector2f>>>(this->N2,
                                         vector<vector<Vector2f>>(this->N3,

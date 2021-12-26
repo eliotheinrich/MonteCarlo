@@ -12,9 +12,9 @@ int main(int argc, char* argv[]) {
 
     string filename = argv[1];
     int N = stoi(argv[2]);
+    cout << "N = " << N << endl;
     int num_threads = 4;
 
-    cout << "N = " << N << endl;
     const int L = 1;
     const float J = 1.;
     const float A = 0.3;
@@ -23,22 +23,20 @@ int main(int argc, char* argv[]) {
 
     TrigonalXYModel *model = new TrigonalXYModel(N, L, J, A);
 
-    const float Tmax = 3.;
-    const float Tmin = 0.1;
-    unsigned long long int res = 30;
-
-    vector<float> T(res);
-    ofstream output(filename);
-
-    for (int i = 0; i < res; i++) {
-        T[i] = float(i)/res*Tmax + float(res - i)/res*Tmin;
-    }
-
+    unsigned long long int resolution = 30;
     unsigned long long int num_runs = 5;
     unsigned long long int steps_per_run = 5000*MCStep;
 
     unsigned long long int num_samples = 1000;
     unsigned long long int steps_per_sample = 10*MCStep;
+
+    vector<float> T(resolution);
+
+    const float Tmax = 3.;
+    const float Tmin = 0.1;
+    for (int i = 0; i < resolution; i++) {
+        T[i] = float(i)/resolution*Tmax + float(resolution - i)/resolution*Tmin;
+    }
 
     auto start = chrono::high_resolution_clock::now();
 

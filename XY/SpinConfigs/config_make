@@ -1,0 +1,10 @@
+g++ -O3 -std=c++11 GenerateConfigs.cpp -o output
+
+rm data/*
+for L in 8 ; do
+    foldername=data
+    ./output $foldername $L 4
+done
+
+rm output
+

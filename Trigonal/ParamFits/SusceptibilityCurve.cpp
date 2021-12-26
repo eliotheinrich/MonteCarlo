@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
     int steps_per_run = stoi(paramss[1])*MCStep;
     int num_samples = stoi(paramss[2]);
     int steps_per_sample = stoi(paramss[3])*MCStep;
-//    int num_runs = stoi(paramss[4]);
+    int num_runs = stoi(paramss[4]);
 
     //float T_max = 60*BOLTZMANN_CONSTANT; // In Kelvin
     //float T_min = 0.1*BOLTZMANN_CONSTANT;
@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
     TrigonalModel *model3 = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B3);
 
     int num_threads = stoi(argv[4]);
-    unsigned long long int nsteps = 3*resolution*num_runs*(steps_per_run + num_samples*steps_per_sample);
+    unsigned long long int nsteps = 3*resolution*(steps_per_run + num_samples*steps_per_sample);
 
     cout << "Number steps: " << nsteps << endl;
     cout << "Expected completion time: " << (long long) 2*nsteps/3300000./num_threads/60. << " minutes. " << endl;
@@ -78,11 +78,11 @@ int main(int argc, char* argv[]) {
     auto start = chrono::high_resolution_clock::now();
 
 
-    susceptibility_run(model1, &T, steps_per_run, num_samples, steps_per_sample, num_threads,
+    susceptibility_run(model1, &T, num_runs, steps_per_run, num_samples, steps_per_sample, num_threads,
                                                                foldername + "/SusceptibilityCurve1.txt");
-    susceptibility_run(model2, &T, steps_per_run, num_samples, steps_per_sample, num_threads,
+    susceptibility_run(model2, &T, num_runs, steps_per_run, num_samples, steps_per_sample, num_threads,
                                                                foldername + "/SusceptibilityCurve2.txt");
-    susceptibility_run(model3, &T, steps_per_run, num_samples, steps_per_sample, num_threads,
+    susceptibility_run(model3, &T, num_runs, steps_per_run, num_samples, steps_per_sample, num_threads,
                                                                foldername + "/SusceptibilityCurve3.txt");
 
     auto stop = chrono::high_resolution_clock::now();

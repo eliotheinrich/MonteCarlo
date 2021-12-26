@@ -141,6 +141,7 @@ void stiffness_run(ModelType *model, vector<float> *T, int num_runs,
                 (*dE_samples)[n] = sample[0];
                 (*ddE_samples)[n] = sample[1];
             }
+        }
     };
 
     for (int i = 0; i < resolution; i++) {
@@ -173,11 +174,11 @@ void stiffness_run(ModelType *model, vector<float> *T, int num_runs,
 }
 
 template <class ModelType>
-void susceptibility_run(ModelType *model, vector<float> *T, int steps_per_run, 
-                                                            int num_samples, 
-                                                            int steps_per_sample,
-                                                            int num_threads,
-                                                            string filename) {
+void susceptibility_run_pt(ModelType *model, vector<float> *T, int steps_per_run, 
+                                                               int num_samples, 
+                                                               int steps_per_sample,
+                                                               int num_threads,
+                                                               string filename) {
 
     int resolution = T->size();
 
@@ -255,6 +256,106 @@ void susceptibility_run(ModelType *model, vector<float> *T, int steps_per_run,
 
     output_file.close();
 }
+
+template <class ModelType>
+void susceptibility_run(ModelType *model, vector<float> *T, int num_runs,
+                                                            int steps_per_run, 
+                                                            int num_samples, 
+                                                            int steps_per_sample,
+                                                            int num_threads,
+                                                            string filename) {
+
+    int resolution = T->size();
+
+    vector<MonteCarlo<ModelType>*> models(resolution);
+
+    for (int i = 0; i < resolution; i++) {
+        models[i] = new MonteCarlo<ModelType>(model->clone());
+        models[i]->model->randomize_spins();
+    }
+
+    vector<vector<float>> X = vector<vector<float>>(resolution, vector<float>(num_samples*num_runs));
+    vector<vector<float>> E = vector<vector<float>>(resolution, vector<float>(num_samples*num_runs));
+
+    ctpl::thread_pool threads(num_threads);
+
+    vector<future<void>> results(resolution);
+
+    auto susceptibility_samples = [num_runs, steps_per_run, num_samples, steps_per_sample](int id, int i, 
+                                                                                           MonteCarlo<ModelType> *m, float T, 
+                                                                                           vector<float> *X, 
+                                                                                           vector<float> *E) {
+        for (int n = 0; n < num_runs; n++) {
+            m->model->randomize_spins();
+            m->steps(steps_per_run, T);
+            for (int i = 0; i < num_samples; i++) {
+                (*X)[n*num_samples + i] = m->model->get_magnetization().norm()/pow(m->model->B.norm(), 2);
+                (*E)[n*num_samples + i] = m->model->energy()/(m->model->V);
+                m->steps(steps_per_sample, T);
+            }
+        }
+    };
+
+    for (int i = 0; i < resolution; i++) {
+        results[i] = threads.push(susceptibility_samples, i, models[i], (*T)[i], &X[i], &E[i]);
+    }
+
+    vector<float> avg_X(resolution);
+    vector<float> avg_E(resolution);
+
+    vector<float> err_X(resolution);
+    vector<float> err_E(resolution);
+
+    for (int i = 0; i < resolution; i++) {
+        avg_X[i] = avg(&X[i]);
+        avg_E[i] = avg(&E[i]);
+        err_X[i] = stdev(&X[i], avg_X[i]);
+        err_E[i] = stdev(&E[i], avg_E[i]);
+    }
+
+    ofstream output_file(filename);
+
+    // Write header
+    output_file << resolution << endl;
+
+    for (int i = 0; i < resolution; i++) {
+        output_file << (*T)[i] << "\t" << avg_X[i] << "\t" << err_X[i] << "\t" << avg_E[i] << "\t" << err_E[i] << endl;
+    }
+
+    output_file.close();
+}
+
+template <class ModelType>
+void generate_spin_configs(ModelType *model, vector<float> T, int equilibration_steps, 
+                                                              int num_samples,
+                                                              int steps_per_sample,
+                                                              int num_threads, 
+                                                              string foldername) {
+    
+    int resolution = T.size();
+
+    ctpl::thread_pool threads(num_threads);
+    vector<future<void>> results(resolution);
+
+    auto spin_samples = [equilibration_steps, num_samples, steps_per_sample, model, foldername](int id, float T) {
+        MonteCarlo<ModelType> *m = new MonteCarlo<ModelType>(model->clone());
+        m->model->randomize_spins();
+
+        m->steps(equilibration_steps, T);
+        for (int j = 0; j < num_samples; j++) {
+            m->steps(steps_per_sample, T);
+            m->model->save_spins(foldername + "/Spins" + to_string(T) + "_" + to_string(j) + ".txt");
+        }
+    };
+
+    for (int i = 0; i < resolution; i++) {
+        results[i] = threads.push(spin_samples, T[i]);
+    }
+
+    for (int i = 0; i < resolution; i++) {
+        results[i].get();
+    }
+}   
 
 
 
