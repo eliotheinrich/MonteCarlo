@@ -19,6 +19,93 @@ void exchange(vector<MonteCarlo<ModelType>*> *models, vector<float> *T) {
     }
 }
 
+template <class ModelType>
+void stiffness_run_pt(vector<float> sampling_func(ModelType*), ModelType *model, vector<float> *T, 
+                                                               int steps_per_run, 
+                                                               int num_samples, 
+                                                               int steps_per_sample,
+                                                               int num_threads,
+                                                               string filename) {
+
+    int resolution = T->size();
+
+    vector<MonteCarlo<ModelType>*> models(resolution);
+
+    for (int i = 0; i < resolution; i++) {
+        models[i] = new MonteCarlo<ModelType>(model->clone());
+        models[i]->model->randomize_spins();
+    }
+
+    int datatype_size = sampling_func(model).size();
+    vector<vector<vector<float>>> arr = vector<vector<vector<float>>>(datatype_size, vector<vector<float>>(resolution, vector<float>(num_samples)));
+
+    ctpl::thread_pool threads(num_threads);
+
+    vector<future<void>> results(resolution);
+
+    auto do_steps = [steps_per_run](int id, MonteCarlo<ModelType> *m, float T) {
+        m->steps(steps_per_run, T);
+    };
+
+    // Do initial steps
+    for (int i = 0; i < resolution; i++) {
+        results[i] = threads.push(do_steps, models[i], (*T)[i]);
+    }
+
+    // Join threads
+    for (int i = 0; i < resolution; i++) {
+        results[i].get();
+    }
+
+    auto take_samples = [steps_per_sample, datatype_size, sampling_func](int id, int i, int n, 
+                                                                         MonteCarlo<ModelType> *m, float T, 
+                                                                         vector<float> *arr) {
+        m->steps(steps_per_sample, T);
+        auto sample = sampling_func(m->model);
+        for (int k = 0; k < datatype_size; k++) {
+            (*arr)[k][n] = sample[k];
+        }
+    };
+
+    for (int n = 0; n < num_samples; n++) {
+        for (int i = 0; i < resolution; i++) {
+            results[i] = threads.push(twist_samples, i, n, models[i], (*T)[i], &dE[i], &ddE[i]);
+        }
+
+        // Join threads
+        for (int i = 0; i < resolution; i++) {
+            results[i].get();
+        }
+
+        exchange(&models, T);
+    }
+
+    vector<vector<float>> avgs(datatype_size, vector<float>(resolution));
+    vector<vector<float>> errs(datatype_size, vector<float>(resolution));
+
+    for (int k = 0; k < datatype_size; k++) {
+        for (int i = 0; i < resolution; i++) {
+            avgs[k][i] = avg(&arr[k][i]);
+            errs[k][i] = stdev(&arr[k][i], avgs[k][i]);
+        }
+    }
+
+    ofstream output_file(filename);
+
+    // Write header
+    output_file << resolution << endl;
+
+    for (int i = 0; i < resolution; i++) {
+        output_file << (*T)[i] << "\t";
+        for (int k = 0; k < datatype_size; k++) {
+            output_file << avgs[k][i] << ", " errs[k][i];
+            if (k != datatype_size - 1) { output_file << "\t"; }
+        }
+        output_file << "\n";
+    }
+
+    output_file.close();
+}
 
 template <class ModelType>
 void stiffness_run_pt(ModelType *model, vector<float> *T, int steps_per_run, 

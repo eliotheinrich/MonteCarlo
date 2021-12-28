@@ -5,7 +5,9 @@ from matplotlib import cm
 import sys
 import os
 
+
 kB = 0.0816
+kB = 1
 
 # Expected / measured
 susc_factor = 7.88/11.74
@@ -38,87 +40,60 @@ def load_susceptibility_data(filename):
     return T, X*susc_factor, dX*susc_factor, E, dE
 
 
-def curie_fit(Ts, X1, X2, X3, plot=False):
+def curie_fit(T, X):
     def curie_weiss(T, C, Tc):
         return (T - Tc)/C
 
-    N = len(X1)//2
+    N = len(X)//2
 
-    popt, _ = spo.curve_fit(curie_weiss, Ts[N:], 1/X1[N:])
-    (C1, T1c) = popt
-    popt, _ = spo.curve_fit(curie_weiss, Ts[N:], 1/X2[N:])
-    (C2, T2c) = popt
-    popt, _ = spo.curve_fit(curie_weiss, Ts[N:], 1/X3[N:])
-    (C3, T3c) = popt
+    popt, _ = spo.curve_fit(curie_weiss, T[N:], 1/X[N:])
+    (C, Tc) = popt
 
-    C_avg = np.mean([C1, C2, C3])
+    return C, Tc
 
-    if plot:
-        plt.plot(Ts, 1/X1, 'k-')
-        plt.plot(Ts, (Ts - T1c)/C1, 'k--')
-        plt.plot(Ts, 1/X2, 'r-')
-        plt.plot(Ts, (Ts - T2c)/C2, 'r--')
-        plt.plot(Ts, 1/X3, 'b-')
-        plt.plot(Ts, (Ts - T3c)/C3, 'b--')
-        plt.xlabel(r'$T$ (K)', fontsize=20)
-        plt.ylabel(r'$\chi^{-1}$', fontsize=20)
-        plt.show()
+def plot_susceptibility_curve(T, X, dX, ax, **kwargs):
+    print(dX)
+    ax.errorbar(T, X, yerr = dX, **kwargs)
 
-    return C_avg, T1c, T2c, T3c
+def plot_energy_curve(T, E, dE, ax, *args, **kwargs):
+    ax.errorbar(T, E, yerr = dE, *args, **kwargs)
 
-
-
-def plot_susceptibility_curve(T, X1, X2, X3, dX1, dX2, dX3, ax = None):
-    ax_none = ax is None
-    if ax_none:
-        ax = plt.gca()
-
-    ax.errorbar(T, X1, yerr = dX1, color = 'k', linestyle = '-', label = r'$B \parallel ab$')
-    ax.errorbar(T, X2, yerr = dX2, color = 'r', linestyle = '-', label = r'$B \parallel a$')
-    ax.errorbar(T, X3, yerr = dX3, color = 'b', linestyle = '-', label = r'$B \parallel c$')
-    if ax_none:
-        ax.set_xlabel(r'$T$ (K)', fontsize=20)
-        ax.set_ylabel(r'$\chi$', fontsize=20)
-        ax.legend()
-
-def plot_energy_curve(T, E1, E2, E3, dE1, dE2, dE3, ax = None):
-    ax_none = ax is None
-    if ax_none:
-        ax = plt.gca()
-
-    ax.errorbar(T, E1, yerr = dE1, color = 'k', linestyle = '-', label = r'$B \parallel ab$')
-    ax.errorbar(T, E2, yerr = dE2, color = 'r', linestyle = '-', label = r'$B \parallel a$')
-    ax.errorbar(T, E3, yerr = dE3, color = 'b', linestyle = '-', label = r'$B \parallel c$')
-    if ax_none:
-        ax.set_xlabel(r'$T$ (K)', fontsize=20)
-        ax.set_ylabel(r'$U(T)$', fontsize=20)
-        ax.legend()
-
-def plot_heat_capacity(T, dE1, dE2, dE3, ax = None, nmin = 0):
-    ax_none = ax is None
-    if ax_none:
-        ax = plt.gca()
-
-    ax.plot(T[nmin:], ((dE1/T)**2)[nmin:]/kB, 'k-', label=r'$B \parallel ab$')
-    ax.plot(T[nmin:], ((dE2/T)**2)[nmin:]/kB, 'r-', label=r'$B \parallel a$')
-    ax.plot(T[nmin:], ((dE3/T)**2)[nmin:]/kB, 'b-', label=r'$B \parallel c$')
-    if ax_none:
-        ax.set_xlabel(r'$T$ (K)', fontsize=20)
-        ax.set_ylabel(r'$E$', fontsize=20)
-        ax.legend()
+def plot_heat_capacity(T, dE, nmin, ax, *args, **kwargs):
+    ax.plot(T[nmin:], ((dE/T)**2)[nmin:]/kB, *args, **kwargs)
 
 if __name__ == "__main__":
     os.chdir(sys.argv[1])
 
-    T, X1, dX1, E1, dE1 = load_susceptibility_data("SusceptibilityCurve1.txt")
-    T, X2, dX2, E2, dE2 = load_susceptibility_data("SusceptibilityCurve2.txt")
-    T, X3, dX3, E3, dE3 = load_susceptibility_data("SusceptibilityCurve3.txt")
+    if len(os.listdir()) == 2:
+        T, X, dX, E, dE = load_susceptibility_data("SusceptibilityCurve.txt")
 
-    #C, _, _, _ = curie_fit(T, X1, X2, X3)
+        fig, axs = plt.subplots(nrows=3, ncols=1, sharex=True)
+        plot_susceptibility_curve(T, X, dX, axs[0], color='k', linestyle='-')
+        axs[0].set_ylabel(r'$\chi$(T)', fontsize=16)
+        plot_energy_curve(T, E, dE, axs[1], color='k', linestyle='-')
+        axs[1].set_ylabel('u(T)/J', fontsize=16)
+        plot_heat_capacity(T, dE, 0, axs[2], 'k-')
+        axs[2].set_ylabel('c(T)/$k_B$', fontsize=16)
+        axs[2].set_xlabel('T/J', fontsize=16)
 
-    plot_susceptibility_curve(T, X1, X2, X3, dX1, dX2, dX3)
-    plt.show()
-    plt.show()
+        plt.subplots_adjust(wspace=0, hspace=0)
+        plt.show()
+
+    else:
+        T, X1, dX1, E1, dE1 = load_susceptibility_data("SusceptibilityCurve1.txt")
+        T, X2, dX2, E2, dE2 = load_susceptibility_data("SusceptibilityCurve2.txt")
+        T, X3, dX3, E3, dE3 = load_susceptibility_data("SusceptibilityCurve3.txt")
+
+        #C, _, _, _ = curie_fit(T, X1, X2, X3)
+
+        kwargs1 = {'color':'k', 'linestyle':'-', 'label':r'$B \parallel ab$'}
+        kwargs2 = {'color':'r', 'linestyle':'-', 'label':r'$B \parallel a$'}
+        kwargs3 = {'color':'b', 'linestyle':'-', 'label':r'$B \parallel c$'}
+        ax = plt.gca()
+        plot_susceptibility_curve(T, X, dX, ax, kwargs1)
+        plot_susceptibility_curve(T, X, dX, ax, kwargs2)
+        plot_susceptibility_curve(T, X, dX, ax, kwargs3)
+        plt.show()
 
 
 
