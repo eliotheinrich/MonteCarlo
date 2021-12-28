@@ -1,9 +1,9 @@
-g++ -O3 -std=c++11 GenerateConfigs.cpp -o output
+g++ -pthread -I ~/lib -O3 -std=c++11 GenerateConfigs.cpp -o output
 
 rm data/*
-for L in 8 ; do
+for L in 20; do
     foldername=data
-    ./output $foldername $L 4
+    ./output $foldername $L 30
 done
 
 rm output

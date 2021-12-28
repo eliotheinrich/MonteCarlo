@@ -128,24 +128,24 @@ void stiffness_run(ModelType *model, vector<float> *T, int num_runs,
 
     vector<future<void>> results(resolution);
 
-    auto twist_samples = [num_runs, steps_per_run, num_samples, steps_per_sample](int id, int i, 
-                                                                                  MonteCarlo<ModelType> *m, float T, 
-                                                                                  vector<float> *dE_samples, 
-                                                                                  vector<float> *ddE_samples) {
+    auto susceptibility_samples = [num_runs, steps_per_run, num_samples, steps_per_sample](int id, int i, 
+                                                                                           MonteCarlo<ModelType> *m, float T, 
+                                                                                           vector<float> *dE, 
+                                                                                           vector<float> *ddE) {
         for (int n = 0; n < num_runs; n++) {
             m->model->randomize_spins();
             m->steps(steps_per_run, T);
             for (int i = 0; i < num_samples; i++) {
                 auto sample = m->model->twist_stiffness();
+                (*dE)[n] = sample[0];
+                (*ddE)[n] = sample[1];
                 m->steps(steps_per_sample, T);
-                (*dE_samples)[n] = sample[0];
-                (*ddE_samples)[n] = sample[1];
             }
         }
     };
 
     for (int i = 0; i < resolution; i++) {
-        results[i] = threads.push(twist_samples, i, models[i], (*T)[i], &dE[i], &ddE[i]);
+        results[i] = threads.push(susceptibility_samples, i, models[i], (*T)[i], &dE[i], &ddE[i]);
     }
 
     vector<float> avg_dE(resolution);
@@ -157,8 +157,8 @@ void stiffness_run(ModelType *model, vector<float> *T, int num_runs,
     for (int i = 0; i < resolution; i++) {
         avg_dE[i] = avg(&dE[i]);
         avg_ddE[i] = avg(&ddE[i]);
-        err_dE[i] = stdev(&dE[i]);
-        err_ddE[i] = stdev(&ddE[i]);
+        err_dE[i] = stdev(&dE[i], avg_dE[i]);
+        err_ddE[i] = stdev(&ddE[i], avg_ddE[i]);
     }
 
     ofstream output_file(filename);
@@ -167,7 +167,7 @@ void stiffness_run(ModelType *model, vector<float> *T, int num_runs,
     output_file << resolution << endl;
 
     for (int i = 0; i < resolution; i++) {
-        output_file << (*T)[i] << "\t" << avg_dE[i] << "\t" << err_dE[i] << "\t" << avg_ddE[i] << "\t" << err_ddE[i] << endl;
+        output_file << (*T)[i] << "\t" << avg_dE[i] << "\t" << err_ddE[i] << "\t" << avg_dE[i] << "\t" << err_ddE[i] << endl;
     }
 
     output_file.close();

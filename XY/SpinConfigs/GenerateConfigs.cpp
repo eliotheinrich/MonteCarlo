@@ -10,19 +10,20 @@ using namespace Eigen;
 int main(int argc, char* argv[]) {
     srand((unsigned)time( NULL ));
 
+    string foldername = argv[1];
     int N = stoi(argv[2]);
-    cout << "N = " << N << endl;
     const int L = 1;
     const float J = 1.;
     const float A = 0.3;
 
     const int MCStep = N*N*L;
+    cout << "N = " << N << endl;
 
     TrigonalXYModel *model = new TrigonalXYModel(N, L, J, A);
 
     const float Tmax = 3.;
     const float Tmin = 0.1;
-    unsigned long long int resolution = 5;
+    unsigned long long int resolution = stoi(argv[3]);
 
     vector<float> T(resolution);
 
@@ -30,14 +31,11 @@ int main(int argc, char* argv[]) {
         T[i] = float(i)/resolution*Tmax + float(resolution - i)/resolution*Tmin;
     }
 
-    unsigned long long int equilibration_steps = 2000*MCStep;
-    unsigned long long int num_samples = 5;
-    unsigned long long int steps_per_sample = 10*MCStep;
+    unsigned long long int equilibration_steps = stoi(argv[4])*MCStep;
+    unsigned long long int num_samples = stoi(argv[5]);
+    unsigned long long int steps_per_sample = stoi(argv[6])*MCStep;
 
-    int num_threads = stoi(argv[3]);
-    string foldername = argv[1];
-
-    cout << num_threads << endl;
+    int num_threads = stoi(argv[7]);
 
     auto start = chrono::high_resolution_clock::now();
 

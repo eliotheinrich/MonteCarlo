@@ -345,7 +345,25 @@ class XYModel : virtual public MCModel {
             return E2 - E1;
         }
 
+        void save_spins(string filename) {
+            ofstream output_file;
+            output_file.open(filename);
+            output_file << N1 << "\t" << N2 << "\t" << N3 << "\t" << sl << endl;
+            for (int n1 = 0; n1 < N1; n1++) {
+                for (int n2 = 0; n2 < N2; n2++) {
+                    for (int n3 = 0; n3 < N3; n3++) {
+                        for (int s = 0; s < sl; s++) {
+                            output_file << "(" << spins[n1][n2][n3][s][0] << ", " << spins[n1][n2][n3][s][1] << ")";
+                            if (!(n1+1 == N1 && n2+1 == N2 && n3+1 == N3 && s+1 == sl)) { output_file << ","; }
+                        }
+                    }
+                }
+            }
+            output_file.close();
+        }
+
         // Saves current spin configuration
+        /*
         void save_spins(string filename) {
             ofstream output_file;
             output_file.open(filename);
@@ -353,8 +371,9 @@ class XYModel : virtual public MCModel {
             for (int n1 = 0; n1 < N1; n1++) {
                 for (int n2 = 0; n2 < N2; n2++) {
                     for (int n3 = 0; n3 < N3; n3++) {
-                        for (int s = 0; s<sl; s++) {
-                            output_file << "[" << acos(spins[n1][n2][n3][s][0]) << "]";
+                        output_file << "[";
+                        for (int s = 0; s < sl; s++) {
+                            output_file << "(" << spins[n1][n2][n3][s][0] << ", " << spins[n1][n2][n3][s] << ")";
                             if (s != sl - 1) {
                                 output_file << "\t";
                             }
@@ -367,6 +386,7 @@ class XYModel : virtual public MCModel {
             }
             output_file.close();
         }        
+        */
 };
 
 template <class XYModel>

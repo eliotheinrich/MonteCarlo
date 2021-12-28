@@ -11,15 +11,15 @@ import sys
 def load_texture(filename):
     with open(filename, 'r') as f:
         firstline = f.readline()
-        (num_sublattices, N) = np.array([int(i.strip()) for i in firstline.split('\t')])[:2]
-        spins = np.zeros((N,N,num_sublattices,2))
+        (N1, N2, N3, sl) = np.array([int(i.strip()) for i in firstline.split('\t')])
 
-        for i,line in enumerate(f.readlines()):
-            data1 = line.split(',')
-            data2 = [re.findall("\[(.*?)\]", unitcell) for unitcell in data1]
-            for j in range(N):
-                for s in range(num_sublattices):
-                    spins[i,j,s] = np.array([np.cos(float(data2[j][s])), np.sin(float(data2[j][s]))])
+        secondline = f.readline()
+
+        data = secondline.split(',')
+        data = np.array([float(x.replace('(', '').replace(')', '')) for x in data])
+        spins = data.reshape(N1, N2, N3, sl, 2)
+
+        #spins[i,j,s] = np.array([np.cos(float(data2[j][s])), np.sin(float(data2[j][s]))])
 
         return spins
 
@@ -37,11 +37,7 @@ def find_vortices(spins, layer):
 
     for i in range(N):
         for j in range(N):
-            φ[i,j] = np.arctan2(spins[i,j,layer,1], spins[i,j,layer,0])
-            #print(φ[i,j])
-
-    #print(np.max(φ))
-    #print(np.min(φ))
+            φ[i,j] = np.arctan2(spins[i,j,layer,0,1], spins[i,j,layer,0,0])
 
     for i in range(N):
         for j in range(N):
@@ -79,7 +75,7 @@ def display_trigonal_spins(ax, spins, layer, color=None):
             ys[i*N + j] = y
 
 
-            spin = spins[i,j,layer,:]
+            spin = spins[i,j,layer,0,:]
             spinxs[i*N + j] = spin[0]
             spinys[i*N + j] = spin[1]
 
