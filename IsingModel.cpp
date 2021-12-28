@@ -32,10 +32,13 @@ class IsingModel : virtual public MCModel {
         int N1;
         int N2;
         int N3;
+        int V;
+
         float acceptance;
         vector<vector<vector<float>>> spins;
 
         // Mutation being considered is stored as an attribute of the model
+        LatticeIterator* iter;
         IsingMutation mut;
 
         IsingModel() {}
@@ -44,7 +47,11 @@ class IsingModel : virtual public MCModel {
             this->N1 = N1;
             this->N2 = N2;
             this->N3 = N3;
+            this->V = N1*N2*N3;
+
             this->spins = vector<vector<vector<float>>>(this->N1, vector<vector<float>>(this->N2, vector<float>(this->N3)));
+
+            this->iter = new LatticeIterator(N1, N2, N3, 1);
 
             this->randomize_spins();
 
@@ -81,13 +88,14 @@ class IsingModel : virtual public MCModel {
 
         void generate_mutation() {
             // Randomly select a site to mutate
-            int rand_n1 = rand() % N1;
-            int rand_n2 = rand() % N2;
-            int rand_n3 = rand() % N3;
+            int n1 = iter->n1;
+            int n2 = iter->n2;
+            int n3 = iter->n3;
+            iter->next();
 
-            this->mut.n1 = rand_n1;
-            this->mut.n2 = rand_n2;
-            this->mut.n3 = rand_n3;
+            this->mut.n1 = n1;
+            this->mut.n2 = n2;
+            this->mut.n3 = n3;
         }
 
         void accept_mutation() {
@@ -140,29 +148,6 @@ class IsingModel : virtual public MCModel {
             }
             output_file.close();
         }        
-};
-
-class MagnetizationLogItem : public LogItem {
-    // Stores total magnetization, acceptance rate, and energy
-    public:
-        float magnetization;
-        float acceptance;
-        float energy;
-
-        MagnetizationLogItem() {
-            magnetization = 0.;
-            energy = 0.;
-        }
-
-        MagnetizationLogItem(MonteCarlo *m, IsingModel *model) {
-            magnetization = model->get_magnetization();
-            energy = m->energy;
-        }
-
-        friend ostream& operator<<(ostream& os, const MagnetizationLogItem& logitem) {
-            os << logitem.magnetization << "\t" << logitem.energy;
-            return os;
-        }
 };
 
 #endif

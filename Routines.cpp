@@ -137,8 +137,8 @@ void stiffness_run(ModelType *model, vector<float> *T, int num_runs,
             m->steps(steps_per_run, T);
             for (int i = 0; i < num_samples; i++) {
                 auto sample = m->model->twist_stiffness();
-                (*dE)[n] = sample[0];
-                (*ddE)[n] = sample[1];
+                (*dE)[n*num_samples + i] = sample[0];
+                (*ddE)[n*num_samples + i] = sample[1];
                 m->steps(steps_per_sample, T);
             }
         }
@@ -146,6 +146,10 @@ void stiffness_run(ModelType *model, vector<float> *T, int num_runs,
 
     for (int i = 0; i < resolution; i++) {
         results[i] = threads.push(susceptibility_samples, i, models[i], (*T)[i], &dE[i], &ddE[i]);
+    }
+
+    for (int i = 0; i < resolution; i++) {
+        results[i].get();
     }
 
     vector<float> avg_dE(resolution);
@@ -298,6 +302,10 @@ void susceptibility_run(ModelType *model, vector<float> *T, int num_runs,
 
     for (int i = 0; i < resolution; i++) {
         results[i] = threads.push(susceptibility_samples, i, models[i], (*T)[i], &X[i], &E[i]);
+    }
+
+    for (int i = 0; i < resolution; i++) {
+        results[i].get();
     }
 
     vector<float> avg_X(resolution);

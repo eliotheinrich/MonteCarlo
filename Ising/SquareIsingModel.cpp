@@ -25,6 +25,18 @@ class SquareIsingModel : public IsingModel {
             this->B = B;
         }
 
+        SquareIsingModel *clone() {
+            SquareIsingModel *new_model = new SquareIsingModel(N, L, J, B);
+            for (int n1 = 0; n1 < N; n1++) {
+                for (int n2 = 0; n2 < N; n2++) {
+                    for (int n3 = 0; n3 < L; n3++) {
+                        new_model->spins[n1][n2][n3] = this->spins[n1][n2][n3];
+                    }
+                }
+            }
+            return new_model;
+        }
+
         const float onsite_energy(int n1, int n2, int n3) {
             float E = 0;
 
@@ -46,8 +58,6 @@ class SquareIsingModel : public IsingModel {
             E -= J*this->spins[n1][n2][n3]*this->spins[n1][(n2+1)%N][n3];
             E -= J*this->spins[n1][n2][n3]*this->spins[n1][mod(n2-1,N)][n3];
 
-//            E -= J*this->spins[n1][n2][n3]*this->spins[n1][n2][(n3+1)%L];
-//            E -= J*this->spins[n1][n2][n3]*this->spins[n1][n2][mod(n3-1,L)];
 
             return 0.5*E;
         }

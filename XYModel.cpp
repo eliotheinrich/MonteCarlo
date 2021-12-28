@@ -26,47 +26,6 @@ struct Bond {
     function<float(Vector2f, Vector2f)> bondfunc;
 };
     
-class LatticeIterator {
-    public:
-        int n1; int n2; int n3; int s;
-
-        int N1; int N2; int N3; int sl;
-
-        int counter;
-        int t;
-
-        LatticeIterator(int N1, int N2, int N3, int sl) {
-            this->n1 = 0; this->n2 = 0; this->n3 = 0; this->s = 0;
-
-            this->N1 = N1; this->N2 = N2; this->N3 = N3; this->sl = sl;
-
-            this->counter = 0;
-        }
-
-        void next() {
-            counter++;
-
-            t = counter;
-            s = t % sl;
-            t = (t - s)/sl;
-            n1 = t % N1;
-            t = (t - n1)/N1;
-            n2 = t % N2;
-            t = (t - n2)/N2;
-            n3 = t % N3;
-
-            if (counter == N1*N2*N3*sl) {
-                counter = 1;
-            }
-        }
-
-        void reset() {
-            n1 = 0; n2 = 0; n3 = 0; sl = 0;
-            counter = 0;
-        }
-};
-
-
 class XYModel : virtual public MCModel {
     // Generic 3D XY model
     private:
