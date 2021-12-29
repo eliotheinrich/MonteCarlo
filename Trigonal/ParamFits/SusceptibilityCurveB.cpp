@@ -7,11 +7,11 @@
 using namespace std;
 using namespace Eigen;
 
-vector<float> susceptibility_sampling(TrigonalModel *model) {
+vector<float> susceptibility_sampler(TrigonalModel *model) {
     return vector<float>{
-                model->get_magnetization()/pow(model->B.norm(), 2),
-                model->energy()
-           }
+                static_cast<float>(model->get_magnetization().norm()/pow(model->B.norm(), 2)),
+                static_cast<float>(model->energy()/model->V)
+           };
 }
 
 
@@ -46,7 +46,6 @@ int main(int argc, char* argv[]) {
     float By = stof(paramss[8]);
     float Bz = stof(paramss[9]);
     Vector3f B; B << Bx, By, Bz;
-    cout << B << endl;
 
     getline(paramfile, line);
     getline(paramfile, line);
@@ -79,8 +78,8 @@ int main(int argc, char* argv[]) {
     auto start = chrono::high_resolution_clock::now();
 
 
-    susceptibility_run(susceptibility_sampling, model, &T, num_runs, steps_per_run, num_samples, steps_per_sample, num_threads,
-                                                               foldername + "/SusceptibilityCurve.txt");
+    sample_pt(susceptibility_sampler, model, &T, steps_per_run, num_samples, steps_per_sample, num_threads,
+                                                                 foldername + "/SusceptibilityCurve.txt");
 
     auto stop = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);

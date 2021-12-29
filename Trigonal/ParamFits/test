@@ -1,0 +1,11 @@
+num="3";
+g++ -I ~/lib -pthread -O3 -std=c++11 -I ~/lib MagnetizationCurveB.cpp -o "output$num"
+
+foldername=mT"$num";
+paramsname="$foldername/params.txt"
+rm -r "data/$foldername"
+mkdir "data/$foldername";
+./make_params "data/$paramsname" 20 1 0.64 0. 2.56 0. 0.45 0.4 0. 0. 80 5000 1000 20 1;
+"./output$num" "data/$foldername" "data/$paramsname" 0.41 4
+
+rm output"$num"

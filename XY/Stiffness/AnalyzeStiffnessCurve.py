@@ -23,7 +23,10 @@ def load_stiffness_data(filename):
         for i in range(res):
             line = f.readline()
 
-            (T[i], dE[i], err_dE[i], ddE[i], err_ddE[i]) = np.array([x.strip('\n') for x in line.split('\t')])
+            data = line.split('\t')
+            T[i] = float(data[0])
+            (dE[i], err_dE[i]) = (float(x) for x in data[1].split(','))
+            (ddE[i], err_ddE[i]) = (float(x) for x in data[2].split(','))
 
     ρ = (ddE - err_dE**2/T)/(L**2)
 

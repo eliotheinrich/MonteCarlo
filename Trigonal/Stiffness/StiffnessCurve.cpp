@@ -9,6 +9,10 @@
 using namespace std;
 using namespace Eigen;
 
+vector<double> twisting_sampler(TrigonalModel *model) {
+    return model->twist_stiffness();
+}
+
 int main(int argc, char* argv[]) {
     srand((unsigned)time( NULL ));
 
@@ -16,7 +20,6 @@ int main(int argc, char* argv[]) {
     int N = stoi(argv[2]);
     int num_threads = stoi(argv[3]);
 
-    cout << "num_threads = " << num_threads << endl;
     cout << "N = " << N << endl;
 
     const int L = N/2;
@@ -50,7 +53,7 @@ int main(int argc, char* argv[]) {
 
     auto start = chrono::high_resolution_clock::now();
 
-    stiffness_run(model, &T, num_runs, steps_per_run, num_samples, steps_per_sample, num_threads, filename);
+    sample_r(twisting_sampler, model, &T, num_runs, steps_per_run, num_samples, steps_per_sample, num_threads, filename);
 
     auto stop = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);

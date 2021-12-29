@@ -7,9 +7,9 @@
 using namespace std;
 using namespace Eigen;
 
-vector<float> susceptibility_sampler(TrigonalModel *model) {
+vector<float> magnetization_sampler(TrigonalModel *model) {
     return vector<float>{
-                static_cast<float>(model->get_magnetization().norm()/pow(model->B.norm(), 2)),
+                static_cast<float>(model->get_magnetization().norm()),
                 static_cast<float>(model->energy()/model->V)
            };
 }
@@ -84,12 +84,12 @@ int main(int argc, char* argv[]) {
 
     auto start = chrono::high_resolution_clock::now();
 
-    sample_pt(model1, susceptibility_sampler, &T, num_runs, steps_per_run, num_samples, steps_per_sample, num_threads,
-                                                               foldername + "/SusceptibilityCurve1.txt");
-    sample_pt(model2, susceptibility_sampler, &T, num_runs, steps_per_run, num_samples, steps_per_sample, num_threads,
-                                                               foldername + "/SusceptibilityCurve2.txt");
-    sample_pt(model3, susceptibility_sampler, &T, num_runs, steps_per_run, num_samples, steps_per_sample, num_threads,
-                                                               foldername + "/SusceptibilityCurve3.txt");
+    sample_pt(model1, magnetization_sampler, &T, num_runs, steps_per_run, num_samples, steps_per_sample, num_threads,
+                                                               foldername + "/MagnetizationCurve1.txt");
+    sample_pt(model2, magnetization_sampler, &T, num_runs, steps_per_run, num_samples, steps_per_sample, num_threads,
+                                                               foldername + "/MagnetizationCurve2.txt");
+    sample_pt(model3, magnetization_sampler, &T, num_runs, steps_per_run, num_samples, steps_per_sample, num_threads,
+                                                               foldername + "/MagnetizationCurve3.txt");
 
     auto stop = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
