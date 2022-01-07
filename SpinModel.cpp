@@ -180,8 +180,7 @@ class SpinModel : virtual public MCModel {
             double dE = (1./12.*Em2 - 2./3.*Em1 + 2./3.*E1 - 1./12.*E2)/alpha;
             double ddE = (-1./12.*Em2 + 4./3.*Em1 - 5./2.*E0 + 4./3.*E1 - 1./12.*E2)/(alpha*alpha);
             
-            //return vector<double>{dE, ddE};
-            return vector<double>{dE/2., ddE/2.};
+            return vector<double>{dE/(2.*V), ddE/(2*V)};
         }
 
         inline Vector3f get_magnetization(int s) {
@@ -203,6 +202,23 @@ class SpinModel : virtual public MCModel {
                 M += get_magnetization(s);
             }
             return M/(sl);
+        }
+
+        vector<vector<vector<vector<float>>>> correlation_function(int m1, int m2, int m3, int k) {
+            vector<vector<vector<vector<float>>>> Cij = vector<vector<vector<vector<float>>>>(N1, 
+                                                               vector<vector<vector<float>>>(N2, 
+                                                                      vector<vector<float>>(N3,
+                                                                             vector<float>(sl))));
+            for (int n1 = 0; n1 < N1; n1++) {
+                for (int n2 = 0; n2 < N2; n2++) {
+                    for (int n3 = 0; n3 < N3; n3++) {
+                        for (int s = 0; s < sl; s++) {
+                            Cij[n1][n2][n3][s] = spins[(m1 + n1)%N1][(m2 + n2)%N2][(m3 + n3)%N3][(s + k)%sl].dot(spins[m1][m2][m3][k]);
+                        }
+                    }
+                }
+            }
+            return Cij;
         }
 
         void over_relaxation_mutation(int n1, int n2, int n3, int s) {

@@ -1,4 +1,5 @@
 #include "../TrigonalXYModel.cpp"
+#include "../SquareXYModel.cpp"
 #include "../../Utility.cpp"
 #include "../../Routines.cpp"
 #include <iostream>
@@ -7,7 +8,7 @@
 using namespace std;
 using namespace Eigen;
 
-vector<double> twist_sampler(TrigonalXYModel *model) {
+vector<double> twist_sampler(SquareXYModel *model) {
     return model->twist_stiffness();
 }
 
@@ -25,14 +26,14 @@ int main(int argc, char* argv[]) {
 
     const int MCStep = N*N*L;
 
-    TrigonalXYModel *model = new TrigonalXYModel(N, L, J, A);
+    SquareXYModel *model = new SquareXYModel(N, L, J, 0., 0.);
 
     unsigned long long int resolution = 30;
     unsigned long long int num_runs = 5;
     unsigned long long int steps_per_run = 5000*MCStep;
 
-    unsigned long long int num_samples = 1000;
-    unsigned long long int steps_per_sample = 10*MCStep;
+    unsigned long long int num_samples = 100;
+    unsigned long long int steps_per_sample = 100*MCStep;
 
     vector<float> T(resolution);
 
@@ -44,7 +45,9 @@ int main(int argc, char* argv[]) {
 
     auto start = chrono::high_resolution_clock::now();
 
-    sample_pt(model, twist_sampler, &T, num_runs, steps_per_run, num_samples, steps_per_sample, num_threads, filename);
+    auto data = sample_r(twist_sampler, model, &T, 1, steps_per_run, num_samples, steps_per_sample, num_threads);
+    auto stats = summary_statistics(&data);
+    write_data(&data, &T, filename);
 
     auto stop = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);

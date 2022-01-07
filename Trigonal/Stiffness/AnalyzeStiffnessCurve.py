@@ -28,7 +28,11 @@ def load_stiffness_data(filename):
             (dE[i], err_dE[i]) = (float(x) for x in data[1].split(','))
             (ddE[i], err_ddE[i]) = (float(x) for x in data[2].split(','))
 
-    ρ = (ddE - err_dE**2/T)/(L**2*L/4)
+    ρ = ddE - err_dE**2/T
+
+    #plt.plot(T, err_dE**2)
+    #plt.title(f'L = {L}')
+    #plt.show()
 
     return L, T, ρ
 

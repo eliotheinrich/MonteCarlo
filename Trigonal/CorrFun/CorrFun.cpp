@@ -4,13 +4,39 @@
 #include <iostream>
 #include <math.h>
 
-#define BOLTZMANN_CONSTANT 0.08617
-
 using namespace std;
 using namespace Eigen;
 
-vector<double> twisting_sampler(TrigonalModel *model) {
-    return model->twist_stiffness();
+
+vector<float> Cij_sampler(TrigonalModel *model) {
+    vector<vector<vector<vector<float>>>> Cij = vector<vector<vector<vector<float>>>>(model->N1,
+                                                       vector<vector<vector<float>>>(model->N2,
+                                                              vector<vector<float>>(model->N3,
+                                                                     vector<float>(model->sl))));
+    vector<float> Cij_avg = vector<float>(model->V, 0);
+    LatticeIterator *iter1 = new LatticeIterator(model->N1, model->N2, model->N3, model->sl);
+    LatticeIterator *iter2 = new LatticeIterator(model->N1, model->N2, model->N3, model->sl);
+
+    int n1; int n2; int n3; int s;
+    int m1; int m2; int m3; int k;
+    for (int i = 0; i < model->V; i++) {
+        n1 = iter1->n1; n2 = iter1->n2; n3 = iter1->n3; s = iter1->s;
+        Cij = model->correlation_function(n1, n2, n3, s);
+
+        iter2->reset();
+        for (int j = 0; j < model->V; j++) {
+            m1 = iter2->n1; m2 = iter2->n2; m3 = iter2->n3; k = iter2->s;
+            Cij_avg[j] += Cij[m1][m2][m3][k];
+            iter2->next();
+        }
+        iter1->next();
+    }
+
+    for (int i = 0; i < model->V; i++) {
+        Cij_avg[i] = Cij_avg[i]/model->V;
+    }
+
+    return Cij_avg;
 }
 
 int main(int argc, char* argv[]) {
@@ -57,9 +83,11 @@ int main(int argc, char* argv[]) {
 
     auto start = chrono::high_resolution_clock::now();
 
-    auto data = sample_pt(twisting_sampler, model, &T, steps_per_run, num_samples, steps_per_sample, num_threads);
+    auto data = sample_r(Cij_sampler, model, &T, num_runs, steps_per_run, num_samples, steps_per_sample, num_threads);
     auto stats = summary_statistics(&data);
-    write_data(&data, &T, filename);
+    string header = to_string(model->N1) + "\t" + to_string(model->N2) + "\t" + to_string(model->N3);
+    write_data(&stats, &T, filename, header);
+
 
     auto stop = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);

@@ -77,19 +77,21 @@ int main(int argc, char* argv[]) {
     TrigonalModel *model3 = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B3);
 
     int num_threads = stoi(argv[4]);
-    unsigned long long int nsteps = 3*resolution*(steps_per_run + num_samples*steps_per_sample);
+    unsigned long long int nsteps = (long long) 3*resolution*(steps_per_run + num_samples*steps_per_sample);
 
     cout << "Number steps: " << nsteps << endl;
     cout << "Expected completion time: " << (long long) 2*nsteps/3300000./num_threads/60. << " minutes. " << endl;
 
     auto start = chrono::high_resolution_clock::now();
 
-    sample_pt(model1, susceptibility_sampler, &T, num_runs, steps_per_run, num_samples, steps_per_sample, num_threads,
-                                                               foldername + "/SusceptibilityCurve1.txt");
-    sample_pt(model2, susceptibility_sampler, &T, num_runs, steps_per_run, num_samples, steps_per_sample, num_threads,
-                                                               foldername + "/SusceptibilityCurve2.txt");
-    sample_pt(model3, susceptibility_sampler, &T, num_runs, steps_per_run, num_samples, steps_per_sample, num_threads,
-                                                               foldername + "/SusceptibilityCurve3.txt");
+    auto data1 = sample_pt(susceptibility_sampler, model1, &T, steps_per_run, num_samples, steps_per_sample, num_threads,
+    write_data(&data1, &T, foldername + "/SusceptibilityCurve1.txt");
+
+    auto data2 = sample_pt(susceptibility_sampler, model2, &T, steps_per_run, num_samples, steps_per_sample, num_threads,
+    write_data(&data2, &T, foldername + "/SusceptibilityCurve2.txt");
+
+    auto data3 = sample_pt(susceptibility_sampler, model3, &T, steps_per_run, num_samples, steps_per_sample, num_threads,
+    write_data(&data3, &T, foldername + "/SusceptibilityCurve3.txt");
 
     auto stop = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);

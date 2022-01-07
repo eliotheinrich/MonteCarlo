@@ -1,0 +1,13 @@
+cd ~/MonteCarlo/Trigonal/ParamFits/
+
+num="1";
+g++ -I ~/lib -pthread -O3 -std=c++11 -I ~/lib SusceptibilityCurveB.cpp -o "output$num"
+
+foldername=sT"$num";
+paramsname="$foldername/params.txt"
+rm -r "data/$foldername"
+mkdir "data/$foldername";
+./make_params "data/$paramsname" 20 20 0.64 0.05 2.56 0. 0.15 0. 0. 0.3 80 50 10 5 1;
+"./output$num" "data/$foldername" "data/$paramsname" 0.41 30 
+
+rm output"$num"

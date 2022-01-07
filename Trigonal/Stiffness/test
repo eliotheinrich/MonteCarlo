@@ -1,15 +1,9 @@
-outputfile=outputt
-path=data/test
+g++ -pthread -I ~/lib -O3 -std=c++11 StiffnessCurve.cpp -o output
 
-rm -r $path
-mkdir $path
-
-g++ -pthread -I ~/lib -O3 -std=c++11 StiffnessCurve.cpp -o $outputfile
-
-for L in 8; do
-    filename=$path/stiffness"$L".txt
-    ./$outputfile $filename $L 4
+for L in 16; do
+    filename=stiffness"$L".txt 
+    ./output $filename 30 $L 0.64 0. 2.56 0. 0.15 0. 0. 0. 50 100 10 100 1
 done
 
-rm $outputfile
+rm output
 

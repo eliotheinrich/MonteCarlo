@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
     TrigonalModel *model = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B);
 
     int num_threads = stoi(argv[4]);
-    unsigned long long int nsteps = 3*resolution*(steps_per_run + num_samples*steps_per_sample);
+    unsigned long long int nsteps = (long long) resolution*(steps_per_run + num_samples*steps_per_sample);
 
     cout << "Number steps: " << nsteps << endl;
     cout << "Expected completion time: " << (long long) 2*nsteps/3300000./num_threads/60. << " minutes. " << endl;
@@ -78,8 +78,9 @@ int main(int argc, char* argv[]) {
     auto start = chrono::high_resolution_clock::now();
 
 
-    sample_pt(magnetization_sampler, model, &T, steps_per_run, num_samples, steps_per_sample, num_threads,
-                                                                 foldername + "/MagnetizationCurve.txt");
+    auto data = sample_r(magnetization_sampler, model, &T, 1, steps_per_run, num_samples, steps_per_sample, num_threads);
+    auto stats = summary_statistics(&data);
+    write_data(&stats, &T, foldername + "/MagnetizationCurve.txt");
 
     auto stop = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);

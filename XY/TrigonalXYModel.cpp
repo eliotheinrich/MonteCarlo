@@ -64,7 +64,6 @@ class TrigonalXYModel : public XYModel {
             for (int n1 = 0; n1 < N; n1++) {
                 for (int n2 = 0; n2 < N; n2++) {
                     for (int n3 = 0; n3 < L; n3++) {
-                        phi[n1][n2][n3] = 0.;
                         phi[n1][n2][n3] = atan2(spins[n1][n2][n3][0][1], spins[n1][n2][n3][0][0]);
                     }
                 }
