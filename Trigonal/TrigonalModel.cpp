@@ -38,6 +38,19 @@ class TrigonalModel : public SpinModel {
             this->K3 = K3;
             this->B = B;
 
+
+            if (false) {
+                cout << "J1 = " << J1 << endl;
+                cout << "J2 = " << J2 << endl;
+                cout << "K1 = " << K1 << endl;
+                cout << "K2 = " << K2 << endl;
+                cout << "K3 = " << K3 << endl;
+
+                cout << "Bx = " << B[0] << endl;
+                cout << "By = " << B[1] << endl;
+                cout << "Bz = " << B[2] << endl;
+            }
+
             this->R << sqrt(3)/2., -0.5, 0.,
                        0.5, sqrt(3)/2., 0.,
                        0., 0., 1.;
@@ -128,17 +141,18 @@ class TrigonalModel : public SpinModel {
                 iter->next();
             }
             
-            if (mut_counter % (N*N*L*sl) == 0) {
+            if (mut_counter % V == 0) {
                 mut_counter = 0;
                 mut_type++;
             }
 
-            if (mut_type < 4) {
+            if (mut_type < 10) {
                 over_relaxation_mutation(n1, n2, n3, s);
-            } else if (mut_type < 5) {
-                rotation_mutation(n1, n2, n3, s);
-            } else if (mut_type < 6) {
+            } else if (mut_type < 14) {
                 metropolis_mutation(n1, n2, n3, s);
+                //rotation_mutation(n1, n2, n3, s);
+            //} else if (mut_type < 7) {
+            //    metropolis_mutation(n1, n2, n3, s);
             } else {
                 metropolis_mutation(n1, n2, n3, s);
                 mut_type = 0;
@@ -186,5 +200,6 @@ class TrigonalModel : public SpinModel {
 
             return E;
         }
+
 };
 

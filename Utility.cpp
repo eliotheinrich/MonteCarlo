@@ -125,7 +125,7 @@ class LatticeIterator {
         }
 
         void reset() {
-            n1 = 0; n2 = 0; n3 = 0; sl = 0;
+            n1 = 0; n2 = 0; n3 = 0; s = 0;
             counter = 0;
         }
 };

@@ -64,7 +64,6 @@ class TrigonalXYModel : public XYModel {
             for (int n1 = 0; n1 < N; n1++) {
                 for (int n2 = 0; n2 < N; n2++) {
                     for (int n3 = 0; n3 < L; n3++) {
-                        phi[n1][n2][n3] = 0.;
                         phi[n1][n2][n3] = atan2(spins[n1][n2][n3][0][1], spins[n1][n2][n3][0][0]);
                     }
                 }
@@ -90,7 +89,6 @@ class TrigonalXYModel : public XYModel {
         const float onsite_energy(int n1, int n2, int n3, int s) {
             float phi = atan2(spins[n1][n2][n3][s][1], spins[n1][n2][n3][s][0]);
             return A*cos(6*phi);
-            //return 0.;
         }
 
         const float bond_energy(int n1, int n2, int n3, int s) {

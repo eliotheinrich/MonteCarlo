@@ -86,9 +86,9 @@ if __name__ == "__main__":
         kwargs2 = {'color':'r', 'linestyle':'-', 'label':r'$B \parallel a$'}
         kwargs3 = {'color':'b', 'linestyle':'-', 'label':r'$B \parallel c$'}
         ax = plt.gca()
-        plot_susceptibility_curve(T, X, dX, ax, kwargs1)
-        plot_susceptibility_curve(T, X, dX, ax, kwargs2)
-        plot_susceptibility_curve(T, X, dX, ax, kwargs3)
+        plot_susceptibility_curve(T, X1, dX1, ax, **kwargs1)
+        plot_susceptibility_curve(T, X2, dX2, ax, **kwargs2)
+        plot_susceptibility_curve(T, X3, dX3, ax, **kwargs3)
         plt.show()
 
 

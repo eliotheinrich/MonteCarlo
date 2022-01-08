@@ -32,16 +32,16 @@ class MCModel {
         virtual MCModel* clone()=0;
 };
 
-float const_T(int n, int n_max, float T_min, float T_max) {
-    return 0.5*(T_max + T_min);
+float const_T(int n, int n_max, float Ti, float Tf) {
+    return 0.5*(Tf + Ti);
 }
 
-float trig_T(int n, int n_max, float T_min, float T_max) {
-    return T_max + 0.5*(T_min - T_max)*(1 - cos(n*PI/n_max));
+float trig_T(int n, int n_max, float Ti, float Tf) {
+    return Tf + 0.5*(Ti - Tf)*(1 - cos(n*PI/n_max));
 }
 
-float linear_T(int n, int n_max, float T_min, float T_max) {
-    return T_min + (T_max - T_min)*(n_max - n)/float(n_max);
+float linear_T(int n, int n_max, float Ti, float Tf) {
+    return Ti + (Tf - Ti)*(n_max - n)/float(n_max);
 }
 
 template<class MCModel>
@@ -64,18 +64,6 @@ class MonteCarlo {
             this->energy = model->energy();
             this->r.seed(rand());
         }
-
-        template<class A>
-        vector<A> sample(function<A(MCModel*)> f, float T, int num_samples, int steps_per_sample) {
-            vector<A> samples(num_samples);
-            for (int i = 0; i < num_samples; i++) {
-                samples[i] = f(model);
-                steps(steps_per_sample, T);
-            }
-
-            return samples;
-        }
-
 
         void steps(int nsteps, float T) {
             // Performs MC simulation
@@ -108,19 +96,19 @@ class MonteCarlo {
 // run_MC with everything
 template <class MCModel, class A>
 vector<A> run_MC(MonteCarlo<MCModel> *m, int nsteps, string cooling,
-                                                     float T_max,
-                                                     float T_min,
+                                                     float Ti,
+                                                     float Tf,
                                                      int num_updates, 
                                                      function<A(MCModel*)> f) {
 
     // Establish cooling schedule
-    float (*update_T)(int n, int n_max, float T_min, float T_max);
+    float (*update_T)(int n, int n_max, float Ti, float Tf);
     if (cooling == "auto") {
-        T_min = T_max;
+        Ti = Tf;
         update_T = *const_T;
     } else {
-        if (T_max == -1 || T_min == -1) {
-            cout << "Need to supply T_max and T_min!" << endl;
+        if (Ti == -1 || Tf == -1) {
+            cout << "Need to supply Ti and Tf!" << endl;
         }
         if (cooling == "trig") {
             update_T = *trig_T;
@@ -136,7 +124,7 @@ vector<A> run_MC(MonteCarlo<MCModel> *m, int nsteps, string cooling,
 
     float T;
     for (int i = 0; i < num_updates; i++) {
-        T = update_T(i, num_updates, T_min, T_max);
+        T = update_T(i, num_updates, Ti, Tf);
         m->steps(update_freq, T); 
 
         log[i] = f(m->model);
@@ -154,8 +142,8 @@ void run_MC(MonteCarlo<MCModel> *m, int nsteps, float T) {
 
 // run_MC with cooling schedule
 template <class MCModel>
-void run_MC(MonteCarlo<MCModel> *m, int nsteps, string cooling, float Tmin, float Tmax, int num_updates = 100) {
-    run_MC(m, nsteps, cooling, Tmin, Tmax, num_updates, function<int(MCModel*)>([](MCModel* g) { return 0; }));
+void run_MC(MonteCarlo<MCModel> *m, int nsteps, string cooling, float Ti, float Tf, int num_updates = 100) {
+    run_MC(m, nsteps, cooling, Ti, Tf, num_updates, function<int(MCModel*)>([](MCModel* g) { return 0; }));
 }
 
 // run_MC with logging function

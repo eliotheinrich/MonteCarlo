@@ -19,13 +19,12 @@ void exchange(vector<MonteCarlo<ModelType>*> *models, vector<float> *T) {
     }
 }
 
-template <class ModelType, class dtype>
-void sample_pt(vector<dtype> sampling_func(ModelType*), ModelType *model, vector<float> *T, 
-                                                        int steps_per_run, 
-                                                        int num_samples, 
-                                                        int steps_per_sample,
-                                                        int num_threads,
-                                                        string filename) {
+template <class ModelType, class A>
+vector<vector<A>> sample_pt(A sampling_func(ModelType*), ModelType *model, vector<float> *T, 
+                                                                 int steps_per_run, 
+                                                                 int num_samples, 
+                                                                 int steps_per_sample,
+                                                                 int num_threads) {
 
     int resolution = T->size();
 
@@ -36,8 +35,7 @@ void sample_pt(vector<dtype> sampling_func(ModelType*), ModelType *model, vector
         models[i]->model->randomize_spins();
     }
 
-    int dtype_size = sampling_func(model).size();
-    vector<vector<vector<dtype>>> arr = vector<vector<vector<dtype>>>(resolution, vector<vector<dtype>>(dtype_size, vector<dtype>(num_samples)));
+    vector<vector<A>> arr = vector<vector<A>>(resolution, vector<A>(num_samples));
 
     ctpl::thread_pool threads(num_threads);
 
@@ -57,14 +55,12 @@ void sample_pt(vector<dtype> sampling_func(ModelType*), ModelType *model, vector
         results[i].get();
     }
 
-    auto take_samples = [steps_per_sample, dtype_size, sampling_func](int id, int i, int n,
-                                                                         MonteCarlo<ModelType> *m, float T, 
-                                                                         vector<vector<dtype>> *arr_i) {
+    auto take_samples = [steps_per_sample, sampling_func](int id, int i, int n,
+                                                                  MonteCarlo<ModelType> *m, float T, 
+                                                                  vector<A> *arr_i) {
         m->steps(steps_per_sample, T);
-        auto sample = sampling_func(m->model);
-        for (int k = 0; k < dtype_size; k++) {
-            (*arr_i)[k][n] = sample[k];
-        }
+        A sample = sampling_func(m->model);
+        (*arr_i)[n] = sample;
     };
 
     for (int n = 0; n < num_samples; n++) {
@@ -80,41 +76,16 @@ void sample_pt(vector<dtype> sampling_func(ModelType*), ModelType *model, vector
         exchange(&models, T);
     }
 
-    vector<vector<dtype>> avgs(resolution, vector<dtype>(dtype_size));
-    vector<vector<dtype>> errs(resolution, vector<dtype>(dtype_size));
-
-    for (int i = 0; i < resolution; i++) {
-        for (int k = 0; k < dtype_size; k++) {
-            avgs[i][k] = avg(&arr[i][k]);
-            errs[i][k] = stdev(&arr[i][k], avgs[i][k]);
-        }
-    }
-
-    ofstream output_file(filename);
-
-    // Write header
-    output_file << resolution << endl;
-
-    for (int i = 0; i < resolution; i++) {
-        output_file << (*T)[i] << "\t";
-        for (int k = 0; k < dtype_size; k++) {
-            output_file << avgs[i][k] << ", " << errs[i][k];
-            if (k != dtype_size - 1) { output_file << "\t"; }
-        }
-        output_file << "\n";
-    }
-
-    output_file.close();
+    return arr;
 }
 
-template <class ModelType, class dtype>
-void sample_r(vector<dtype> sampling_func(ModelType*), ModelType *model, vector<float> *T, 
+template <class ModelType, class A>
+vector<vector<A>> sample_r(A sampling_func(ModelType*), ModelType *model, vector<float> *T, 
                                                         int num_runs,
                                                         int steps_per_run, 
                                                         int num_samples, 
                                                         int steps_per_sample,
-                                                        int num_threads,
-                                                        string filename) {
+                                                        int num_threads) {
 
     int resolution = T->size();
 
@@ -125,10 +96,7 @@ void sample_r(vector<dtype> sampling_func(ModelType*), ModelType *model, vector<
         models[i]->model->randomize_spins();
     }
 
-    int dtype_size = sampling_func(model).size();
-    vector<vector<vector<dtype>>> arr = vector<vector<vector<dtype>>>(resolution, 
-                                               vector<vector<dtype>>(dtype_size, 
-                                                      vector<dtype>(num_runs*num_samples)));
+    vector<vector<A>> arr = vector<vector<A>>(resolution, vector<A>(num_runs*num_samples));
 
     ctpl::thread_pool threads(num_threads);
 
@@ -148,17 +116,15 @@ void sample_r(vector<dtype> sampling_func(ModelType*), ModelType *model, vector<
         results[i].get();
     }
 
-    auto take_samples = [num_samples, steps_per_sample, num_runs, steps_per_run, dtype_size, sampling_func](int id, int i,
-                                                                                   MonteCarlo<ModelType> *m, float T, 
-                                                                                   vector<vector<dtype>> *arr_i) {
+    auto take_samples = [num_samples, steps_per_sample, num_runs, steps_per_run, sampling_func](int id, int i,
+                                                                                    MonteCarlo<ModelType> *m, float T, 
+                                                                                    vector<A> *arr_i) {
         for (int n = 0; n < num_runs; n++) {
             m->model->randomize_spins();
             m->steps(steps_per_run, T);
             for (int j = 0; j < num_samples; j++) {
-                auto sample = sampling_func(m->model);
-                for (int k = 0; k < dtype_size; k++) {
-                    (*arr_i)[k][n*num_samples + j] = sample[k];
-                }
+                A sample = sampling_func(m->model);
+                (*arr_i)[n*num_samples + j] = sample;
                 m->steps(steps_per_sample, T);
             }
         }
@@ -173,25 +139,51 @@ void sample_r(vector<dtype> sampling_func(ModelType*), ModelType *model, vector<
         results[i].get();
     }
 
-    vector<vector<dtype>> avgs(resolution, vector<dtype>(dtype_size));
-    vector<vector<dtype>> errs(resolution, vector<dtype>(dtype_size));
+    return arr;
+}
+
+template <class dtype>
+vector<vector<vector<dtype>>> summary_statistics(vector<vector<vector<dtype>>> *data) {
+    int resolution = (*data).size();
+    int num_samples = (*data)[0].size();
+    int dtype_size = (*data)[0][0].size();
+
+    vector<vector<vector<dtype>>> arr(resolution, vector<vector<dtype>>(2, vector<dtype>(dtype_size)));
 
     for (int i = 0; i < resolution; i++) {
         for (int k = 0; k < dtype_size; k++) {
-            avgs[i][k] = avg(&arr[i][k]);
-            errs[i][k] = stdev(&arr[i][k], avgs[i][k]);
+            for (int n = 0; n < num_samples; n++) {
+                arr[i][0][k] += (*data)[i][n][k]/num_samples;
+            }
         }
     }
+
+    for (int i = 0; i < resolution; i++) {
+        for (int k = 0; k < dtype_size; k++) {
+            for (int n = 0; n < num_samples; n++) {
+                arr[i][1][k] += pow((*data)[i][n][k] - arr[i][0][k], 2)/num_samples;
+            }
+            arr[i][1][k] = sqrt(arr[i][1][k]);
+        }
+    }
+
+    return arr;
+}
+
+template <class dtype>
+void write_data(vector<vector<vector<dtype>>> *data, vector<float> *T, string filename, string header = "") {
+    int resolution = (*data).size();
+    int dtype_size = (*data)[0][0].size();
 
     ofstream output_file(filename);
 
     // Write header
-    output_file << resolution << endl;
+    output_file << resolution << "\t" << header << "\n";
 
     for (int i = 0; i < resolution; i++) {
         output_file << (*T)[i] << "\t";
         for (int k = 0; k < dtype_size; k++) {
-            output_file << avgs[i][k] << ", " << errs[i][k];
+            output_file << (*data)[i][0][k] << ", " << (*data)[i][1][k];
             if (k != dtype_size - 1) { output_file << "\t"; }
         }
         output_file << "\n";

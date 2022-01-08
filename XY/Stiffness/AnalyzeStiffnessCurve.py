@@ -28,7 +28,7 @@ def load_stiffness_data(filename):
             (dE[i], err_dE[i]) = (float(x) for x in data[1].split(','))
             (ddE[i], err_ddE[i]) = (float(x) for x in data[2].split(','))
 
-    ρ = (ddE - err_dE**2/T)/(L**2)
+    ρ = ddE - err_dE**2/T
 
     return L, T, ρ
 
@@ -107,8 +107,8 @@ if __name__ == "__main__":
 
 
     L0, T_KT = get_L0(L, T, ρ, 0.1, 2.0, 10000)
-#    L0 = 1/1.4
-#    T_KT = 0.88
+    L0 = 1/1.4
+    T_KT = 0.88
     print(L0, T_KT)
     plot_stiffness_curve(L, T, ρ, L0, T_KT)
 

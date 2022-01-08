@@ -58,7 +58,7 @@ class XYModel : virtual public MCModel {
         minstd_rand r;
 
         int mut_counter;
-        bool mutation_mode;
+        int mut_type;
 
         // Mutation being considered is stored as an attribute of the model
         XYMutation mut;
@@ -92,7 +92,7 @@ class XYModel : virtual public MCModel {
             this->r.seed(rand());
 
             this->mut_counter = 0;
-            this->mutation_mode = true;
+            this->mut_type = 0;
             this->random_selection = false;
         }
 
@@ -176,7 +176,7 @@ class XYModel : virtual public MCModel {
             double dE = (1./12.*Em2 - 2./3.*Em1 + 2./3.*E1 - 1./12.*E2)/alpha;
             double ddE = (-1./12.*Em2 + 4./3.*Em1 - 5./2.*E0 + 4./3.*E1 - 1./12.*E2)/(alpha*alpha);
             
-            return vector<double>{dE/2., ddE/2.};
+            return vector<double>{dE/(2.*V), ddE/(2.*V)};
         }
 
         inline Vector2f get_magnetization(int s) {
@@ -233,7 +233,6 @@ class XYModel : virtual public MCModel {
 
         void generate_mutation() {
             mut_counter++;
-            if ((mut_counter % (N1*N2*N3*sl))%5 == 0) { mutation_mode = false; mut_counter = 1; } else { mutation_mode = true; }
 
             int n1; int n2; int n3; int s;
             if (random_selection) {
@@ -249,11 +248,19 @@ class XYModel : virtual public MCModel {
                 s = iter->s;
                 iter->next();
             }
+            
+            if (mut_counter % V == 0) {
+                mut_counter = 0;
+                mut_type++;
+            }
 
-            if (mutation_mode) {
+            if (mut_type < 10) {
                 over_relaxation_mutation(n1, n2, n3, s);
+            } else if (mut_type < 14) {
+                metropolis_mutation(n1, n2, n3, s);
             } else {
                 metropolis_mutation(n1, n2, n3, s);
+                mut_type = 0;
             }
         }
 
