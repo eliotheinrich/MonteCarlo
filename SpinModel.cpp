@@ -103,21 +103,14 @@ class SpinModel : virtual public MCModel {
             spins[flat_idx(n1, n2, n3, s)] = v;
         }
 
-        inline void set_spin(int i, Vector3f v) {
-            spins[i] = v;
-        }
 
         inline const Vector3f get_spin(int n1, int n2, int n3, int s) {
             return spins[flat_idx(n1, n2, n3, s)];
         }
 
-        inline const Vector3f get_spin(int i) {
-            return spins[i];
-        }
-
         void randomize_spins() {
             for (int i = 0; i < V; i++) {
-                set_spin(i, Vector3f::Random(3).normalized());
+                spins[i] = Vector3f::Random(3).normalized();
             }
         }
 
@@ -164,8 +157,8 @@ class SpinModel : virtual public MCModel {
 
                     j = neighbors[i][n];
 
-                    S1 = get_spin(i);
-                    S2 = get_spin(j);
+                    S1 = spins[i];
+                    S2 = spins[j];
 
                     E0 += bonds[n].bondfunc(S1, S2);
 
@@ -373,26 +366,12 @@ class SpinModel : virtual public MCModel {
         void save_spins(string filename) {
             ofstream output_file;
             output_file.open(filename);
-            output_file << sl << "\t" << N1 << "\t" << N2 << "\t" << N3 << endl;
+            output_file << N1 << "\t" << N2 << "\t" << N3 << "\t" << sl << "\n";
             int i; Vector3f S;
-            for (int n1 = 0; n1 < N1; n1++) {
-                for (int n2 = 0; n2 < N2; n2++) {
-                    for (int n3 = 0; n3 < N3; n3++) {
-                        for (int s = 0; s < sl; s++) {
-                            i = flat_idx(n1, n2, n3, s);
-                            S = get_spin(i);
-                            output_file << "[" << S[0] << " " 
-                                               << S[1] << " " 
-                                               << S[2] << "]";
-                            if (s != sl - 1) {
-                                output_file << "\t";
-                            }
-                        }
-                        output_file << ",";
-                    }
-                    output_file << ";";
-                }
-                output_file << endl;
+            for (int i = 0; i < V; i++) {
+                S = spins[i];
+                output_file << S[0] << "\t" << S[1] << "\t" << S[2];
+                if (i < V-1) { output_file << "\t"; }
             }
             output_file.close();
         }

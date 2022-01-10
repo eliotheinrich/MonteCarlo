@@ -7,14 +7,14 @@ int main() {
     srand((unsigned)time( NULL ));
 
     const int N = 8;
-    const int L = 1;
+    const int L = 2;
     const float J1 = 1.;
-    const float J2 = 0.0;
+    const float J2 = 0.;
     const float K1 = 0.;
     const float K2 = 0.;
     const float K3 = 0.0;
     Vector3f B; B << 0., 0., 0.;
-    const float T = .4;
+    const float T = .1;
 
 
     const int MCStep = N*N*L;

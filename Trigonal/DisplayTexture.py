@@ -11,18 +11,13 @@ import sys
 def load_texture(filename):
     with open(filename, 'r') as f:
         firstline = f.readline()
-        (num_sublattices, N) = np.array([int(i.strip()) for i in firstline.split('\t')])[:2]
-        spins = np.zeros((N,N,num_sublattices,3))
+        (N1, N2, N3, sl) = np.array([int(i.strip()) for i in firstline.split('\t')])
 
-        for i,line in enumerate(f.readlines()):
-            data1 = line.split(',')
-            data2 = [re.findall("\[(.*?)\]", unitcell) for unitcell in data1]
-            for j in range(N):
-                for s in range(num_sublattices):
-                    S = [float(x) for x in data2[j][s].split(' ')]
-                    spins[i,j,s] = np.array([S[0], S[1], S[2]])
+        spins = np.array([float(x) for x in f.readline().split('\t')])
+        spins = spins.reshape((N1*N2*N3*sl, 3))
 
-        return spins
+        return spins.reshape((N1, N2, N3, sl, 3), order='F')
+
 
 # Plot hexagonal spin texture
 def display_trigonal_spins(ax, spins, layer, color=None):
@@ -47,7 +42,7 @@ def display_trigonal_spins(ax, spins, layer, color=None):
             ys[i*N + j] = y
 
 
-            spin = spins[i,j,layer,:]
+            spin = spins[i,j,layer,0,:]
             spinxs[i*N + j] = spin[0]
             spinys[i*N + j] = spin[1]
             spinzs[i*N + j] = spin[2]
