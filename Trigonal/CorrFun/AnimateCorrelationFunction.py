@@ -43,4 +43,5 @@ if __name__ == "__main__":
     L = C.shape[-1]
 
     make_animation(T, C, L//2, 10, "animation_real.gif", kspace=False)
+    make_animation(T, C, L//2, 10, "animation_kspace.gif", kspace=True)
 

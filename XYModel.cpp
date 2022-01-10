@@ -32,10 +32,7 @@ class XYModel : virtual public MCModel {
         // A mutation consists of a change in spin dS on site (n1,n2,n3,s)
         // dS must conserve the norm of S[n1,n2,n3,s]
         struct XYMutation {
-            int n1;
-            int n2;
-            int n3;
-            int s;
+            int i;
             Vector2f dS;
         };
 
@@ -49,16 +46,14 @@ class XYModel : virtual public MCModel {
 
         float acceptance;
         float sigma;
-        vector<vector<vector<vector<Vector2f>>>> spins;
-        vector<vector<vector<vector<vector<Vector4i>>>>> neighbors;
+        vector<Vector2f> spins;
+        vector<vector<int>> neighbors;
         vector<Bond> bonds;
 
-        bool random_selection;
-        LatticeIterator* iter;
         minstd_rand r;
 
         int mut_counter;
-        int mut_type;
+        int mut_mode;
 
         // Mutation being considered is stored as an attribute of the model
         XYMutation mut;
@@ -72,54 +67,42 @@ class XYModel : virtual public MCModel {
             if (N3 == -1) { this->N3 = N1; } else { this->N3 = N3; }
             this->V = N1*N2*N3*sl;
 
-            this->spins = vector<vector<vector<vector<Vector2f>>>>(this->N1,
-                                 vector<vector<vector<Vector2f>>>(this->N2,
-                                        vector<vector<Vector2f>>(this->N3,
-                                               vector<Vector2f>(sl)))); 
-
-            this->neighbors = vector<vector<vector<vector<vector<Vector4i>>>>>(this->N1,
-                                     vector<vector<vector<vector<Vector4i>>>>(this->N2,
-                                            vector<vector<vector<Vector4i>>>(this->N3,
-                                                   vector<vector<Vector4i>>(this->sl,
-                                                          vector<Vector4i>(0))))); 
+            this->spins = vector<Vector2f>(V);
+            this->neighbors = vector<vector<int>>(V, vector<int>(0));
 
             this->randomize_spins();
 
             this->acceptance = 0.5;
             this->sigma = 0.25;
 
-            this->iter = new LatticeIterator(N1, N2, N3, sl);
             this->r.seed(rand());
 
             this->mut_counter = 0;
-            this->mut_type = 0;
-            this->random_selection = false;
+            this->mut_mode = 0;
         }
 
         void randomize_spins() {
             float p;
-            for (int n1 = 0; n1 < N1; n1++) {
-                for (int n2 = 0; n2 < N2; n2++) {
-                    for (int n3 = 0; n3 < N3; n3++) {
-                        for (int s = 0; s < sl; s++) {
-                            // For each site, initialize spin randomly
-                            p = 2*PI*float(r())/float(RAND_MAX);
-                            this->spins[n1][n2][n3][s] << cos(p), sin(p);
-                        }
-                    }
-                }
+            Vector2f v;
+
+            for (int i = 0; i < V; i++) {
+                p = 2*PI*float(r())/float(RAND_MAX);
+                v << cos(p), sin(p);
+                set_spins(i, v);
             }
         }
 
         void add_bond(Bond b) {
             Vector4i v;
             this->bonds.push_back(b);
+            int idx; int neighbor_idx;
             for (int n1 = 0; n1 < N1; n1++) {
                 for (int n2 = 0; n2 < N2; n2++) {
                     for (int n3 = 0; n3 < N3; n3++) {
                         for (int s = 0; s < sl; s++) {
-                            v << mod(n1 + b.d1, N1), mod(n2 + b.d2, N2), mod(n3 + b.d3, N3), mod(s + b.ds, sl);
-                            neighbors[n1][n2][n3][s].push_back(v);
+                            idx = flat_idx(n1, n2, n3, s);
+                            neighbor_idx = flat_idx(mod(n1 + b.d1, N1), mod(n2 + b.d2, N2), mod(n3 + b.d3, N3), mod(s + b.ds, sl));
+                            neighbors[i].push_back(neighbor_idx);
                         }
                     }
                 }
@@ -142,33 +125,26 @@ class XYModel : virtual public MCModel {
 
             Vector2f S1;
             Vector2f S2;
-            int k1; int k2; int k3; int ks;
-            for (int n1 = 0; n1 < N1; n1++) {
-                for (int n2 = 0; n2 < N2; n2++) {
-                    for (int n3 = 0; n3 < N3; n3++) {
-                        for (int s = 0; s < sl; s++) {
-                            for (int n = 0; n < bonds.size(); n++) {
-                                f = bonds[0].v.dot(bonds[n].v);
-                                R1 << cos(f*alpha), -sin(f*alpha),
-                                      sin(f*alpha), cos(f*alpha);
-                                R2 = R1.transpose();
+            int j;
+            for (int i = 0; i < V; i++) {
+                for (int n = 0; n < bonds.size(); n++) {
+                    f = bonds[0].v.dot(bonds[n].v);
+                    R1 << cos(f*alpha), -sin(f*alpha),
+                          sin(f*alpha), cos(f*alpha);
+                    R2 = R1.transpose();
 
-                                k1 = neighbors[n1][n2][n3][s][n][0]; k2 = neighbors[n1][n2][n3][s][n][1]; 
-                                k3 = neighbors[n1][n2][n3][s][n][2]; ks = neighbors[n1][n2][n3][s][n][3];
+                    j = neighbors[i][n];
 
-                                S1 = spins[n1][n2][n3][s];
-                                S2 = spins[k1][k2][k3][ks];
+                    S1 = get_spins(i);
+                    S2 = get_spins(j);
 
-                                E0 += bonds[n].bondfunc(S1, S2);
+                    E0 += bonds[n].bondfunc(S1, S2);
 
-                                E1 += bonds[n].bondfunc(S1, R1*S2);
-                                Em1 += bonds[n].bondfunc(S1, R2*S2);
+                    E1 += bonds[n].bondfunc(S1, R1*S2);
+                    Em1 += bonds[n].bondfunc(S1, R2*S2);
 
-                                E2 += bonds[n].bondfunc(S1, R1*R1*S2);
-                                Em2 += bonds[n].bondfunc(S1, R2*R2*S2);
-                            }
-                        }
-                    }
+                    E2 += bonds[n].bondfunc(S1, R1*R1*S2);
+                    Em2 += bonds[n].bondfunc(S1, R2*R2*S2);
                 }
             }
 
@@ -184,7 +160,7 @@ class XYModel : virtual public MCModel {
             for (int n1 = 0; n1 < N1; n1++) {
                 for (int n2 = 0; n2 < N2; n2++) {
                     for (int n3 = 0; n3 < N3; n3++) {
-                        M += this->spins[n1][n2][n3][s];
+                        M += get_spins(flat_idx(n1, n2, n3, s));
                     }
                 }
             }
@@ -197,70 +173,50 @@ class XYModel : virtual public MCModel {
             for (int s = 0; s < sl; s++) {
                 M += get_magnetization(s);
             }
-            return M/(sl);
+            return M/sl;
         }
 
-        void over_relaxation_mutation(int n1, int n2, int n3, int s) {
+        void over_relaxation_mutation(int i) {
             Vector2f H; H << 0., 0.;
             int k1; int k2; int k3; int ks;
+            int j;
             for (int n = 0; n < bonds.size(); n++) {
-                k1 = neighbors[n1][n2][n3][s][n][0]; k2 = neighbors[n1][n2][n3][s][n][1]; 
-                k3 = neighbors[n1][n2][n3][s][n][2]; ks = neighbors[n1][n2][n3][s][n][3];
-                H += this->spins[k1][k2][k3][ks];
+                j = neighbors[i][n];
+                H += get_spins(j);
             }
 
-            this->mut.n1 = n1;
-            this->mut.n2 = n2;
-            this->mut.n3 = n3;
-            this->mut.s = s;
-            this->mut.dS = -2*this->spins[n1][n2][n3][s] + 2.*this->spins[n1][n2][n3][s].dot(H)/pow(H.norm(),2) * H;
+            this->mut.i = i;
+            this->mut.dS = -2*get_spins(i)+ 2.*get_spins(i).dot(H)/pow(H.norm(),2) * H;
         }
 
-        void metropolis_mutation(int n1, int n2, int n3, int s) {
+        void metropolis_mutation(int i) {
             float dp = sigma*(float(r())/float(RAND_MAX) - 0.5)*2.*PI;
-            Vector2f S; S << cos(dp)*this->spins[n1][n2][n3][s][0]
-                           - sin(dp)*this->spins[n1][n2][n3][s][1],
-                             cos(dp)*this->spins[n1][n2][n3][s][1]
-                           + sin(dp)*this->spins[n1][n2][n3][s][0];
+            Vector2f S1 = get_spins(i);
+            Vector2f S2; S << cos(dp)*S1[0]
+                           - sin(dp)*S1[1],
+                             cos(dp)*S1[1]
+                           + sin(dp)*S1[0];
 
             // Store mutation for consideration
-            this->mut.n1 = n1;
-            this->mut.n2 = n2;
-            this->mut.n3 = n3;
-            this->mut.s = s;
-            this->mut.dS = S - this->spins[n1][n2][n3][s];
+            this->mut.i = i;
+            this->mut.dS = S2 - S1;
         }
 
         void generate_mutation() {
             mut_counter++;
+            mut_counter = mut_counter % V;
 
-            int n1; int n2; int n3; int s;
-            if (random_selection) {
-                n1 = r() % N1;
-                n2 = r() % N2;
-                if (this->N3 == 1) { n3 = 0; } else { n3 = r() % N3; }
-
-                if (sl == 1) { s = 0; } else { s = r() % sl; }
-            } else {
-                n1 = iter->n1;
-                n2 = iter->n2;
-                n3 = iter->n3;
-                s = iter->s;
-                iter->next();
-            }
-            
-            if (mut_counter % V == 0) {
-                mut_counter = 0;
-                mut_type++;
+            if (mut_counter == 0) {
+                mut_mode++;
             }
 
-            if (mut_type < 10) {
-                over_relaxation_mutation(n1, n2, n3, s);
-            } else if (mut_type < 14) {
-                metropolis_mutation(n1, n2, n3, s);
+            if (mut_mode < 10) {
+                over_relaxation_mutation(mut_counter);
+            } else if (mut_mode < 14) {
+                metropolis_mutation(mut_counter);
             } else {
-                metropolis_mutation(n1, n2, n3, s);
-                mut_type = 0;
+                metropolis_mutation(mut_counter);
+                mut_mode = 0;
             }
         }
 
@@ -269,19 +225,17 @@ class XYModel : virtual public MCModel {
         }
 
         void reject_mutation() {
-            this->spins[mut.n1][mut.n2][mut.n3][mut.s] -= mut.dS;
+            set_spins(get_spins(mut.i) - mut.dS, mut.i);
         }
 
-        virtual const float onsite_energy(int n1, int n2, int n3, int s)=0;
+        virtual const float onsite_energy(int i)=0;
 
-        
-        virtual const float bond_energy(int n1, int n2, int n3, int s) {
+        virtual const float bond_energy(int i) {
             float E = 0.;
-            int k1; int k2; int k3; int ks;
+            int j;
             for (int n = 0; n < bonds.size(); n++) {
-                k1 = neighbors[n1][n2][n3][s][n][0]; k2 = neighbors[n1][n2][n3][s][n][1]; 
-                k3 = neighbors[n1][n2][n3][s][n][2]; ks = neighbors[n1][n2][n3][s][n][3];
-                E += 0.5*bonds[n].bondfunc(spins[n1][n2][n3][s], spins[k1][k2][k3][ks]);
+                j = neighbors[i][n];
+                E += 0.5*bonds[n].bondfunc(get_spins(i), get_spins(j));
             }
 
             return E;
@@ -290,23 +244,18 @@ class XYModel : virtual public MCModel {
         const float energy() {
             float E = 0;
 
-            for (int n1 = 0; n1 < N1; n1++) {
-                for (int n2 = 0; n2 < N2; n2++) {
-                    for (int n3 = 0; n3 < N3; n3++) {
-                        for (int s = 0; s < sl; s++) {
-                            E += onsite_energy(n1, n2, n3, s);
-                            E += bond_energy(n1, n2, n3, s);
-                        }
-                    }
-                }
+            for (int i = 0; i < V; i++) {
+                E += onsite_energy(i);
+                E += bond_energy(i);
             }
+
             return E;
         }
 
         const float energy_change() {
-            float E1 = onsite_energy(mut.n1, mut.n2, mut.n3, mut.s) + 2*bond_energy(mut.n1, mut.n2, mut.n3, mut.s);
-            this->spins[mut.n1][mut.n2][mut.n3][mut.s] += mut.dS;
-            float E2 = onsite_energy(mut.n1, mut.n2, mut.n3, mut.s) + 2*bond_energy(mut.n1, mut.n2, mut.n3, mut.s);
+            float E1 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
+            set_spin(mut.i, get_spin(mut.i) + mut.dS);
+            float E2 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
 
             return E2 - E1;
         }
@@ -315,44 +264,19 @@ class XYModel : virtual public MCModel {
             ofstream output_file;
             output_file.open(filename);
             output_file << N1 << "\t" << N2 << "\t" << N3 << "\t" << sl << endl;
-            for (int n1 = 0; n1 < N1; n1++) {
-                for (int n2 = 0; n2 < N2; n2++) {
-                    for (int n3 = 0; n3 < N3; n3++) {
-                        for (int s = 0; s < sl; s++) {
-                            output_file << "(" << spins[n1][n2][n3][s][0] << ", " << spins[n1][n2][n3][s][1] << ")";
-                            if (!(n1+1 == N1 && n2+1 == N2 && n3+1 == N3 && s+1 == sl)) { output_file << ","; }
-                        }
-                    }
-                }
+
+            Vector2f S;
+            Vector4i idxs;
+            int n1; int n2; int n3; int s;
+            for (int i = 0; i < V; i++) {
+                S = get_spins(i);
+                output_file << "(" << S[0] << ", " << S[1] << ")";
+
+                n1 = idxs[0]; n2 = idxs[1]; n3 = idxs[2]; s = idxs[3];
+                if (!(n1+1 == N1 && n2+1 == N2 && n3+1 == N3 && s+1 == sl)) { output_file << ","; }
             }
             output_file.close();
         }
-
-        // Saves current spin configuration
-        /*
-        void save_spins(string filename) {
-            ofstream output_file;
-            output_file.open(filename);
-            output_file << sl << "\t" << N1 << "\t" << N2 << "\t" << N3 << endl;
-            for (int n1 = 0; n1 < N1; n1++) {
-                for (int n2 = 0; n2 < N2; n2++) {
-                    for (int n3 = 0; n3 < N3; n3++) {
-                        output_file << "[";
-                        for (int s = 0; s < sl; s++) {
-                            output_file << "(" << spins[n1][n2][n3][s][0] << ", " << spins[n1][n2][n3][s] << ")";
-                            if (s != sl - 1) {
-                                output_file << "\t";
-                            }
-                        }
-                        output_file << ",";
-                    }
-                    output_file << ";";
-                }
-                output_file << endl;
-            }
-            output_file.close();
-        }        
-        */
 };
 
 template <class XYModel>

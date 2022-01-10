@@ -34,10 +34,7 @@ class SpinModel : virtual public MCModel {
         // A mutation consists of a change in spin dS on site (n1,n2,n3,s)
         // dS must conserve the norm of S[n1,n2,n3,s]
         struct SpinMutation {
-            int n1;
-            int n2;
-            int n3;
-            int s;
+            int i;
             Vector3f dS;
         };
 
@@ -51,16 +48,14 @@ class SpinModel : virtual public MCModel {
 
         float acceptance;
         float sigma;
-        vector<vector<vector<vector<Vector3f>>>> spins;
-        vector<vector<vector<vector<vector<Vector4i>>>>> neighbors;
+        vector<Vector3f> spins;
+        vector<vector<int>> neighbors;
         vector<Bond> bonds;
 
-        bool random_selection;
-        LatticeIterator* iter;
         minstd_rand r;
 
         int mut_counter;
-        bool mutation_mode;
+        int mut_mode;
 
         // Mutation being considered is stored as an attribute of the model
         SpinMutation mut;
@@ -73,16 +68,9 @@ class SpinModel : virtual public MCModel {
             if (N2 == -1) { this->N2 = N1; } else { this->N2 = N2; }
             if (N3 == -1) { this->N3 = N1; } else { this->N3 = N3; }
             this->V = N1*N2*N3*sl;
-            this->spins = vector<vector<vector<vector<Vector3f>>>>(this->N1,
-                                 vector<vector<vector<Vector3f>>>(this->N2,
-                                        vector<vector<Vector3f>>(this->N3,
-                                               vector<Vector3f>(sl)))); 
 
-            this->neighbors = vector<vector<vector<vector<vector<Vector4i>>>>>(this->N1,
-                                     vector<vector<vector<vector<Vector4i>>>>(this->N2,
-                                            vector<vector<vector<Vector4i>>>(this->N3,
-                                                   vector<vector<Vector4i>>(this->sl,
-                                                          vector<Vector4i>(0))))); 
+            this->spins = vector<Vector3f>(V);
+            this->neighbors = vector<vector<int>>(V, vector<int>(0));
 
             this->randomize_spins();
 
@@ -90,39 +78,59 @@ class SpinModel : virtual public MCModel {
             this->sigma = 0.25;
 
             this->dist = new GaussianDist(0., 1.0);
-            this->iter = new LatticeIterator(N1, N2, N3, sl);
             this->r.seed(rand());
 
             this->mut_counter = 0;
-            this->mutation_mode = true;
-            this->random_selection = false;
+        }
 
+        inline int flat_idx(int n1, int n2, int n3, int s) {
+            return n1 + N1*(n2 + N2*(n3 + N3*s));
+        }
+
+        inline Vector4i tensor_idx(int i) {
+            int n1 = i % N1;
+            i = i / N1;
+            int n2 = i % N2;
+            i = i / N2;
+            int n3 = i % N3;
+            i = i / N3;
+            int s = i % sl;
+            Vector4i v; v << n1, n2, n3, s;
+            return v;
+        }
+
+        inline void set_spin(int n1, int n2, int n3, int s, Vector3f v) {
+            spins[flat_idx(n1, n2, n3, s)] = v;
+        }
+
+        inline void set_spin(int i, Vector3f v) {
+            spins[i] = v;
+        }
+
+        inline const Vector3f get_spin(int n1, int n2, int n3, int s) {
+            return spins[flat_idx(n1, n2, n3, s)];
+        }
+
+        inline const Vector3f get_spin(int i) {
+            return spins[i];
         }
 
         void randomize_spins() {
-            for (int n1 = 0; n1 < N1; n1++) {
-                for (int n2 = 0; n2 < N2; n2++) {
-                    for (int n3 = 0; n3 < N3; n3++) {
-                        for (int s = 0; s < sl; s++) {
-                            // For each site, initialize spin randomly
-                            spins[n1][n2][n3][s] = Vector3f::Random(3);
-                            // Then normalize to |S| = 1
-                            spins[n1][n2][n3][s] = spins[n1][n2][n3][s].normalized();
-                        }
-                    }
-                }
+            for (int i = 0; i < V; i++) {
+                set_spin(i, Vector3f::Random(3).normalized());
             }
         }
 
         void add_bond(Bond b) {
-            Vector4i v;
             this->bonds.push_back(b);
+            int idx; int neighbor_idx;
             for (int n1 = 0; n1 < N1; n1++) {
                 for (int n2 = 0; n2 < N2; n2++) {
                     for (int n3 = 0; n3 < N3; n3++) {
                         for (int s = 0; s < sl; s++) {
-                            v << mod(n1 + b.d1, N1), mod(n2 + b.d2, N2), mod(n3 + b.d3, N3), mod(s + b.ds, sl);
-                            neighbors[n1][n2][n3][s].push_back(v);
+                            idx = flat_idx(n1, n2, n3, s);
+                            neighbor_idx = flat_idx(mod(n1 + b.d1, N1), mod(n2 + b.d2, N2), mod(n3 + b.d3, N3), mod(s + b.ds, sl));
+                            neighbors[idx].push_back(neighbor_idx);
                         }
                     }
                 }
@@ -145,34 +153,27 @@ class SpinModel : virtual public MCModel {
 
             Vector3f S1;
             Vector3f S2;
-            int k1; int k2; int k3; int ks;
-            for (int n1 = 0; n1 < N1; n1++) {
-                for (int n2 = 0; n2 < N2; n2++) {
-                    for (int n3 = 0; n3 < N3; n3++) {
-                        for (int s = 0; s < sl; s++) {
-                            for (int n = 0; n < bonds.size(); n++) {
-                                f = bonds[0].v.dot(bonds[n].v);
-                                R1 << cos(f*alpha), -sin(f*alpha), 0,
-                                      sin(f*alpha), cos(f*alpha), 0.,
-                                      0., 0., 1.;
-                                R2 = R1.transpose();
+            int j;
+            for (int i = 0; i < V; i++) {
+                for (int n = 0; n < bonds.size(); n++) {
+                    f = bonds[0].v.dot(bonds[n].v);
+                    R1 << cos(f*alpha), -sin(f*alpha), 0,
+                          sin(f*alpha), cos(f*alpha), 0.,
+                          0., 0., 1.;
+                    R2 = R1.transpose();
 
-                                k1 = neighbors[n1][n2][n3][s][n][0]; k2 = neighbors[n1][n2][n3][s][n][1]; 
-                                k3 = neighbors[n1][n2][n3][s][n][2]; ks = neighbors[n1][n2][n3][s][n][3];
+                    j = neighbors[i][n];
 
-                                S1 = spins[n1][n2][n3][s];
-                                S2 = spins[k1][k2][k3][ks];
+                    S1 = get_spin(i);
+                    S2 = get_spin(j);
 
-                                E0 += bonds[n].bondfunc(S1, S2);
+                    E0 += bonds[n].bondfunc(S1, S2);
 
-                                E1 += bonds[n].bondfunc(S1, R1*S2);
-                                Em1 += bonds[n].bondfunc(S1, R2*S2);
+                    E1 += bonds[n].bondfunc(S1, R1*S2);
+                    Em1 += bonds[n].bondfunc(S1, R2*S2);
 
-                                E2 += bonds[n].bondfunc(S1, R1*R1*S2);
-                                Em2 += bonds[n].bondfunc(S1, R2*R2*S2);
-                            }
-                        }
-                    }
+                    E2 += bonds[n].bondfunc(S1, R1*R1*S2);
+                    Em2 += bonds[n].bondfunc(S1, R2*R2*S2);
                 }
             }
 
@@ -183,37 +184,30 @@ class SpinModel : virtual public MCModel {
             return vector<double>{dE/(2.*sqrt(V)), ddE/(2*V)};
         }
 
-        inline Vector3f get_magnetization(int s) {
-            Vector3f M = Vector3f::Constant(0);
-            for (int n1 = 0; n1 < N1; n1++) {
-                for (int n2 = 0; n2 < N2; n2++) {
-                    for (int n3 = 0; n3 < N3; n3++) {
-                        M += spins[n1][n2][n3][s];
-                    }
-                }
-            }
-            
-            return M/(N1*N2*N3);
-        }
-
         inline Vector3f get_magnetization() {
             Vector3f M = Vector3f::Constant(0);
-            for (int s = 0; s < sl; s++) {
-                M += get_magnetization(s);
+            for (int i = 0; i < V; i++) {
+                M += spins[i];
             }
-            return M/(sl);
+            
+            return M/(N1*N2*N3*sl);
         }
 
-        vector<vector<vector<vector<float>>>> correlation_function(int m1, int m2, int m3, int k) {
-            vector<vector<vector<vector<float>>>> Cij = vector<vector<vector<vector<float>>>>(N1, 
-                                                               vector<vector<vector<float>>>(N2, 
-                                                                      vector<vector<float>>(N3,
-                                                                             vector<float>(sl))));
+        vector<float> correlation_function(int i, int a = 2, int b = 2) {
+            vector<float> Cij = vector<float>(V); 
+
+            int j;
+            Vector4i idxs = tensor_idx(i);
+            int m1 = idxs[0]; int m2 = idxs[1]; int m3 = idxs[2]; int k = idxs[3];
             for (int n1 = 0; n1 < N1; n1++) {
                 for (int n2 = 0; n2 < N2; n2++) {
                     for (int n3 = 0; n3 < N3; n3++) {
                         for (int s = 0; s < sl; s++) {
-                            Cij[n1][n2][n3][s] = spins[(m1 + n1)%N1][(m2 + n2)%N2][(m3 + n3)%N3][(s + k)%sl].dot(spins[m1][m2][m3][k]);
+                            j = flat_idx(n1, n2, n3, s);
+                            Cij[j] = spins[flat_idx((m1 + n1)%N1, 
+                                                    (m2 + n2)%N2, 
+                                                    (m3 + n3)%N3, 
+                                                    (s + k)%sl)][a]*spins[i][b];
                         }
                     }
                 }
@@ -221,23 +215,84 @@ class SpinModel : virtual public MCModel {
             return Cij;
         }
 
-        void over_relaxation_mutation(int n1, int n2, int n3, int s) {
-            Vector3f H; H << 0., 0., 0.;
-            int k1; int k2; int k3; int ks;
-            for (int n = 0; n < bonds.size(); n++) {
-                k1 = neighbors[n1][n2][n3][s][n][0]; k2 = neighbors[n1][n2][n3][s][n][1]; 
-                k3 = neighbors[n1][n2][n3][s][n][2]; ks = neighbors[n1][n2][n3][s][n][3];
-                H += this->spins[k1][k2][k3][ks];
-            }
+        vector<float> full_correlation_function(int i) {
+            vector<float> Cij = vector<float>(V); 
 
-            this->mut.n1 = n1;
-            this->mut.n2 = n2;
-            this->mut.n3 = n3;
-            this->mut.s = s;
-            this->mut.dS = -2*this->spins[n1][n2][n3][s] + 2.*this->spins[n1][n2][n3][s].dot(H)/pow(H.norm(),2) * H;
+            int j;
+            Vector4i idxs = tensor_idx(i);
+            int m1 = idxs[0]; int m2 = idxs[1]; int m3 = idxs[2]; int k = idxs[3];
+            for (int n1 = 0; n1 < N1; n1++) {
+                for (int n2 = 0; n2 < N2; n2++) {
+                    for (int n3 = 0; n3 < N3; n3++) {
+                        for (int s = 0; s < sl; s++) {
+                            j = flat_idx(n1, n2, n3, s);
+                            Cij[j] = spins[flat_idx((m1 + n1)%N1, 
+                                                    (m2 + n2)%N2, 
+                                                    (m3 + n3)%N3, 
+                                                    (s + k)%sl)].dot(spins[i]);
+                        }
+                    }
+                }
+            }
+            return Cij;
         }
 
-        void metropolis_mutation(int n1, int n2, int n3, int s) {
+        float skyrmion_density(int i) {
+            int j;
+
+            Vector3f dSdX; dSdX << 0., 0., 0.;
+            Vector3f dSdY; dSdY << 0., 0., 0.;
+            for (int n = 0; n < bonds.size(); n++) {
+                j = neighbors[i][n];
+                if (bonds[n].v[0] != 0.) {
+                    dSdX += bonds[n].v[0]*(spins[j] - spins[i]);
+                }
+                if (bonds[n].v[1] != 0.) {
+                    dSdX += bonds[n].v[1]*(spins[j] - spins[i]);
+                }
+
+            }
+            dSdX = dSdX/bonds.size();
+            dSdY = dSdY/bonds.size();
+
+            return spins[i].dot(dSdX.cross(dSdY));
+        }
+
+        vector<float> skyrmion_correlation_function(int i) {
+            vector<float> Cij = vector<float>(V); 
+
+            int j;
+            Vector4i idxs = tensor_idx(i);
+            int m1 = idxs[0]; int m2 = idxs[1]; int m3 = idxs[2]; int k = idxs[3];
+            for (int n1 = 0; n1 < N1; n1++) {
+                for (int n2 = 0; n2 < N2; n2++) {
+                    for (int n3 = 0; n3 < N3; n3++) {
+                        for (int s = 0; s < sl; s++) {
+                            j = flat_idx(n1, n2, n3, s);
+                            Cij[j] = skyrmion_density(flat_idx((m1 + n1)%N1, 
+                                                               (m2 + n2)%N2, 
+                                                               (m3 + n3)%N3, 
+                                                               (s + k)%sl))*skyrmion_density(i);
+                        }
+                    }
+                }
+            }
+            return Cij;
+        }
+
+        void over_relaxation_mutation(int i) {
+            Vector3f H; H << 0., 0., 0.;
+            int j;
+            for (int n = 0; n < bonds.size(); n++) {
+                j = neighbors[i][n];
+                H += spins[j];
+            }
+
+            this->mut.i = i;
+            this->mut.dS = -2*spins[i] + 2.*spins[i].dot(H)/pow(H.norm(),2) * H;
+        }
+
+        void metropolis_mutation(int i) {
             if (acceptance > 0.5) {
                 sigma = min(2., 1.01*sigma);
 
@@ -248,39 +303,29 @@ class SpinModel : virtual public MCModel {
             // Randomly generate mutation
             Vector3f Gamma;
             Gamma << dist->sample(), dist->sample(), dist->sample();
-            Vector3f S2 = (spins[n1][n2][n3][s] + this->sigma*Gamma).normalized();
+            Vector3f S2 = (spins[i] + this->sigma*Gamma).normalized();
 
 
             // Store mutation for consideration
-            this->mut.n1 = n1;
-            this->mut.n2 = n2;
-            this->mut.n3 = n3;
-            this->mut.s = s;
-            this->mut.dS = S2 - spins[n1][n2][n3][s];
+            this->mut.i = i;
+            this->mut.dS = S2 - spins[i];
         }
 
         void generate_mutation() {
             mut_counter++;
+            mut_counter = mut_counter % V;
 
-            int n1; int n2; int n3; int s;
-            if (random_selection) {
-                n1 = r() % N1;
-                n2 = r() % N2;
-                if (N3 == 1) { n3 = 0; } else { n3 = r() % N3; }
-                if (sl == 1) { s = 0; } else { s = r() % sl; }
-            } else {
-                n1 = iter->n1;
-                n2 = iter->n2;
-                n3 = iter->n3;
-                s = iter->s;
-                iter->next();
+            if (mut_counter == 0) {
+                mut_mode++;
             }
 
-
-            if (!mutation_mode) {
-                over_relaxation_mutation(n1, n2, n3, s);
+            if (mut_mode < 10) {
+                over_relaxation_mutation(mut_counter);
+            } else if (mut_mode < 14) {
+                metropolis_mutation(mut_counter);
             } else {
-                metropolis_mutation(n1, n2, n3, s);
+                metropolis_mutation(mut_counter);
+                mut_mode = 0;
             }
         }
 
@@ -289,18 +334,17 @@ class SpinModel : virtual public MCModel {
         }
 
         void reject_mutation() {
-            this->spins[mut.n1][mut.n2][mut.n3][mut.s] -= mut.dS;
+            spins[mut.i] = spins[mut.i] - mut.dS;
         }
 
-        virtual const float onsite_energy(int n1, int n2, int n3, int s)=0;
+        virtual const float onsite_energy(int i)=0;
 
-        virtual const float bond_energy(int n1, int n2, int n3, int s) {
+        virtual const float bond_energy(int i) {
             float E = 0.;
-            int k1; int k2; int k3; int ks;
+            int j;
             for (int n = 0; n < bonds.size(); n++) {
-                k1 = neighbors[n1][n2][n3][s][n][0]; k2 = neighbors[n1][n2][n3][s][n][1]; 
-                k3 = neighbors[n1][n2][n3][s][n][2]; ks = neighbors[n1][n2][n3][s][n][3];
-                E += 0.5*bonds[n].bondfunc(spins[n1][n2][n3][s], spins[k1][k2][k3][ks]);
+                j = neighbors[i][n];
+                E += 0.5*bonds[n].bondfunc(spins[i], spins[j]);
             }
 
             return E;
@@ -309,23 +353,18 @@ class SpinModel : virtual public MCModel {
         const float energy() {
             float E = 0;
 
-            for (int n1 = 0; n1 < N1; n1++) {
-                for (int n2 = 0; n2 < N2; n2++) {
-                    for (int n3 = 0; n3 < N3; n3++) {
-                        for (int s = 0; s < sl; s++) {
-                            E += onsite_energy(n1, n2, n3, s);
-                            E += bond_energy(n1, n2, n3, s);
-                        }
-                    }
-                }
+            for (int i = 0; i < V; i++) {
+                E += onsite_energy(i);
+                E += bond_energy(i);
             }
+
             return E;
         }
 
         const float energy_change() {
-            float E1 = onsite_energy(mut.n1, mut.n2, mut.n3, mut.s) + 2*bond_energy(mut.n1, mut.n2, mut.n3, mut.s);
-            this->spins[mut.n1][mut.n2][mut.n3][mut.s] += mut.dS;
-            float E2 = onsite_energy(mut.n1, mut.n2, mut.n3, mut.s) + 2*bond_energy(mut.n1, mut.n2, mut.n3, mut.s);
+            float E1 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
+            spins[mut.i] = spins[mut.i] + mut.dS;
+            float E2 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
 
             return E2 - E1;
         }
@@ -335,13 +374,16 @@ class SpinModel : virtual public MCModel {
             ofstream output_file;
             output_file.open(filename);
             output_file << sl << "\t" << N1 << "\t" << N2 << "\t" << N3 << endl;
+            int i; Vector3f S;
             for (int n1 = 0; n1 < N1; n1++) {
                 for (int n2 = 0; n2 < N2; n2++) {
                     for (int n3 = 0; n3 < N3; n3++) {
-                        for (int s = 0; s<sl; s++) {
-                            output_file << "[" << spins[n1][n2][n3][s][0] << " " 
-                                               << spins[n1][n2][n3][s][1] << " " 
-                                               << spins[n1][n2][n3][s][2] << "]";
+                        for (int s = 0; s < sl; s++) {
+                            i = flat_idx(n1, n2, n3, s);
+                            S = get_spin(i);
+                            output_file << "[" << S[0] << " " 
+                                               << S[1] << " " 
+                                               << S[2] << "]";
                             if (s != sl - 1) {
                                 output_file << "\t";
                             }

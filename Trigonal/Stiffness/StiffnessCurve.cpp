@@ -19,25 +19,26 @@ int main(int argc, char* argv[]) {
     string filename = argv[1];
     int num_threads = stoi(argv[2]);
     int N = stoi(argv[3]);
-    int L = 1;
+    int L = stoi(argv[4]);
 
     cout << "N = " << N << endl;
+    cout << "L = " << L << endl;
 
     // Base case
-    float J1 = stof(argv[4]);
-    float J2 = stof(argv[5]);
-    float K1 = stof(argv[6]);
-    float K2 = stof(argv[7]);
-    float K3 = stof(argv[8]);
-    Vector3f B; B << stof(argv[9]), stof(argv[10]), stof(argv[11]);
+    float J1 = stof(argv[5]);
+    float J2 = stof(argv[6]);
+    float K1 = stof(argv[7]);
+    float K2 = stof(argv[8]);
+    float K3 = stof(argv[9]);
+    Vector3f B; B << stof(argv[10]), stof(argv[11]), stof(argv[12]);
 
     const int MCStep = N*N*L;
 
     TrigonalModel *model = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B);
 
-    const float Tmax = 3.;
+    const float Tmax = 2.;
     const float Tmin = 0.1;
-    unsigned int resolution = stoi(argv[12]);
+    unsigned int resolution = stoi(argv[13]);
 
     vector<float> T(resolution);
 
@@ -45,14 +46,15 @@ int main(int argc, char* argv[]) {
         T[i] = float(i)/resolution*Tmax + float(resolution - i)/resolution*Tmin;
     }
 
-    unsigned long long int steps_per_run = stoi(argv[13])*MCStep;
+    unsigned long long steps_per_run = stoi(argv[14])*MCStep;
 
-    unsigned int num_samples = stoi(argv[14]);
-    unsigned long long int steps_per_sample = stoi(argv[15])*MCStep;
+    unsigned int num_samples = stoi(argv[15]);
+    unsigned long long steps_per_sample = stoi(argv[16])*MCStep;
 
-    int num_runs = stoi(argv[16]);
+    int num_runs = stoi(argv[17]);
 
     unsigned long long nsteps = resolution*num_runs*(steps_per_run + num_samples*steps_per_sample);
+    cout << "nsteps: " << nsteps << endl;
     cout << "Expected completion time: " << (long long) 2*nsteps/3300000./num_threads/60. << " minutes. " << endl;
 
     auto start = chrono::high_resolution_clock::now();

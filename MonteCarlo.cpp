@@ -54,7 +54,7 @@ class MonteCarlo {
         MCModel *model;
         minstd_rand r;
         int accepted;
-        unsigned long long int nsteps;
+        unsigned long long nsteps;
         float energy;
 
         MonteCarlo(MCModel *model) {
@@ -65,7 +65,7 @@ class MonteCarlo {
             this->r.seed(rand());
         }
 
-        void steps(int nsteps, float T) {
+        void steps(unsigned long long nsteps, float T) {
             // Performs MC simulation
             // nsteps: number of MC steps to perform
             // T: temperature
@@ -73,7 +73,7 @@ class MonteCarlo {
             float rf;
             float dE;
 
-            for (int i = 0; i < nsteps; i++) {
+            for (unsigned long long i = 0; i < nsteps; i++) {
                 model->generate_mutation();
                 dE = model->energy_change();
                 
@@ -95,11 +95,11 @@ class MonteCarlo {
 
 // run_MC with everything
 template <class MCModel, class A>
-vector<A> run_MC(MonteCarlo<MCModel> *m, int nsteps, string cooling,
-                                                     float Ti,
-                                                     float Tf,
-                                                     int num_updates, 
-                                                     function<A(MCModel*)> f) {
+vector<A> run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, string cooling,
+                                                                    float Ti,
+                                                                    float Tf,
+                                                                    int num_updates, 
+                                                                    function<A(MCModel*)> f) {
 
     // Establish cooling schedule
     float (*update_T)(int n, int n_max, float Ti, float Tf);
@@ -136,90 +136,21 @@ vector<A> run_MC(MonteCarlo<MCModel> *m, int nsteps, string cooling,
 
 // Basic run_MC
 template <class MCModel>
-void run_MC(MonteCarlo<MCModel> *m, int nsteps, float T) {
+void run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, float T) {
     m->steps(nsteps, T);
 }
 
 // run_MC with cooling schedule
 template <class MCModel>
-void run_MC(MonteCarlo<MCModel> *m, int nsteps, string cooling, float Ti, float Tf, int num_updates = 100) {
+void run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, string cooling, float Ti, float Tf, int num_updates = 100) {
     run_MC(m, nsteps, cooling, Ti, Tf, num_updates, function<int(MCModel*)>([](MCModel* g) { return 0; }));
 }
 
 // run_MC with logging function
 template <class MCModel, class A>
-vector<A> run_MC(MonteCarlo<MCModel> *m, int nsteps, float T, function<A(MCModel*)> f, int num_logitems) {
+vector<A> run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, float T, function<A(MCModel*)> f, int num_logitems) {
     return run_MC(m, nsteps, "const", T, T, num_logitems, f);
 }
-
-template <class MCModel>
-vector<MonteCarlo<MCModel>*> parallel_tempering(MCModel *model, vector<float> Ts, int steps_per_exchange, 
-                                                                                  int num_exchanges, 
-                                                                                  int equilibration_steps = -1,
-                                                                                  int num_threads = 0) {
-
-    int num_replicas = Ts.size();
-
-    if (num_threads == 0) { num_threads = thread::hardware_concurrency(); }
-    ctpl::thread_pool threads(num_threads);
-    vector<future<void>> results(num_replicas);
-
-    vector<MonteCarlo<MCModel>*> models(num_replicas);
-
-    // Initialize models
-    for (int i = 0; i < num_replicas; i++) {
-        models[i] = new MonteCarlo<MCModel>(model->clone());
-    }
-
-    int accepted = 0;
-    int rejected = 0;
-
-    float r;
-    float dE;
-    float dB;
-    MonteCarlo<MCModel> *model_buffer;
-    for (int k = 0; k < num_exchanges; k++) {
-        // Give threads work
-        for (int i = 0; i < num_replicas; i++) {
-            results[i] = threads.push([&models, &Ts, steps_per_exchange, i](int) { models[i]->steps(steps_per_exchange, Ts[i]); });
-        }
-
-        // Joining threads
-        for (int i = 0; i < num_replicas; i++) {
-            results[i].get();
-        }
-
-        // Make exchanges
-        for (int i = 0; i < num_threads-1; i++) {
-            r = float(models[i]->r())/float(RAND_MAX);
-            dE = models[i]->energy - models[i+1]->energy;
-            dB = 1./Ts[i] - 1./Ts[i+1];
-            if (r < exp(dE*dB)) {
-                accepted++;
-                model_buffer = models[i];
-                models[i] = models[i+1];
-                models[i+1] = model_buffer;
-            } else {
-                rejected++;
-            }
-        }
-    }
-
-    // Final equilibration
-    if (equilibration_steps != -1) {
-        for (int i = 0; i < num_replicas; i++) {
-            results[i] = threads.push([&models, &Ts, equilibration_steps, i](int) { models[i]->steps(equilibration_steps, Ts[i]); });
-        }
-        for (int i = 0; i < num_replicas; i++) {
-            results[i].get();
-        }
-    }
-
-    return models;
-}
-
-
-
 
 
 #endif

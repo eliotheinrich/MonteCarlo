@@ -9,27 +9,16 @@ using namespace Eigen;
 
 
 vector<float> Cij_sampler(TrigonalModel *model) {
-    vector<vector<vector<vector<float>>>> Cij = vector<vector<vector<vector<float>>>>(model->N1,
-                                                       vector<vector<vector<float>>>(model->N2,
-                                                              vector<vector<float>>(model->N3,
-                                                                     vector<float>(model->sl))));
-    vector<float> Cij_avg = vector<float>(model->V, 0);
-    LatticeIterator *iter1 = new LatticeIterator(model->N1, model->N2, model->N3, model->sl);
-    LatticeIterator *iter2 = new LatticeIterator(model->N1, model->N2, model->N3, model->sl);
+    vector<float> Cij = vector<float>(model->V, 0.);
+    vector<float> Cij_avg = vector<float>(model->V, 0.);
 
-    int n1; int n2; int n3; int s;
-    int m1; int m2; int m3; int k;
+    int i;
+    int j;
     for (int i = 0; i < model->V; i++) {
-        n1 = iter1->n1; n2 = iter1->n2; n3 = iter1->n3; s = iter1->s;
-        Cij = model->correlation_function(n1, n2, n3, s);
-
-        iter2->reset();
+        Cij = model->full_correlation_function(i);
         for (int j = 0; j < model->V; j++) {
-            m1 = iter2->n1; m2 = iter2->n2; m3 = iter2->n3; k = iter2->s;
-            Cij_avg[j] += Cij[m1][m2][m3][k];
-            iter2->next();
+            Cij_avg[j] += Cij[j];
         }
-        iter1->next();
     }
 
     for (int i = 0; i < model->V; i++) {

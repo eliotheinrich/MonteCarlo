@@ -21,9 +21,9 @@ void exchange(vector<MonteCarlo<ModelType>*> *models, vector<float> *T) {
 
 template <class ModelType, class A>
 vector<vector<A>> sample_pt(A sampling_func(ModelType*), ModelType *model, vector<float> *T, 
-                                                                 int steps_per_run, 
-                                                                 int num_samples, 
-                                                                 int steps_per_sample,
+                                                                 unsigned long long steps_per_run, 
+                                                                 unsigned long long num_samples, 
+                                                                 unsigned long long steps_per_sample,
                                                                  int num_threads) {
 
     int resolution = T->size();
@@ -42,7 +42,8 @@ vector<vector<A>> sample_pt(A sampling_func(ModelType*), ModelType *model, vecto
     vector<future<void>> results(resolution);
 
     auto do_steps = [steps_per_run](int id, MonteCarlo<ModelType> *m, float T) {
-        m->steps(steps_per_run, T);
+        run_MC(m, steps_per_run, "trig", 3*T, T);
+        //m->steps(steps_per_run, T);
     };
 
     // Do initial steps
@@ -81,10 +82,10 @@ vector<vector<A>> sample_pt(A sampling_func(ModelType*), ModelType *model, vecto
 
 template <class ModelType, class A>
 vector<vector<A>> sample_r(A sampling_func(ModelType*), ModelType *model, vector<float> *T, 
-                                                        int num_runs,
-                                                        int steps_per_run, 
-                                                        int num_samples, 
-                                                        int steps_per_sample,
+                                                        unsigned long long num_runs,
+                                                        unsigned long long steps_per_run, 
+                                                        unsigned long long num_samples, 
+                                                        unsigned long long steps_per_sample,
                                                         int num_threads) {
 
     int resolution = T->size();
@@ -193,10 +194,10 @@ void write_data(vector<vector<vector<dtype>>> *data, vector<float> *T, string fi
 }
 
 template <class ModelType>
-void generate_spin_configs(ModelType *model, vector<float> T, int equilibration_steps, 
-                                                              int num_samples,
-                                                              int steps_per_sample,
-                                                              int num_threads, 
+void generate_spin_configs(ModelType *model, vector<float> T, unsigned long long equilibration_steps, 
+                                                              unsigned long long num_samples,
+                                                              unsigned long long steps_per_sample,
+                                                              unsigned long long num_threads, 
                                                               string foldername) {
     
     int resolution = T.size();

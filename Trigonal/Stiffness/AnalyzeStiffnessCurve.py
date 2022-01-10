@@ -106,9 +106,9 @@ if __name__ == "__main__":
     T = T
 
 
-#    L0, T_KT = get_L0(L, T, ρ, 0.1, 2.0, 10000)
-    L0 = 1/1.4
-    T_KT = 0.88
+    L0, T_KT = get_L0(L, T, ρ, 0.1, 2.0, 10000)
+#    L0 = 1/1.4
+#    T_KT = 0.88
     print(L0, T_KT)
     plot_stiffness_curve(L, T, ρ, L0, T_KT)
 

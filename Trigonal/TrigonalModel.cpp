@@ -81,122 +81,74 @@ class TrigonalModel : public SpinModel {
 
         TrigonalModel* clone() {
             TrigonalModel* new_model = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B);
-            new_model->random_selection = random_selection;
-            for (int n1 = 0; n1 < N; n1++) {
-                for (int n2 = 0; n2 < N; n2++) {
-                    for (int n3 = 0; n3 < L; n3++) {
-                        new_model->spins[n1][n2][n3][0] = this->spins[n1][n2][n3][0];
-                    }
-                }
+            for (int i = 0; i < V; i++) {
+                new_model->set_spin(i, this->get_spin(i));
             }
             return new_model;
         }
 
-        void over_relaxation_mutation(int n1, int n2, int n3, int s) {
+        void over_relaxation_mutation(int i) {
             Vector3f H; H << 0., 0., 0.;
-            int k1; int k2; int k3; int ks;
-            for (int n = 0; n < 4; n++) {
-                k1 = neighbors[n1][n2][n3][s][n][0]; k2 = neighbors[n1][n2][n3][s][n][1]; 
-                k3 = neighbors[n1][n2][n3][s][n][2]; ks = neighbors[n1][n2][n3][s][n][3];
-                H += this->spins[k1][k2][k3][ks];
+            int j;
+            for (int n = 0; n < 6; n++) {
+                j = neighbors[i][n];
+                H -= J1*get_spin(j);
+            }
+            for (int n = 6; n < 8; n++) {
+                j = neighbors[i][n];
+                H -= J1*get_spin(j);
             }
 
-            this->mut.n1 = n1;
-            this->mut.n2 = n2;
-            this->mut.n3 = n3;
-            this->mut.s = s;
-            this->mut.dS = -2*this->spins[n1][n2][n3][s] + 2.*this->spins[n1][n2][n3][s].dot(H)/pow(H.norm(),2) * H;
+            this->mut.i = i;
+            this->mut.dS = -2*get_spin(i) + 2.*get_spin(i).dot(H)/pow(H.norm(),2) * H;
         }
 
-        void rotation_mutation(int n1, int n2, int n3, int s) {
+        void rotation_mutation(int i) {
             Vector3f S2;
             if (r() % 2) {
-                S2 = R*this->spins[n1][n2][n3][s];
+                S2 = R*get_spin(i);
             } else {
-                S2 = R.transpose()*this->spins[n1][n2][n3][s];
+                S2 = R.transpose()*get_spin(i);
             }
 
-            this->mut.n1 = n1;
-            this->mut.n2 = n2;
-            this->mut.n3 = n3;
-            this->mut.s = s;
-            this->mut.dS = S2 - this->spins[n1][n2][n3][s];
+            this->mut.i = i;
+            this->mut.dS = S2 - get_spin(i);
         }
 
-        void generate_mutation() {
-            mut_counter++;
-
-            int n1; int n2; int n3; int s;
-            if (random_selection) {
-                n1 = r() % N1;
-                n2 = r() % N2;
-                if (this->N3 == 1) { n3 = 0; } else { n3 = r() % N3; }
-
-                if (sl == 1) { s = 0; } else { s = r() % sl; }
-            } else {
-                n1 = iter->n1;
-                n2 = iter->n2;
-                n3 = iter->n3;
-                s = iter->s;
-                iter->next();
-            }
-            
-            if (mut_counter % V == 0) {
-                mut_counter = 0;
-                mut_type++;
-            }
-
-            if (mut_type < 10) {
-                over_relaxation_mutation(n1, n2, n3, s);
-            } else if (mut_type < 14) {
-                metropolis_mutation(n1, n2, n3, s);
-                //rotation_mutation(n1, n2, n3, s);
-            //} else if (mut_type < 7) {
-            //    metropolis_mutation(n1, n2, n3, s);
-            } else {
-                metropolis_mutation(n1, n2, n3, s);
-                mut_type = 0;
-            }
-        }
-
-        const float onsite_energy(int n1, int n2, int n3, int s) {
+        const float onsite_energy(int i) {
             float E = 0;
 
             // Onsite interactions
-            E -= B.dot(this->spins[n1][n2][n3][s]);
-            float x = this->spins[n1][n2][n3][s][0];
-            float y = this->spins[n1][n2][n3][s][1];
-            float z = this->spins[n1][n2][n3][s][2];
-            E += K1*z*z;
-            //E += K2*pow(x*x+y*y,2);
-            E += K3*cos(6*atan2(y, x))*pow(x*x+y*y,3); // Sixfold magnetocrystalline field
+            Vector3f S = get_spin(i);
+            E -= B.dot(S);
+
+            E += K1*S[2]*S[2];
+            //E += K2*pow(S[0]*S[0]+S[1]*S[1],2);
+            E += K3*cos(6*atan2(S[1], S[0]))*pow(S[0]*S[0]+S[1]*S[1],3); // Sixfold magnetocrystalline field
 
             return E;
         }
 
-        const float bond_energy(int n1, int n2, int n3, int s) {
+        const float bond_energy(int i) {
             float E = 0;
 
+            Vector4i idxs = tensor_idx(i);
+            Vector3f S = get_spin(i);
+
+            int n1 = idxs[0]; int n2 = idxs[1]; int n3 = idxs[2]; int s = idxs[3];
+
             // NN interactions
-            E -= this->spins[n1][n2][n3][s].dot(this->spins[n1][(n2+1)%N][n3][s]);
-            E -= this->spins[n1][n2][n3][s].dot(this->spins[n1][mod(n2-1, N)][n3][s]);
-            E -= this->spins[n1][n2][n3][s].dot(this->spins[(n1+1)%N][n2][n3][s]);
-            E -= this->spins[n1][n2][n3][s].dot(this->spins[mod(n1-1, N)][n2][n3][s]);
-            E -= this->spins[n1][n2][n3][s].dot(this->spins[(n1+1)%N][mod(n2-1, N)][n3][s]);
-            E -= this->spins[n1][n2][n3][s].dot(this->spins[mod(n1-1, N)][(n2+1)%N][n3][s]);
+            E -= S.dot(get_spin(n1, mod(n2+1, N), n3, s));
+            E -= S.dot(get_spin(n1, mod(n2-1, N), n3, s));
+            E -= S.dot(get_spin(mod(n1+1, N), n2, n3, s));
+            E -= S.dot(get_spin(mod(n1-1, N), n2, n3, s));
+            E -= S.dot(get_spin(mod(n1+1, N), mod(n2-1, N), n3, s));
+            E -= S.dot(get_spin(mod(n1-1, N), mod(n2+1, N), n3, s));
             E = 0.5*J1*E;
 
             // PBC on interlayer coupling
-            E += 0.5*J2*this->spins[n1][n2][n3][s].dot(this->spins[n1][n2][mod(n3-1, L)][s]);
-            E += 0.5*J2*this->spins[n1][n2][n3][s].dot(this->spins[n1][n2][(n3+1)%L][s]);
-
-            // OBC on interlayer coupling 
-            //if (s > 0) {
-            //    E += 0.5*J2*this->spins[n1][n2][n3][s].dot(this->spins[n1][n2][n3-1][s]);
-            //} 
-            //if (s < L-1) {
-            //    E += 0.5*J2*this->spins[n1][n2][n3][s].dot(this->spins[n1][n2][n3+1][s]);
-            //}
+            E += 0.5*J2*S.dot(get_spin(n1, n2, mod(n3+1, L), s));
+            E += 0.5*J2*S.dot(get_spin(n1, n2, mod(n3-1, L), s));
 
             return E;
         }

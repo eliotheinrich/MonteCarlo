@@ -1,8 +1,8 @@
 g++ -pthread -I ~/lib -O3 -std=c++11 StiffnessCurve.cpp -o output
 
-for L in 16; do
+for N in 16; do
     filename=stiffness"$L".txt 
-    ./output $filename 30 $L 0.64 0. 2.56 0. 0.15 0. 0. 0. 50 10000 1000 10 1
+    ./output $filename 4 $N 1 0.64 0. 2.56 0. 0.15 0. 0. 0. 50 10000 1000 10 1
 done
 
 rm output
