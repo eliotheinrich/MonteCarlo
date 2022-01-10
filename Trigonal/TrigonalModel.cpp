@@ -82,7 +82,7 @@ class TrigonalModel : public SpinModel {
         TrigonalModel* clone() {
             TrigonalModel* new_model = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B);
             for (int i = 0; i < V; i++) {
-                new_model->set_spin(i, this->get_spin(i));
+                new_model->spins[i] = this->spins[i];
             }
             return new_model;
         }
@@ -92,34 +92,40 @@ class TrigonalModel : public SpinModel {
             int j;
             for (int n = 0; n < 6; n++) {
                 j = neighbors[i][n];
-                H -= J1*get_spin(j);
+                H -= J1*spins[j];
             }
             for (int n = 6; n < 8; n++) {
                 j = neighbors[i][n];
-                H -= J1*get_spin(j);
+                H += J2*spins[j];
             }
 
             this->mut.i = i;
-            this->mut.dS = -2*get_spin(i) + 2.*get_spin(i).dot(H)/pow(H.norm(),2) * H;
+            this->mut.dS = -2*spins[i] + 2.*spins[i].dot(H)/pow(H.norm(),2) * H;
         }
 
-        void rotation_mutation(int i) {
-            Vector3f S2;
-            if (r() % 2) {
-                S2 = R*get_spin(i);
-            } else {
-                S2 = R.transpose()*get_spin(i);
+        void generate_mutation() {
+            mut_counter++;
+            mut_counter = mut_counter % V;
+
+            if (mut_counter == 0) {
+                mut_mode++;
             }
 
-            this->mut.i = i;
-            this->mut.dS = S2 - get_spin(i);
+            if (mut_mode < 10) {
+                over_relaxation_mutation(mut_counter);
+            } else if (mut_mode < 14) {
+                metropolis_mutation(mut_counter);
+            } else {
+                metropolis_mutation(mut_counter);
+                mut_mode = 0;
+            }
         }
 
         const float onsite_energy(int i) {
             float E = 0;
 
             // Onsite interactions
-            Vector3f S = get_spin(i);
+            Vector3f S = spins[i];
             E -= B.dot(S);
 
             E += K1*S[2]*S[2];
@@ -128,7 +134,7 @@ class TrigonalModel : public SpinModel {
 
             return E;
         }
-
+        /*
         const float bond_energy(int i) {
             float E = 0;
 
@@ -152,6 +158,6 @@ class TrigonalModel : public SpinModel {
 
             return E;
         }
-
+        */
 };
 
