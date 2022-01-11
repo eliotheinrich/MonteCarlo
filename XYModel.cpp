@@ -176,7 +176,7 @@ class XYModel : virtual public MCModel {
             double dE = (1./12.*Em2 - 2./3.*Em1 + 2./3.*E1 - 1./12.*E2)/alpha;
             double ddE = (-1./12.*Em2 + 4./3.*Em1 - 5./2.*E0 + 4./3.*E1 - 1./12.*E2)/(alpha*alpha);
             
-            return vector<double>{dE/(2.*V), ddE/(2.*V)};
+            return vector<double>{dE/(2.*sqrt(V)), ddE/(2.*V)};
         }
 
         inline Vector2f get_magnetization() {
