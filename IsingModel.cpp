@@ -22,9 +22,7 @@ class IsingModel : virtual public MCModel {
     // Must be supplied with number of sublattices
     private:
         struct IsingMutation {
-            int n1;
-            int n2;
-            int n3;
+            int i;
         };
 
 
@@ -35,10 +33,9 @@ class IsingModel : virtual public MCModel {
         int V;
 
         float acceptance;
-        vector<vector<vector<float>>> spins;
+        vector<float> spins;
 
         // Mutation being considered is stored as an attribute of the model
-        LatticeIterator* iter;
         IsingMutation mut;
 
         IsingModel() {}
@@ -49,9 +46,7 @@ class IsingModel : virtual public MCModel {
             this->N3 = N3;
             this->V = N1*N2*N3;
 
-            this->spins = vector<vector<vector<float>>>(this->N1, vector<vector<float>>(this->N2, vector<float>(this->N3)));
-
-            this->iter = new LatticeIterator(N1, N2, N3, 1);
+            this->spins = vector<float>(V);
 
             this->randomize_spins();
 
@@ -59,28 +54,20 @@ class IsingModel : virtual public MCModel {
         }
 
         void randomize_spins() {
-            for (int n1 = 0; n1 < N1; n1++) {
-                for (int n2 = 0; n2 < N2; n2++) {
-                    for (int n3 = 0; n3 < N3; n3++) {
-                        // For each site, initialize spin randomly
-                        if (rand() % 2) {
-                            this->spins[n1][n2][n3] = 1.;
-                        } else {
-                            this->spins[n1][n2][n3] = -1.;
-                        }
-                    }
+            for (int i = 0; i < V; i++) {
+                // For each site, initialize spin randomly
+                if (rand() % 2) {
+                    this->spins[i] = 1.;
+                } else {
+                    this->spins[i] = -1.;
                 }
             }
         }
 
         inline float get_magnetization() {
             float M = 0;
-            for (int n1 = 0; n1 < N1; n1++) {
-                for (int n2 = 0; n2 < N2; n2++) {
-                    for (int n3 = 0; n3 < N3; n3++) {
-                        M += this->spins[n1][n2][n3];
-                    }
-                }
+            for (int i = 0; i < V; i++) {
+                M += this->spins[n1][n2][n3];
             }
             
             return M/(N1*N2*N3);
@@ -88,14 +75,7 @@ class IsingModel : virtual public MCModel {
 
         void generate_mutation() {
             // Randomly select a site to mutate
-            int n1 = iter->n1;
-            int n2 = iter->n2;
-            int n3 = iter->n3;
-            iter->next();
-
-            this->mut.n1 = n1;
-            this->mut.n2 = n2;
-            this->mut.n3 = n3;
+            mut.i = rand() % V;
         }
 
         void accept_mutation() {
@@ -103,7 +83,7 @@ class IsingModel : virtual public MCModel {
         }
 
         void reject_mutation() {
-            this->spins[mut.n1][mut.n2][mut.n3] = -this->spins[mut.n1][mut.n2][mut.n3];
+            this->spins[mut.i] = -this->spins[i];
         }
 
         virtual const float onsite_energy(int n1, int n2, int n3)=0;
@@ -113,21 +93,17 @@ class IsingModel : virtual public MCModel {
         const float energy() {
             float E = 0;
 
-            for (int n1 = 0; n1 < N1; n1++) {
-                for (int n2 = 0; n2 < N2; n2++) {
-                    for (int n3 = 0; n3 < N3; n3++) {
-                        E += onsite_energy(n1, n2, n3);
-                        E += bond_energy(n1, n2, n3);
-                    }
-                }
+            for (int i = 0; i < V; i++) {
+                E += onsite_energy(i);
+                E += bond_energy(i);
             }
             return E;
         }
 
         const float energy_change() {
-            float E1 = onsite_energy(mut.n1, mut.n2, mut.n3) + 2*bond_energy(mut.n1, mut.n2, mut.n3);
-            this->spins[mut.n1][mut.n2][mut.n3] = -this->spins[mut.n1][mut.n2][mut.n3];
-            float E2 = onsite_energy(mut.n1, mut.n2, mut.n3) + 2*bond_energy(mut.n1, mut.n2, mut.n3);
+            float E1 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
+            this->spins[mut.i] = -this->spins[mut.i];
+            float E2 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
 
             return E2 - E1;
         }
@@ -136,15 +112,10 @@ class IsingModel : virtual public MCModel {
         void save_spins(string filename) {
             ofstream output_file;
             output_file.open(filename);
-            output_file << N1 << "\t" << N2 << "\t" << N3 << endl;
-            for (int n1 = 0; n1 < N1; n1++) {
-                for (int n2 = 0; n2 < N2; n2++) {
-                    for (int n3 = 0; n3 < N3; n3++) {
-                        output_file << spins[n1][n2][n3] << ",";
-                    }
-                    output_file << ";";
-                }
-                output_file << endl;
+            output_file << N1 << "\t" << N2 << "\t" << N3 << "\n";
+            for (int i = 0; i < V; i++) {
+                output_file << spins[i];
+                if (i < V-1) { output_file << "\t"; }
             }
             output_file.close();
         }        

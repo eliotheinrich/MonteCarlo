@@ -11,17 +11,12 @@ import sys
 def load_texture(filename):
     with open(filename, 'r') as f:
         firstline = f.readline()
-        (num_sublattices, N) = np.array([int(i.strip()) for i in firstline.split('\t')])[:2]
-        spins = np.zeros((N,N,num_sublattices,2))
+        (N1, N2, N3, sl) = np.array([int(i.strip()) for i in firstline.split('\t')])
 
-        for i,line in enumerate(f.readlines()):
-            data1 = line.split(',')
-            data2 = [re.findall("\[(.*?)\]", unitcell) for unitcell in data1]
-            for j in range(N):
-                for s in range(num_sublattices):
-                    spins[i,j,s] = np.array([np.cos(float(data2[j][s])), np.sin(float(data2[j][s]))])
+        spins = np.array([float(x) for x in f.readline().split('\t')])
+        spins = spins.reshape((N1*N2*N3*sl, 3))
 
-        return spins
+        return spins.reshape((N1, N2, N3, sl, 3), order='F')
 
 # Detect spin vortices
 def find_vortices(spins, layer):
