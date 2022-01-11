@@ -42,13 +42,8 @@ class TrigonalXYModel : public XYModel {
 
         TrigonalXYModel* clone() {
             TrigonalXYModel* new_model = new TrigonalXYModel(N, L, J, A);
-            new_model->random_selection = random_selection;
-            for (int n1 = 0; n1 < N; n1++) {
-                for (int n2 = 0; n2 < N; n2++) {
-                    for (int n3 = 0; n3 < L; n3++) {
-                        new_model->spins[n1][n2][n3][0] = this->spins[n1][n2][n3][0];
-                    }
-                }
+            for (int i = 0; i < V; i++) {
+                new_model->spins[i] = this->spins[i];
             }
             return new_model;
         }
@@ -61,10 +56,12 @@ class TrigonalXYModel : public XYModel {
                                                         vector<vector<float>>(N,
                                                                 vector<float>(L)));
 
+            int i;
             for (int n1 = 0; n1 < N; n1++) {
                 for (int n2 = 0; n2 < N; n2++) {
                     for (int n3 = 0; n3 < L; n3++) {
-                        phi[n1][n2][n3] = atan2(spins[n1][n2][n3][0][1], spins[n1][n2][n3][0][0]);
+                        i = flat_idx(n1, n2, n3, 0);
+                        phi[n1][n2][n3] = atan2(spins[i][1], spins[i][0]);
                     }
                 }
             }
@@ -86,25 +83,9 @@ class TrigonalXYModel : public XYModel {
             return vector<double>{v1/(2*PI*N*N*L), v2/(2*PI*N*N*L)};
         }
 
-        const float onsite_energy(int n1, int n2, int n3, int s) {
-            float phi = atan2(spins[n1][n2][n3][s][1], spins[n1][n2][n3][s][0]);
+        const float onsite_energy(int i) {
+            float phi = atan2(spins[i][1], spins[i][0]);
             return A*cos(6*phi);
-        }
-
-        const float bond_energy(int n1, int n2, int n3, int s) {
-            float E = 0;
-
-            // NN interactions
-
-            // PBC boundary conditions
-            E -= this->spins[n1][n2][n3][s].dot(this->spins[n1][(n2+1)%N][n3][s]);
-            E -= this->spins[n1][n2][n3][s].dot(this->spins[n1][mod(n2-1, N)][n3][s]);
-            E -= this->spins[n1][n2][n3][s].dot(this->spins[(n1+1)%N][n2][n3][s]);
-            E -= this->spins[n1][n2][n3][s].dot(this->spins[mod(n1-1, N)][n2][n3][s]);
-            E -= this->spins[n1][n2][n3][s].dot(this->spins[(n1+1)%N][mod(n2-1, N)][n3][s]);
-            E -= this->spins[n1][n2][n3][s].dot(this->spins[mod(n1-1, N)][(n2+1)%N][n3][s]);
-
-            return 0.5*J*E;
         }
 };
 

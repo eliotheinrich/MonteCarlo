@@ -83,11 +83,11 @@ class SpinModel : virtual public MCModel {
             this->mut_counter = 0;
         }
 
-        inline int flat_idx(int n1, int n2, int n3, int s) {
+        inline const int flat_idx(int n1, int n2, int n3, int s) {
             return n1 + N1*(n2 + N2*(n3 + N3*s));
         }
 
-        inline Vector4i tensor_idx(int i) {
+        inline const Vector4i tensor_idx(int i) {
             int n1 = i % N1;
             i = i / N1;
             int n2 = i % N2;
@@ -116,14 +116,14 @@ class SpinModel : virtual public MCModel {
 
         void add_bond(Bond b) {
             this->bonds.push_back(b);
-            int idx; int neighbor_idx;
+            int i; int j;
             for (int n1 = 0; n1 < N1; n1++) {
                 for (int n2 = 0; n2 < N2; n2++) {
                     for (int n3 = 0; n3 < N3; n3++) {
                         for (int s = 0; s < sl; s++) {
-                            idx = flat_idx(n1, n2, n3, s);
-                            neighbor_idx = flat_idx(mod(n1 + b.d1, N1), mod(n2 + b.d2, N2), mod(n3 + b.d3, N3), mod(s + b.ds, sl));
-                            neighbors[idx].push_back(neighbor_idx);
+                            i = flat_idx(n1, n2, n3, s);
+                            j = flat_idx(mod(n1 + b.d1, N1), mod(n2 + b.d2, N2), mod(n3 + b.d3, N3), mod(s + b.ds, sl));
+                            neighbors[i].push_back(j);
                         }
                     }
                 }
@@ -376,10 +376,5 @@ class SpinModel : virtual public MCModel {
             output_file.close();
         }
 };
-
-template <class SpinModel>
-vector<float> MagnetizationLogItem(SpinModel *model) {
-    return vector<float>{model->get_magnetization().norm(), model->energy()};
-}
 
 #endif
