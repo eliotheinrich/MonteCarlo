@@ -136,12 +136,15 @@ class SpinModel : virtual public MCModel {
             float f;
             Matrix3f R1; 
             Matrix3f R2;
+            Matrix3f R3;
 
             double E0 = 0.;
             double E1 = 0.;
             double E2 = 0.;
+            double E3 = 0.;
             double Em1 = 0.;
             double Em2 = 0.;
+            double Em3 = 0.;
 
 
             Vector3f S1;
@@ -153,7 +156,8 @@ class SpinModel : virtual public MCModel {
                     R1 << cos(f*alpha), -sin(f*alpha), 0,
                           sin(f*alpha), cos(f*alpha), 0.,
                           0., 0., 1.;
-                    R2 = R1.transpose();
+                    R2 = R1*R1;
+                    R3 = R1*R1*R1;
 
                     j = neighbors[i][n];
 
@@ -163,18 +167,23 @@ class SpinModel : virtual public MCModel {
                     E0 += bonds[n].bondfunc(S1, S2);
 
                     E1 += bonds[n].bondfunc(S1, R1*S2);
-                    Em1 += bonds[n].bondfunc(S1, R2*S2);
+                    Em1 += bonds[n].bondfunc(S1, R1.transpose()*S2);
 
-                    E2 += bonds[n].bondfunc(S1, R1*R1*S2);
-                    Em2 += bonds[n].bondfunc(S1, R2*R2*S2);
+                    E2 += bonds[n].bondfunc(S1, R2*S2);
+                    Em2 += bonds[n].bondfunc(S1, R2.transpose()*S2);
+
+                    E3 += bonds[n].bondfunc(S1, R3*S2);
+                    Em3 += bonds[n].bondfunc(S1, R3.transpose()*S2);
                 }
             }
 
             // Compute derivates from finite difference
-            double dE = (1./12.*Em2 - 2./3.*Em1 + 2./3.*E1 - 1./12.*E2)/alpha;
-            double ddE = (-1./12.*Em2 + 4./3.*Em1 - 5./2.*E0 + 4./3.*E1 - 1./12.*E2)/(alpha*alpha);
+            double d1E = (1./12.*Em2 - 2./3.*Em1 + 2./3.*E1 - 1./12.*E2)/alpha;
+            double d2E = (-1./12.*Em2 + 4./3.*Em1 - 5./2.*E0 + 4./3.*E1 - 1./12.*E2)/pow(alpha, 2);
+            double d3E = (1./8.*Em3 - 1.*Em2 + 13./8.*Em1 - 13./8.*E1 + 1.*E2 - 1./8.*E3)/pow(alpha, 3);
+            double d4E = (-1./6.*Em3 + 2.*Em2 - 13./2.*Em1 + 28./3.*E0 - 13./2.*E1 + 2.*E2 - 1./6.*E3)/pow(alpha, 4);
             
-            return vector<double>{dE/(2.*sqrt(V)), ddE/(2*V)};
+            return vector<double>{d1E/2., d2E/2., d3E/2., d4E/2.};
         }
 
         inline Vector3f get_magnetization() {
