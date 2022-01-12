@@ -107,9 +107,9 @@ def plot_structure_factor(C, ax):
 
     KX, KY, Ck = fourier_transform(C)
 
-    Ck = recenter(Ck, axes=(0,1))
+#    Ck = recenter(Ck, axes=(0,1))
 
-    ax.pcolor(KX, KY, np.abs(Ck), shading='auto')
+    ax.pcolor(KX, KY, np.abs(Ck), vmin = 0., vmax = np.max(np.abs(Ck)), shading='auto')
     ax.set_aspect('equal')
     ax.axis('off')
 
@@ -120,7 +120,7 @@ def plot_correlation_function(C, ax):
 
     X, Y = affine_meshgrid(α1, α2, N, N, N*α1/2 + N*α2/2)
 
-    ax.pcolor(X, Y, C, vmin = -1, vmax = 1, shading='auto')
+    ax.pcolor(X, Y, C, vmin = -np.max(C), vmax = np.max(C), shading='auto')
     ax.set_aspect('equal')
     ax.axis('off')
 
