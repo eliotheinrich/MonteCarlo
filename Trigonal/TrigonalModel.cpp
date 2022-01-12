@@ -133,7 +133,7 @@ class TrigonalModel : public SpinModel {
 
             E += K1*S[2]*S[2];
             //E += K2*pow(S[0]*S[0]+S[1]*S[1],2);
-            E += K3*cos(3*phi)*pow(sin(theta), 5)*cos(theta); // Sixfold magnetocrystalline field
+            E += K3*cos(6*phi)*pow(sin(theta), 6); // Sixfold magnetocrystalline field
 
             return E;
         }
