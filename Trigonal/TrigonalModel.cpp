@@ -63,20 +63,20 @@ class TrigonalModel : public SpinModel {
             Vector3f v1; v1 << 1., 0., 0.;
             Vector3f v2; v2 << 0.5, sqrt(3)/2., 0.;
             Vector3f v3; v3 << 0.5, -sqrt(3)/2., 0.;
-            this->add_bond(Bond{1,0,0,0, v1, bondfunc});
-            this->add_bond(Bond{-1,0,0,0, -v1, bondfunc});
-            this->add_bond(Bond{0,1,0,0, v2, bondfunc});
-            this->add_bond(Bond{0,-1,0,0, -v2, bondfunc});
-            this->add_bond(Bond{1,-1,0,0, v3, bondfunc});
-            this->add_bond(Bond{-1,1,0,0, -v3, bondfunc});
+            this->add_bond(1,0,0,0, v1, bondfunc);
+            this->add_bond(-1,0,0,0, -v1, bondfunc);
+            this->add_bond(0,1,0,0, v2, bondfunc);
+            this->add_bond(0,-1,0,0, -v2, bondfunc);
+            this->add_bond(1,-1,0,0, v3, bondfunc);
+            this->add_bond(-1,1,0,0, -v3, bondfunc);
 
             function<float(Vector3f S1, Vector3f S2)> bondfunc_inter = [J2](Vector3f S1, Vector3f S2) {
                 return J2*S1.dot(S2);
             };
 
             Vector3f v4; v4 << 0., 0., 1.;
-            this->add_bond(Bond{0,0,1,0, v4, bondfunc_inter});
-            this->add_bond(Bond{0,0,-1,0, -v4, bondfunc_inter});
+            this->add_bond(0,0,1,0, v4, bondfunc_inter);
+            this->add_bond(0,0,-1,0, -v4, bondfunc_inter);
         }
 
         TrigonalModel* clone() {

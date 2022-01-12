@@ -33,10 +33,10 @@ class XXZHeis : public SpinModel {
 
             Vector3f v1; v1 << 1.,0.,0.;
             Vector3f v2; v2 << 0.,1.,0.;
-            this->add_bond(Bond{1,0,0,0,   v1, bondfunc});
-            this->add_bond(Bond{-1,0,0,0, -v1, bondfunc});
-            this->add_bond(Bond{0,1,0,0,   v2, bondfunc});
-            this->add_bond(Bond{0,-1,0,0, -v2, bondfunc});
+            this->add_bond(1,0,0,0,   v1, bondfunc);
+            this->add_bond(-1,0,0,0, -v1, bondfunc);
+            this->add_bond(0,1,0,0,   v2, bondfunc);
+            this->add_bond(0,-1,0,0, -v2, bondfunc);
         }
 
         XXZHeis* clone() {

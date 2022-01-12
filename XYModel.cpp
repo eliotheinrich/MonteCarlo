@@ -17,14 +17,6 @@
 using namespace std;
 using namespace Eigen;
 
-struct Bond {
-    int d1;
-    int d2;
-    int d3;
-    int ds;
-    Vector3f v;
-    function<float(Vector2f, Vector2f)> bondfunc;
-};
     
 class XYModel : virtual public MCModel {
     // Generic 3D XY model
@@ -34,6 +26,15 @@ class XYModel : virtual public MCModel {
         struct XYMutation {
             int i;
             Vector2f dS;
+        };
+
+        struct Bond {
+            int d1;
+            int d2;
+            int d3;
+            int ds;
+            Vector3f v;
+            function<float(Vector2f, Vector2f)> bondfunc;
         };
 
 
@@ -116,8 +117,8 @@ class XYModel : virtual public MCModel {
             }
         }
 
-        void add_bond(Bond b) {
-            Vector4i v;
+        void add_bond(int d1, int d2, int d3, int ds, Vector3f v, function<float(Vector2f, Vector2f)> bondfunc) {
+            Bond b{d1, d2, d3, ds, v, bondfunc};
             this->bonds.push_back(b);
             int i; int j;
             for (int n1 = 0; n1 < N1; n1++) {
