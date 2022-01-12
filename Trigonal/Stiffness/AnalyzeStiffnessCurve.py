@@ -11,26 +11,51 @@ def load_stiffness_data(filename):
     with open(filename) as f:
         s = f.readline().split('\t')
         res = int(s[0])
+        num_samples = int(s[1])
+        N = int(s[2])
+        L = int(s[3])
     
     T = np.zeros(res)
-    dE = np.zeros(res)
-    err_dE = np.zeros(res)
-    ddE = np.zeros(res)
-    err_ddE = np.zeros(res)
+    dEs = np.zeros((res, num_samples, 4))
 
     with open(filename) as f:
         line = f.readline()
         for i in range(res):
             line = f.readline()
 
-            data = line.split('\t')
+            data = line.split('\t')[:-1]
             T[i] = float(data[0])
-            (dE[i], err_dE[i]) = (float(x) for x in data[1].split(','))
-            (ddE[i], err_ddE[i]) = (float(x) for x in data[2].split(','))
+            dEs[i] = np.array([float(x) for x in data[1:]]).reshape((num_samples, 4))
 
-    ρ = ddE - err_dE**2/T
+    V = N*N*L
+    d1E = dEs[:,:,0]
+    d2E = dEs[:,:,1]
+    d3E = dEs[:,:,2]
+    d4E = dEs[:,:,3]
 
-    return L, T, ρ
+    U2 = (avg(d2E) - (avg(d1E**2) - avg(d1E)**2)/T)/V
+
+    U4 = (6/T**3*avg(d1E)**4 + 12/T**2*avg(d1E)**2*(avg(d2E) - avg(d1E**2)/T) \
+       + 3/T*avg(d2E)**2 - 6/T**2*avg(d1E**2)*avg(d2E) + 3/T**3*avg(d1E**2)**2 \
+       + 4/T*avg(d3E)*avg(d1E) - 12/T**2*avg(d1E*d2E)*avg(d1E) + 4/T**3*avg(d1E**3)*avg(d1E) \
+       - 1/T**3*avg(d1E**4) + 6/T**2*avg(d1E**2*d2E) - 3/T*avg(d2E**2) - 4/T*avg(d1E*d3E) \
+       + avg(d4E))/V/V
+
+    plt.plot(T, U2/max(np.abs(U2)))
+    plt.plot(T, U4/max(np.abs(U4)))
+    plt.show()
+
+    plt.plot(T, np.std(d1E,axis=1), label='d1')
+    #plt.plot(T, avg(d2E), label='d2')
+    plt.plot(T, np.std(d3E,axis=1), label='d3')
+    #plt.plot(T, avg(d4E), label='d4')
+    plt.legend()
+    plt.show()
+
+    return L, T, U2, U4
+
+def avg(A):
+    return np.mean(A, axis=1)
 
 def get_L0(L, T, ρ, Lmin = 0.5, Lmax = 3., num_Ls=100):
     ρL = np.zeros_like(ρ)

@@ -29,11 +29,11 @@ int main(int argc, char* argv[]) {
     SquareXYModel *model = new SquareXYModel(N, L, J, 0., 0.);
 
     unsigned long long int resolution = 30;
-    unsigned long long int num_runs = 5;
-    unsigned long long int steps_per_run = 5000*MCStep;
+    unsigned long long int num_runs = 1;
+    unsigned long long int steps_per_run = 15000*MCStep;
 
-    unsigned long long int num_samples = 100;
-    unsigned long long int steps_per_sample = 100*MCStep;
+    unsigned long long int num_samples = 1000;
+    unsigned long long int steps_per_sample = 20*MCStep;
 
     vector<float> T(resolution);
 
@@ -45,9 +45,10 @@ int main(int argc, char* argv[]) {
 
     auto start = chrono::high_resolution_clock::now();
 
-    auto data = sample_r(twist_sampler, model, &T, 1, steps_per_run, num_samples, steps_per_sample, num_threads);
-    auto stats = summary_statistics(&data);
-    write_data(&stats, &T, filename);
+    auto data = sample_pt(twist_sampler, model, &T, steps_per_run, num_samples, steps_per_sample, num_threads);
+    //auto stats = summary_statistics(&data);
+    string header = to_string(num_samples) + "\t" + to_string(N) + "\t" + to_string(L);
+    write_samples(&data, &T, filename, header);
 
     auto stop = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);

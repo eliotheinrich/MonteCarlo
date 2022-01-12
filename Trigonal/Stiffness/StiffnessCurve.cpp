@@ -60,8 +60,9 @@ int main(int argc, char* argv[]) {
     auto start = chrono::high_resolution_clock::now();
 
     auto data = sample_pt(twisting_sampler, model, &T, steps_per_run, num_samples, steps_per_sample, num_threads);
-    auto stats = summary_statistics(&data);
-    write_data(&stats, &T, filename);
+//    auto stats = summary_statistics(&data);
+    string header = to_string(num_samples) + "\t" + to_string(N) + "\t" + to_string(L);
+    write_samples(&data, &T, filename, header);
 
     auto stop = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);

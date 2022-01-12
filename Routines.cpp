@@ -193,6 +193,31 @@ void write_data(vector<vector<vector<dtype>>> *data, vector<float> *T, string fi
     output_file.close();
 }
 
+template <class dtype>
+void write_samples(vector<vector<vector<dtype>>> *data, vector<float> *T, string filename, string header = "") {
+    int resolution = (*data).size();
+    int num_samples = (*data)[0].size();
+    int dtype_size = (*data)[0][0].size();
+
+    ofstream output_file(filename);
+
+    // Write header
+    output_file << resolution << "\t" << header << "\n";
+
+    for (int i = 0; i < resolution; i++) {
+        output_file << (*T)[i] << "\t";
+        for (int n = 0; n < num_samples; n++) {
+            for (int k = 0; k < dtype_size; k++) {
+                output_file << (*data)[i][n][k] << "\t";
+            }
+        }
+        output_file << "\n";
+    }
+
+    output_file.close();
+}
+
+
 template <class ModelType>
 void generate_spin_configs(ModelType *model, vector<float> T, unsigned long long equilibration_steps, 
                                                               unsigned long long num_samples,

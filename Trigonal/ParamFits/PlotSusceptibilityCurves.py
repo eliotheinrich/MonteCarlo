@@ -34,9 +34,15 @@ if __name__ == "__main__":
             ax1 = axs[1]
             ax2 = axs[2]
 
-        plot_susceptibility_curve(T, X1, X2, X3, dX1, dX2, dX3, ax0)
-        plot_heat_capacity(T, dE1, dE2, dE3, ax1, nmin=2)
-        plot_energy_curve(T, E1, E2, E3, dE1, dE2, dE3, ax2)
+        plot_susceptibility_curve(T, X1, dX1, ax0, color='k')
+        plot_susceptibility_curve(T, X2, dX2, ax0, color='r')
+        plot_susceptibility_curve(T, X3, dX3, ax0, color='b')
+        plot_heat_capacity(T, dE1, 2, ax1, color='k')
+        plot_heat_capacity(T, dE2, 2, ax1, color='r')
+        plot_heat_capacity(T, dE3, 2, ax1, color='b')
+        plot_energy_curve(T, E1, dE1, ax2, color='k', label=r'$B \parallel a$')
+        plot_energy_curve(T, E2, dE2, ax2, color='r', label=r'$B \parallel ab$')
+        plot_energy_curve(T, E3, dE3, ax2, color='b', label=r'$B \parallel c$')
 
         ax0.set_title(label + " = " + str(vals[n]))
         ax2.set_xlabel(r"$T/J$", fontsize=20)
@@ -51,7 +57,7 @@ if __name__ == "__main__":
         ax1 = axs[1]
         ax2 = axs[2]
 
-    ax0.legend()
+    ax2.legend()
     ax0.set_ylabel(r'$\chi(T)$', fontsize=20)
     ax1.set_ylabel(r'$c(T)$', fontsize=20)
     ax2.set_ylabel(r'$u(T)$', fontsize=20)

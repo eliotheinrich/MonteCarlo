@@ -128,9 +128,12 @@ class TrigonalModel : public SpinModel {
             Vector3f S = spins[i];
             E -= B.dot(S);
 
+            float phi = atan2(S[1], S[0]);
+            float theta = acos(S[2]);
+
             E += K1*S[2]*S[2];
             //E += K2*pow(S[0]*S[0]+S[1]*S[1],2);
-            E += K3*cos(6*atan2(S[1], S[0]))*pow(S[0]*S[0]+S[1]*S[1],3); // Sixfold magnetocrystalline field
+            E += K3*cos(3*phi)*pow(sin(theta), 5)*cos(theta); // Sixfold magnetocrystalline field
 
             return E;
         }

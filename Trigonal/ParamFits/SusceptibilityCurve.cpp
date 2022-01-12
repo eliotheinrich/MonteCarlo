@@ -7,9 +7,23 @@
 using namespace std;
 using namespace Eigen;
 
-vector<float> susceptibility_sampler(TrigonalModel *model) {
+vector<float> susceptibility_x(TrigonalModel *model) {
     return vector<float>{
-                static_cast<float>(model->get_magnetization().norm()/pow(model->B.norm(), 2)),
+                static_cast<float>(model->get_magnetization()[0]/model->B.norm()),
+                static_cast<float>(model->energy()/model->V)
+           };
+}
+
+vector<float> susceptibility_y(TrigonalModel *model) {
+    return vector<float>{
+                static_cast<float>(model->get_magnetization()[1]/model->B.norm()),
+                static_cast<float>(model->energy()/model->V)
+           };
+}
+
+vector<float> susceptibility_z(TrigonalModel *model) {
+    return vector<float>{
+                static_cast<float>(model->get_magnetization()[2]/model->B.norm()),
                 static_cast<float>(model->energy()/model->V)
            };
 }
@@ -84,15 +98,15 @@ int main(int argc, char* argv[]) {
 
     auto start = chrono::high_resolution_clock::now();
 
-    auto data1 = sample_pt(susceptibility_sampler, model1, &T, steps_per_run, num_samples, steps_per_sample, num_threads);
+    auto data1 = sample_pt(susceptibility_y, model1, &T, steps_per_run, num_samples, steps_per_sample, num_threads);
     auto stats1 = summary_statistics(&data1);
     write_data(&stats1, &T, foldername + "/SusceptibilityCurve1.txt");
 
-    auto data2 = sample_pt(susceptibility_sampler, model2, &T, steps_per_run, num_samples, steps_per_sample, num_threads);
+    auto data2 = sample_pt(susceptibility_x, model2, &T, steps_per_run, num_samples, steps_per_sample, num_threads);
     auto stats2 = summary_statistics(&data2);
     write_data(&stats2, &T, foldername + "/SusceptibilityCurve2.txt");
 
-    auto data3 = sample_pt(susceptibility_sampler, model3, &T, steps_per_run, num_samples, steps_per_sample, num_threads);
+    auto data3 = sample_pt(susceptibility_z, model3, &T, steps_per_run, num_samples, steps_per_sample, num_threads);
     auto stats3 = summary_statistics(&data3);
     write_data(&stats3, &T, foldername + "/SusceptibilityCurve3.txt");
 
