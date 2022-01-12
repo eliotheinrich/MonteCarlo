@@ -36,10 +36,10 @@ def load_stiffness_data(filename):
     U2 = (avg(d2E) - (avg(d1E**2) - avg(d1E)**2)/T)/V
 
     U4 = (6/T**3*avg(d1E)**4 + 12/T**2*avg(d1E)**2*(avg(d2E) - avg(d1E**2)/T) \
-       + 3/T*avg(d2E)**2 - 6/T**3*avg(d1E**2)*avg(d2E) + 3/T**3*avg(d1E**2)**2 \
+       + 3/T*avg(d2E)**2 - 6/T**2*avg(d1E**2)*avg(d2E) + 3/T**3*avg(d1E**2)**2 \
        + 4/T*avg(d3E)*avg(d1E) - 12/T**2*avg(d1E*d2E)*avg(d1E) + 4/T**3*avg(d1E**3)*avg(d1E) \
-       + 1/T**3*avg(d1E**4) + 6/T**2*avg(d1E**2*d2E) - 3/T*avg(d2E**2) - 4/T*avg(d1E*d3E) \
-       + avg(d4E))/V
+       - 1/T**3*avg(d1E**4) + 6/T**2*avg(d1E**2*d2E) - 3/T*avg(d2E**2) - 4/T*avg(d1E*d3E) \
+       + avg(d4E))/V/V
 
     plt.plot(T, U2/max(np.abs(U2)))
     plt.plot(T, U4/max(np.abs(U4)))

@@ -194,7 +194,7 @@ void write_data(vector<vector<vector<dtype>>> *data, vector<float> *T, string fi
 }
 
 template <class dtype>
-void write_all_samples(vector<vector<vector<dtype>>> *data, vector<float> *T, string filename, string header = "") {
+void write_samples(vector<vector<vector<dtype>>> *data, vector<float> *T, string filename, string header = "") {
     int resolution = (*data).size();
     int num_samples = (*data)[0].size();
     int dtype_size = (*data)[0][0].size();
