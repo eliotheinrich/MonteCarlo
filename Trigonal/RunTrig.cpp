@@ -32,11 +32,16 @@ int main() {
 
     ofstream output("Log.txt");
     for (int i = 0; i < log.size(); i++) {
-        output << log[i][0] << "\t" << log[i][1] << "\n";
+//        output << log[i][0] << "\t" << log[i][1] << "\n";
     }
 
-    model->save_spins("Spins.txt");
+//    model->save_spins("Spins.txt");
 
-    cout << "Energy = " << model->energy() << endl;
-
+//    cout << "Energy = " << model->energy() << endl;
+    for (int i = 0; i < 1000; i++) {
+        if (i % 100 == 0) {
+            model->save_spins("configs/spins" + to_string(i/100) + ".txt");
+        }
+        model->dynamic_step(0.01);
+    }
 }

@@ -266,6 +266,7 @@ class SpinModel : virtual public MCModel {
             vector<float> Cij = vector<float>(V); 
 
             int j;
+            float Si = skyrmion_density(i);
             Vector4i idxs = tensor_idx(i);
             int m1 = idxs[0]; int m2 = idxs[1]; int m3 = idxs[2]; int k = idxs[3];
             for (int n1 = 0; n1 < N1; n1++) {
@@ -276,7 +277,7 @@ class SpinModel : virtual public MCModel {
                             Cij[j] = skyrmion_density(flat_idx((m1 + n1)%N1, 
                                                                (m2 + n2)%N2, 
                                                                (m3 + n3)%N3, 
-                                                               (s + k)%sl))*skyrmion_density(i);
+                                                               (s + k)%sl))*Si;
                         }
                     }
                 }

@@ -15,7 +15,7 @@ vector<float> Cij_sampler(TrigonalModel *model) {
     int i;
     int j;
     for (int i = 0; i < model->V; i++) {
-        Cij = model->full_correlation_function(i);
+        Cij = model->correlation_function(i,2,2);
         for (int j = 0; j < model->V; j++) {
             Cij_avg[j] += Cij[j];
         }

@@ -18,11 +18,10 @@ int main(int argc, char* argv[]) {
     string filename = argv[1];
     int N = stoi(argv[2]);
     cout << "N = " << N << endl;
-    int num_threads = 4;
+    int num_threads = 30;
 
     const int L = 1;
     const float J = 1.;
-    const float A = 0.3;
 
     const int MCStep = N*N*L;
 
@@ -30,10 +29,10 @@ int main(int argc, char* argv[]) {
 
     unsigned long long int resolution = 30;
     unsigned long long int num_runs = 1;
-    unsigned long long int steps_per_run = 15000*MCStep;
+    unsigned long long int steps_per_run = 25000*MCStep;
 
     unsigned long long int num_samples = 1000;
-    unsigned long long int steps_per_sample = 20*MCStep;
+    unsigned long long int steps_per_sample = 100*MCStep;
 
     vector<float> T(resolution);
 

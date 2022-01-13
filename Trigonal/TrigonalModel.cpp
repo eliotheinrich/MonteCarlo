@@ -134,33 +134,38 @@ class TrigonalModel : public SpinModel {
             E += K1*S[2]*S[2];
             //E += K2*pow(S[0]*S[0]+S[1]*S[1],2);
             E += K3*cos(6*phi)*pow(sin(theta), 6); // Sixfold magnetocrystalline field
+            //E += K3*cos(3*phi)*pow(sin(theta), 5)*cos(theta); // Sixfold magnetocrystalline field
 
             return E;
         }
-        /*
-        const float bond_energy(int i) {
-            float E = 0;
 
-            Vector4i idxs = tensor_idx(i);
-            Vector3f S = get_spin(i);
+        void dynamic_step(float dt) {
+            vector<Vector3f> H = vector<Vector3f>(V);
+            int j;
 
-            int n1 = idxs[0]; int n2 = idxs[1]; int n3 = idxs[2]; int s = idxs[3];
+            // Compute local molecular fields
+            for (int i = 0; i < V; i++) {
+                H[i] << 0., 0., K1*pow(spins[i][2], 2);
+                H[i] += B;
+                for (int n = 0; n < 6; n++) {
+                    j = neighbors[i][n];
+                    H[i] -= J1*spins[j];
+                }
+                for (int n = 6; n < 8; n++) {
+                    j = neighbors[i][n];
+                    H[i] += J2*spins[j];
+                }
+            }
 
-            // NN interactions
-            E -= S.dot(get_spin(n1, mod(n2+1, N), n3, s));
-            E -= S.dot(get_spin(n1, mod(n2-1, N), n3, s));
-            E -= S.dot(get_spin(mod(n1+1, N), n2, n3, s));
-            E -= S.dot(get_spin(mod(n1-1, N), n2, n3, s));
-            E -= S.dot(get_spin(mod(n1+1, N), mod(n2-1, N), n3, s));
-            E -= S.dot(get_spin(mod(n1-1, N), mod(n2+1, N), n3, s));
-            E = 0.5*J1*E;
+            float dT;
+            float Hm;
 
-            // PBC on interlayer coupling
-            E += 0.5*J2*S.dot(get_spin(n1, n2, mod(n3+1, L), s));
-            E += 0.5*J2*S.dot(get_spin(n1, n2, mod(n3-1, L), s));
-
-            return E;
+            // Precess around local molecular field
+            for (int i = 0; i < V; i++) {
+                Hm = H[i].norm();
+                dT = Hm*dt;
+                spins[i] = cos(dT)*spins[i] + sin(dT)*H[i].cross(spins[i])/Hm + (1 - cos(dT))*H[i].dot(spins[i])*H[i]/pow(Hm, 2);
+            }
         }
-        */
 };
 

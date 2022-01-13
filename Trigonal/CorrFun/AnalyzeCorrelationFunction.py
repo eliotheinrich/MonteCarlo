@@ -107,7 +107,7 @@ def plot_structure_factor(C, ax):
 
     KX, KY, Ck = fourier_transform(C)
 
-#    Ck = recenter(Ck, axes=(0,1))
+    Ck = recenter(Ck, axes=(0,1))
 
     ax.pcolor(KX, KY, np.abs(Ck), vmin = 0., vmax = np.max(np.abs(Ck)), shading='auto')
     ax.set_aspect('equal')

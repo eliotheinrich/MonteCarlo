@@ -47,9 +47,12 @@ def display_trigonal_spins(ax, spins, layer, color=None):
             spinys[i*N + j] = spin[1]
             spinzs[i*N + j] = spin[2]
 
-            line(ax, [x,y], np.array([x,y]) + α1, 'k--', alpha=0.5, linewidth=0.5)
-            line(ax, [x,y], np.array([x,y]) + α2, 'k--', alpha=0.5, linewidth=0.5)
-            line(ax, [x,y], np.array([x,y]) + α3, 'k--', alpha=0.5, linewidth=0.5)
+            if i < N-1:
+                line(ax, [x,y], np.array([x,y]) + α1, 'k--', alpha=0.5, linewidth=0.5)
+            if j < N-1:
+                line(ax, [x,y], np.array([x,y]) + α2, 'k--', alpha=0.5, linewidth=0.5)
+            if i < N-1 and j < N-1:
+                line(ax, [x,y], np.array([x,y]) + α3, 'k--', alpha=0.5, linewidth=0.5)
 
 
 
@@ -59,9 +62,11 @@ def display_trigonal_spins(ax, spins, layer, color=None):
 
     if color is None:
         color = 'k'
-    ax.quiver(xs, ys, spinxs, spinys, scale_units='x', scale=scale, width=width, color=color)
+    ax.quiver(xs-spinxs/2, ys-spinys/2, spinxs, spinys, scale_units='x', scale=scale, width=width, color=color)
 
     plt.axis('off')
+    ax.set_xlim(min(xs)-1, max(xs)+1)
+    ax.set_ylim(min(ys)-1, max(ys)+1)
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
     ax.set_aspect('equal')
