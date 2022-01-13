@@ -41,42 +41,31 @@ def load_stiffness_data(filename):
        - 1/T**3*avg(d1E**4) + 6/T**2*avg(d1E**2*d2E) - 3/T*avg(d2E**2) - 4/T*avg(d1E*d3E) \
        + avg(d4E))/V/V
 
-    plt.plot(T, U2/max(np.abs(U2)))
-    plt.plot(T, U4/max(np.abs(U4)))
-    plt.show()
-
-    plt.plot(T, np.std(d1E,axis=1), label='d1')
-    #plt.plot(T, avg(d2E), label='d2')
-    plt.plot(T, np.std(d3E,axis=1), label='d3')
-    #plt.plot(T, avg(d4E), label='d4')
-    plt.legend()
-    plt.show()
-
     return L, T, U2, U4
 
 def avg(A):
     return np.mean(A, axis=1)
 
-def get_L0(L, T, ρ, Lmin = 0.5, Lmax = 3., num_Ls=100):
-    ρL = np.zeros_like(ρ)
+def get_L0(L, T, U2, Lmin = 0.5, Lmax = 3., num_Ls=100):
+    U2L = np.zeros_like(U2)
     intersect_points = np.zeros_like(L, dtype=np.float32)
     inds = np.zeros_like(L)
-    res = len(ρ)
+    res = len(U2)
 
     T_KT = 0.
     min_L0 = 0.
     min_dev = np.inf
     for L0 in np.linspace(Lmin, Lmax, num_Ls):
         for n,Ln in enumerate(L):
-            ρL[n] = ρ[n]/(1. + 1/(2.*np.log(Ln/L0)))
+            U2L[n] = U2[n]/(1. + 1/(2.*np.log(Ln/L0)))
 
-            ind = np.argwhere(np.diff(np.sign(ρL[n] - 2*T/np.pi))).flatten()[-1]
+            ind = np.argwhere(np.diff(np.sign(U2L[n] - 2*T/np.pi))).flatten()[-1]
 
             inds[n] = ind
             x1 = T[ind]
             x2 = T[ind+1]
-            y1 = ρL[n,ind]
-            y2 = ρL[n,ind+1]
+            y1 = U2L[n,ind]
+            y2 = U2L[n,ind+1]
 
             intersect_points[n] = -np.pi*(x1*y2 - y1*x2)/(2*(x2 - x1) + np.pi*(y1 - y2))
 
@@ -88,16 +77,16 @@ def get_L0(L, T, ρ, Lmin = 0.5, Lmax = 3., num_Ls=100):
 
     return min_L0, T_KT
 
-def plot_stiffness_curve(L, T, ρ, L0, T_KT):
-    ρL = np.array([ρ[n]/(1. + 1./(2.*np.log(L[n]/L0))) for n in range(len(ρ))])
+def plot_stiffness_curve(L, T, U2, L0, T_KT):
+    U2L = np.array([U2[n]/(1. + 1./(2.*np.log(L[n]/L0))) for n in range(len(U2))])
     for n, L in enumerate(L):
-        plt.plot(T, ρL[n], marker='o', label=f'L = {L}')
+        plt.plot(T, U2L[n], marker='o', label=f'L = {L}')
 
     plt.plot(T, 2./np.pi*T, 'k--', label=r'$2T/\pi$')
 
     plt.legend()
     plt.xlim(0., max(T))
-    plt.ylim(-0.05, np.max(ρL) + 0.2)
+    plt.ylim(-0.05, np.max(U2L) + 0.2)
     plt.xlabel(r'$T/J$', fontsize=15)
     plt.ylabel(r'$\Upsilon(L,T)/(1+(2\log(L/L_0))^{-1})$', fontsize=15)
 #    plt.ylabel(r'$\Upsilon(L,T)$', fontsize=15)
@@ -111,31 +100,33 @@ if __name__ == "__main__":
         os.chdir(sys.argv[1])
 
     fs = [f for f in os.listdir() if f[:9] == "stiffness"]
-    _, T, ρ = load_stiffness_data(fs[0])
+    _, T, U2, U4 = load_stiffness_data(fs[0])
 
     N = len(fs)
     res = len(T)
 
     T = np.zeros(res)
-    ρ = np.zeros((N, res))
+    U2 = np.zeros((N, res))
+    U4 = np.zeros((N, res))
     L = np.zeros(N, dtype=int)
 
     for n, f in enumerate(fs):
         if f[:9] == 'stiffness':
             i = f.index('.')
-            L[n], T, ρ[n,:] = load_stiffness_data(f)
+            L[n], T, U2[n], U4[n] = load_stiffness_data(f)
 
     inds = np.argsort(L)
-    ρ = ρ[inds]
+    U2 = U2[inds]
+    U4 = U4[inds]
     L = L[inds]
     T = T
 
 
-    L0, T_KT = get_L0(L, T, ρ, 0.1, 2.0, 10000)
-#    L0 = 1/1.4
-#    T_KT = 0.88
+#    L0, T_KT = get_L0(L, T, U2, 0.1, 2.0, 10000)
+    L0 = 1/1.4
+    T_KT = 0.88
     print(L0, T_KT)
-    plot_stiffness_curve(L, T, ρ, L0, T_KT)
+    plot_stiffness_curve(L, T, U2, L0, T_KT)
 
 
 
