@@ -41,7 +41,7 @@ def load_stiffness_data(filename):
        - 1/T**3*avg(d1E**4) + 6/T**2*avg(d1E**2*d2E) - 3/T*avg(d2E**2) - 4/T*avg(d1E*d3E) \
        + avg(d4E))/V/V
 
-    return L, T, U2, U4
+    return N, T, U2, U4
 
 def avg(A):
     return np.mean(A, axis=1)
@@ -78,18 +78,24 @@ def get_L0(L, T, U2, Lmin = 0.5, Lmax = 3., num_Ls=100):
     return min_L0, T_KT
 
 def plot_stiffness_curve(L, T, U2, L0, T_KT):
+    fig, axs = plt.subplots(nrows=2, ncols=1, sharex=True)
+
     U2L = np.array([U2[n]/(1. + 1./(2.*np.log(L[n]/L0))) for n in range(len(U2))])
-    for n, L in enumerate(L):
-        plt.plot(T, U2L[n], marker='o', label=f'L = {L}')
 
-    plt.plot(T, 2./np.pi*T, 'k--', label=r'$2T/\pi$')
+    for Ln, U2n, U4n in zip(L, U2L, U4):
+        axs[0].plot(T, U2n, marker='o', label=f'L = {Ln}')
+        axs[1].plot(T, U4n, marker='o')
 
-    plt.legend()
-    plt.xlim(0., max(T))
-    plt.ylim(-0.05, np.max(U2L) + 0.2)
-    plt.xlabel(r'$T/J$', fontsize=15)
-    plt.ylabel(r'$\Upsilon(L,T)/(1+(2\log(L/L_0))^{-1})$', fontsize=15)
-#    plt.ylabel(r'$\Upsilon(L,T)$', fontsize=15)
+    axs[0].plot(T, 2./np.pi*T, 'k--', label=r'$2T/\pi$')
+
+    axs[0].legend()
+    axs[0].set_xlim(0., max(T))
+    axs[0].set_ylim(-0.05, np.max(U2L) + 0.2)
+    axs[1].set_ylim(-0.3, 0.1)
+    axs[1].set_xlabel(r'$T$ (meV)', fontsize=15)
+    axs[0].set_ylabel(r'$\Upsilon_2/(1+(2\log(L/L_0))^{-1})$', fontsize=15)
+    axs[1].set_ylabel(r'$\Upsilon_4$', fontsize=15)
+    plt.subplots_adjust(hspace=0, wspace=0)
     plt.show()
 
 
@@ -122,9 +128,9 @@ if __name__ == "__main__":
     T = T
 
 
-#    L0, T_KT = get_L0(L, T, U2, 0.1, 2.0, 10000)
-    L0 = 1/1.4
-    T_KT = 0.88
+    L0, T_KT = get_L0(L, T, U2, 0.01, 0.5, 10000)
+#    L0 = 1/1.4
+#    T_KT = 0.88
     print(L0, T_KT)
     plot_stiffness_curve(L, T, U2, L0, T_KT)
 
