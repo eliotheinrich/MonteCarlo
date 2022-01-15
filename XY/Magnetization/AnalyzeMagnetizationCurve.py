@@ -1,20 +1,26 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.optimize as spo
 from matplotlib import cm
 import sys
 import os
 
-def load_magnetization_data(filename):
-    i = filename.index('.')
-    L = int(filename[13:i])
 
+kB = 1.
+
+def load_magnetization_data(filename):
     with open(filename) as f:
         s = f.readline().split('\t')
         res = int(s[0])
-        num_samples = int(s[1])
+        N = int(s[1])
+        L = int(s[2])
     
-    Ts = np.zeros(res)
-    Ms = np.zeros((res, num_samples))
+    V = N*N*L
+    T = np.zeros(res)
+    M = np.zeros(res)
+    dM = np.zeros(res)
+    E = np.zeros(res)
+    dE = np.zeros(res)
 
     with open(filename) as f:
         line = f.readline()
@@ -22,64 +28,51 @@ def load_magnetization_data(filename):
             line = f.readline()
 
             data = np.array([x.strip('\n') for x in line.split('\t')])
-            Ti = float(data[0])
-            data = data[1:]
+            T[i] = float(data[0])/kB
+            (M[i], dM[i]) = (float(x) for x in data[1].split(','))
+            (E[i], dE[i]) = (float(x) for x in data[2].split(','))
 
-            for n,x in enumerate(data):
-                Ms[i,n] = float(x.strip()[1:-1])
-
-            Ts[i] = Ti
-
-    return L, Ts, Ms
+    return T, M, dM, E, dE
 
 
-def plot_magnetization_curve(Ts, Ls, Ms, T_KT = None):
-    for n, L in enumerate(Ls):
-        plt.plot(Ts, Ms[n], marker='o', label=f'L = {L}')
+def curie_fit(T, M):
+    def curie_weiss(T, C, Tc):
+        return (T - Tc)/C
 
-    if T_KT is not None:
-        plt.axvline(T_KT, linestyle='-', color='k', alpha=0.5, label=r'$T_{KT}$')
+    N = len(M)//2
 
-    plt.legend()
-    plt.xlim(0., max(Ts))
-    plt.ylim(-0.01, 1.1)
-    plt.xlabel(r'$T/J$', fontsize=15)
-    plt.ylabel(r'$M$', fontsize=15)
-    plt.show()
+    popt, _ = spo.curve_fit(curie_weiss, T[N:], 1/M[N:])
+    (C, Tc) = popt
 
+    return C, Tc
+
+def plot_magnetization_curve(T, M, dM, ax, **kwargs):
+    ax.errorbar(T, M, yerr = dM, **kwargs)
+
+def plot_energy_curve(T, E, dE, ax, *args, **kwargs):
+    ax.errorbar(T, E, yerr = dE, *args, **kwargs)
+
+def plot_heat_capacity(T, dE, nmin, ax, *args, **kwargs):
+    ax.plot(T[nmin:], ((dE/T)**2)[nmin:]/kB, *args, **kwargs)
 
 if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        os.chdir('data')
-    else:
-        os.chdir(sys.argv[1])
+    os.chdir(sys.argv[1])
+    for f in os.listdir():
+        T, M, dM, E, dE = load_magnetization_data(f)
 
-    fs = [f for f in os.listdir() if f[:13] == "magnetization"]
-    _, _, Ms = load_magnetization_data(fs[0])
+        fig, axs = plt.subplots(nrows=3, ncols=1, sharex=True)
+        plot_magnetization_curve(T, M, dM, axs[0], color='k', linestyle='-')
+        axs[0].set_ylabel('M(T)', fontsize=16)
+        plot_energy_curve(T, E, dE, axs[1], color='k', linestyle='-')
+        axs[1].set_ylabel('u(T) (meV)', fontsize=16)
+        plot_heat_capacity(T, dE, 2, axs[2], 'k-')
+        axs[2].set_ylabel('c(T)/$k_B$', fontsize=16)
+        axs[2].set_xlabel('T (meV)', fontsize=16)
 
-    N = len(fs)
-    res, num_samples = Ms.shape
+        for ax in axs:
+            ax.axvline(0.41, color='k', linestyle='--', alpha=0.5)
+            ax.axvline(0.92, color='k', linestyle='--', alpha=0.5)
 
-    Ts = np.zeros(res)
-    Ms = np.zeros((N, res))
-    Ls = np.zeros(N, dtype=int)
-
-    for n, f in enumerate(fs):
-        if f[:13] == 'magnetization':
-            i = f.index('.')
-            L, Ts, M = load_magnetization_data(f)
-            Ls[n] = L
-            Ms[n,:] = np.mean(M, axis=1)
-
-    inds = np.argsort(Ls)
-    Ls = Ls[inds]
-    Ms = Ms[inds]
-
-
-    plot_magnetization_curve(Ts, Ls, Ms)
-
-
-
-
-
+        plt.subplots_adjust(wspace=0, hspace=0)
+        plt.show()
 

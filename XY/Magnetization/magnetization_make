@@ -1,7 +1,7 @@
 g++ -O3 -std=c++11 MagnetizationCurve.cpp -o output
 
 rm data/magnetization*
-for L in 8 16 32 64; do
+for L in 32; do
     filename=data/magnetization"$L".txt
     ./output $filename $L
 done

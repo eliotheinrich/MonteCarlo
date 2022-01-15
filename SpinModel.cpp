@@ -55,7 +55,6 @@ class SpinModel : virtual public MCModel {
 
         minstd_rand r;
 
-        int mut_counter;
         int mut_mode;
 
         // Mutation being considered is stored as an attribute of the model
@@ -81,7 +80,7 @@ class SpinModel : virtual public MCModel {
             this->dist = new GaussianDist(0., 1.0);
             this->r.seed(rand());
 
-            this->mut_counter = 0;
+            this->mut.i = 0;
         }
 
         inline const int flat_idx(int n1, int n2, int n3, int s) {
@@ -268,6 +267,7 @@ class SpinModel : virtual public MCModel {
             int j;
             Vector4i idxs = tensor_idx(i);
             int m1 = idxs[0]; int m2 = idxs[1]; int m3 = idxs[2]; int k = idxs[3];
+            float Si = skyrmion_density(i);
             for (int n1 = 0; n1 < N1; n1++) {
                 for (int n2 = 0; n2 < N2; n2++) {
                     for (int n3 = 0; n3 < N3; n3++) {
@@ -276,7 +276,7 @@ class SpinModel : virtual public MCModel {
                             Cij[j] = skyrmion_density(flat_idx((m1 + n1)%N1, 
                                                                (m2 + n2)%N2, 
                                                                (m3 + n3)%N3, 
-                                                               (s + k)%sl))*skyrmion_density(i);
+                                                               (s + k)%sl))*Si;
                         }
                     }
                 }
@@ -292,7 +292,6 @@ class SpinModel : virtual public MCModel {
                 H += spins[j];
             }
 
-            this->mut.i = i;
             this->mut.dS = -2*spins[i] + 2.*spins[i].dot(H)/pow(H.norm(),2) * H;
         }
 
@@ -311,24 +310,22 @@ class SpinModel : virtual public MCModel {
 
 
             // Store mutation for consideration
-            this->mut.i = i;
             this->mut.dS = S2 - spins[i];
         }
 
         void generate_mutation() {
-            mut_counter++;
-            mut_counter = mut_counter % V;
-
-            if (mut_counter == 0) {
+            mut.i++;
+            if (mut.i == V) {
+                mut.i = 0;
                 mut_mode++;
             }
 
             if (mut_mode < 10) {
-                over_relaxation_mutation(mut_counter);
+                over_relaxation_mutation(mut.i);
             } else if (mut_mode < 14) {
-                metropolis_mutation(mut_counter);
+                metropolis_mutation(mut.i);
             } else {
-                metropolis_mutation(mut_counter);
+                metropolis_mutation(mut.i);
                 mut_mode = 0;
             }
         }

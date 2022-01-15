@@ -78,7 +78,7 @@ class XYModel : virtual public MCModel {
 
             this->r.seed(rand());
 
-            this->mut_counter = 0;
+            this->mut.i = 0;
             this->mut_mode = 0;
         }
 
@@ -207,7 +207,6 @@ class XYModel : virtual public MCModel {
                 H += spins[j];
             }
 
-            this->mut.i = i;
             this->mut.dS = -2*spins[i]+ 2.*spins[i].dot(H)/pow(H.norm(),2) * H;
         }
 
@@ -220,24 +219,22 @@ class XYModel : virtual public MCModel {
                              + sin(dp)*S1[0];
 
             // Store mutation for consideration
-            this->mut.i = i;
             this->mut.dS = S2 - S1;
         }
 
         void generate_mutation() {
-            mut_counter++;
-            mut_counter = mut_counter % V;
-
-            if (mut_counter == 0) {
+            mut.i++;
+            if (mut.i == V) {
+                mut.i = 0;
                 mut_mode++;
             }
 
             if (mut_mode < 10) {
-                over_relaxation_mutation(mut_counter);
+                over_relaxation_mutation(mut.i);
             } else if (mut_mode < 14) {
-                metropolis_mutation(mut_counter);
+                metropolis_mutation(mut.i);
             } else {
-                metropolis_mutation(mut_counter);
+                metropolis_mutation(mut.i);
                 mut_mode = 0;
             }
         }

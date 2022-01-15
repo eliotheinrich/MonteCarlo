@@ -1,89 +1,58 @@
 #include "../SquareXYModel.cpp"
-#include "../TrigonalXYModel.cpp"
-#include <ctpl_stl.h>
+#include "../../Routines.cpp"
 #include <iostream>
 #include <chrono>
 
 using namespace std;
 
-void func(string filename, int N, int num_threads) {
+template <int q>
+vector<float> magnetization_sampler(SquareXYModel *model) {
+    return vector<float>{
+                static_cast<float>(model->get_magnetization().norm()),
+                static_cast<float>(model->energy()/model->V)
+           };
+}
+
+int main(int argc, char* argv[]) {    
+    int N = stoi(argv[2]);
+    string filename = argv[1];
+    int num_threads = 4;
+
     srand((unsigned)time( NULL ));
 
     cout << "N = " << N << endl;
     const int L = 1;
     const float J = 1.;
-    const float A = 0.5;
-    const float B = 0.;
-    const float Bp = 0.;
+    const int q = 6;
 
     const int MCStep = N*N*L;
 
-    //SquareXYModel *model = new SquareXYModel(N, L, J, B, Bp);
-    TrigonalXYModel *model = new TrigonalXYModel(N, L, J, A);
-    MonteCarlo<TrigonalXYModel> *m = new MonteCarlo<TrigonalXYModel>(model);
-
+    SquareXYModel *model = new SquareXYModel(N, L, J, 0., 0.);
 
     const float Tmax = 3.;
     const float Tmin = 0.1;
-    int res = 30;
+    int resolution = 60;
 
-    vector<float> Ts(res);
+    vector<float> T(resolution);
     ofstream output(filename);
 
-    for (int i = 0; i < res; i++) {
-        Ts[i] = float(i)/res*Tmax + float(res - i)/res*Tmin;
+    for (int i = 0; i < resolution; i++) {
+        T[i] = float(i)/resolution*Tmax + float(resolution - i)/resolution*Tmin;
     }
 
-    int num_exchanges = 5000;
-    int steps_per_exchange = 5*MCStep;
-    int equilibration_steps = 5000*MCStep;
-    auto models = parallel_tempering(model, Ts, num_exchanges, steps_per_exchange, equilibration_steps, num_threads);
+    int steps_per_run = 5000*MCStep;
 
-    int num_samples = 1000;
-    int steps_per_sample = 2*MCStep;
-    ctpl::thread_pool threads(num_threads);
-    vector<future<vector<float>>> results(res);
-    vector<float> samples(num_samples);
+    int num_samples = 500;
+    int steps_per_sample = 20*MCStep;
 
-    auto magnetization_sampling = [&models, &Ts, steps_per_sample, num_samples](int id, int i) {
-        vector<float> samples(num_samples);
-        for (int j = 0; j < num_samples; j++) {
-            samples[j] = models[i]->model->get_magnetization().norm();
-            models[i]->steps(steps_per_sample, Ts[i]);
-        }
-        return samples;
-    };
-
-    // Write header
-    output << res << "\t" << num_samples << endl;
-
-    // Give threads jobs
-    for (int i = 0; i < res; i++) {
-        results[i] = threads.push(magnetization_sampling, i);
-    } 
-
-    for (int i = 0; i < res; i++) {
-        samples = results[i].get();
-        output << Ts[i] << "\t";
-        for (int j = 0; j < num_samples; j++) {
-            output << "(" << samples[j] << ")";
-            if (j < num_samples - 1) { output << '\t'; }
-        }
-        output << endl;
-    }
-
-    output.close();
-    cout << "Total steps: " << res*(num_samples*steps_per_sample + num_exchanges*steps_per_exchange + equilibration_steps) << endl;
-}
-
-int main(int argc, char* argv[]) {    
-    string filename = argv[1];
-    int N = stoi(argv[2]);
-    int num_threads = 4;
+    unsigned long long nsteps = (unsigned long long) resolution*(steps_per_run + num_samples*steps_per_sample);
 
     auto start = chrono::high_resolution_clock::now();
 
-    func(filename, N, num_threads);
+    auto data = sample_pt(magnetization_sampler<q>, model, &T, steps_per_run, num_samples, steps_per_sample, num_threads);
+    auto stats = summary_statistics(&data);
+    string header = to_string(N) + "\t" + to_string(L);
+    write_data(&stats, &T, filename, header); 
 
     auto stop = chrono::high_resolution_clock::now();
     
@@ -91,6 +60,5 @@ int main(int argc, char* argv[]) {
     int microseconds = duration.count();
 
     cout << "Duration: " << microseconds/1e6 << endl;
-
+    cout << "Steps/s/thread: " << nsteps/float(microseconds)*1e6/num_threads << endl;
 }
-
