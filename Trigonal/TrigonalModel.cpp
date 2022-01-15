@@ -91,8 +91,8 @@ class TrigonalModel : public SpinModel {
             float x = spins[i][0];
             float y = spins[i][1];
             float z = spins[i][2];
-            Vector3f H; H << K3*(6*pow(x, 5) - 60*pow(x, 3)*pow(y, 2) + 30*x*pow(y, 4),
-                             K3*(-6*pow(y, 5) + 60*pow(x, 2)*pow(y, 3) - 30*pow(x, 4)*y,
+            Vector3f H; H << K3*(6*pow(x, 5) - 60*pow(x, 3)*pow(y, 2) + 30*x*pow(y, 4)),
+                             K3*(-6*pow(y, 5) + 60*pow(x, 2)*pow(y, 3) - 30*pow(x, 4)*y),
                              K1*pow(spins[i][2], 2);
             H += B;
 

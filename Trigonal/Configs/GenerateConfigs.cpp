@@ -23,16 +23,16 @@ int main() {
     //MonteCarlo<TrigonalModel> *m = new MonteCarlo<TrigonalModel>(model);
     //m->steps(10000*MCStep, T);
 
-    for (int i = 0; i < model->V; i++) {
-        model->spins[i] << 1., 0., 0.;
-    }
+//    for (int i = 0; i < model->V; i++) {
+//        model->spins[i] << 1., 0., 0.;
+//    }
 
-    for (int n1 = 0; n1 < N; n1++) {
-        model->spins[model->flat_idx(n1, 2, 0, 0)] << 0., 1., 0.;
-        model->spins[model->flat_idx(n1, 6, 1, 0)] << 0., 1., 0.;
-    }
+//    for (int n1 = 0; n1 < N; n1++) {
+//        model->spins[model->flat_idx(n1, 2, 0, 0)] << 0., 1., 0.;
+//        model->spins[model->flat_idx(n1, 6, 1, 0)] << 0., 1., 0.;
+//    }
 
-    int nsteps = 100000;
+    int nsteps = 1000000;
     int num_frames = 200;
     for (int i = 0; i < nsteps; i++) {
         if (num_frames*i % nsteps == 0) { 
