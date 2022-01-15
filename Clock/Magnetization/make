@@ -1,0 +1,5 @@
+g++ -std=c++11 -O3 MagnetizationCurve.cpp -o output
+
+./output data/MagnetizationData.txt 32
+
+rm output
