@@ -19,15 +19,12 @@ class SquareClockModel : public ClockModel<q> {
         int L;
         float J;
 
-        vector<vector<float>> bond_table;
+        float bond_table[q][q];
 
         SquareClockModel(int N, int L, float J) : ClockModel<q>(N, N, L) {
             this->N = N;
             this->L = L;
             this->J = J;
-
-
-            this->bond_table = vector<vector<float>>(q, vector<float>(q));
 
             for (int i = 0; i < q; i++) {
                 for (int j = 0; j < q; j++) {

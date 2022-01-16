@@ -26,10 +26,11 @@ int main(int argc, char* argv[]) {
     const int q = 6;
 
     const int MCStep = N*N*L;
+    //const int MCStep = 1;
 
     SquareClockModel<q> *model = new SquareClockModel<q>(N, L, J);
 
-    const float Tmax = 3.;
+    const float Tmax = 1.5;
     const float Tmin = 0.1;
     int resolution = 60;
 
@@ -40,16 +41,16 @@ int main(int argc, char* argv[]) {
         T[i] = float(i)/resolution*Tmax + float(resolution - i)/resolution*Tmin;
     }
 
-    int steps_per_run = 5000*MCStep;
+    int steps_per_run = 1000*MCStep;
 
     int num_samples = 500;
-    int steps_per_sample = 20*MCStep;
+    int steps_per_sample = 5*MCStep;
 
     unsigned long long nsteps = (unsigned long long) resolution*(steps_per_run + num_samples*steps_per_sample);
 
     auto start = chrono::high_resolution_clock::now();
 
-    auto data = sample_pt(magnetization_sampler<q>, model, &T, steps_per_run, num_samples, steps_per_sample, num_threads);
+    auto data = sample_r(magnetization_sampler<q>, model, &T, 1, steps_per_run, num_samples, steps_per_sample, num_threads);
     auto stats = summary_statistics(&data);
     string header = to_string(N) + "\t" + to_string(L);
     write_data(&stats, &T, filename, header); 

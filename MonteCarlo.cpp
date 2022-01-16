@@ -24,6 +24,7 @@ class MCModel {
     // as well as a mutation data structure. Specifics must be supplied by child classes.
     public:
         // Need to implement:
+        float T;
         virtual const float energy()=0;
         virtual const float energy_change()=0;
         virtual void generate_mutation()=0;

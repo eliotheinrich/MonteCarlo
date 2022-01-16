@@ -11,13 +11,14 @@ int main() {
     const float J = 1.;
     const float B = 0.;
     const float Bp = 0.;
-    const float T = 2.0;
+    const float T = 0.9;
 
 
-    const int MCStep = N*N*L;
-    const int q = 4;
+    const int MCStep = 1;//N*N*L;
+    const int q = 6;
 
     SquareClockModel<q> *model = new SquareClockModel<q>(N, L, J);
+    model->T = T;
 
     MonteCarlo<SquareClockModel<q>> *m = new MonteCarlo<SquareClockModel<q>>(model);
 
@@ -35,6 +36,9 @@ int main() {
     }
 
     model->save_spins("Spins.txt");
+    //model->cluster_update();
+    //cout << model->s.size() << endl;
+    //model->save_spins("Spins2.txt");
 
     cout << "Energy = " << model->energy() << endl;
 

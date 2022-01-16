@@ -3,13 +3,13 @@
 
 #include <iostream>
 #include <vector>
+#include <unordered_set>
+#include <stack>
 #include <stdlib.h>
 #include <math.h>
 #include <random>
 #include <Eigen/Dense>
 #include <fstream>
-#include <sstream>
-#include <regex>
 #include "MonteCarlo.cpp"
 #include "Utility.cpp"
 
@@ -30,7 +30,7 @@ class SpinModel : virtual public MCModel {
             Vector3f dS;
         };
 
-        struct Bond {
+        struct HeisBond {
             int d1;
             int d2;
             int d3;
@@ -51,11 +51,15 @@ class SpinModel : virtual public MCModel {
         float sigma;
         vector<Vector3f> spins;
         vector<vector<int>> neighbors;
-        vector<Bond> bonds;
+        vector<HeisBond> bonds;
+
+        unordered_set<int> s;
 
         minstd_rand r;
 
         int mut_mode;
+        bool cluster;
+        float cluster_dE;
 
         // Mutation being considered is stored as an attribute of the model
         SpinMutation mut;
@@ -80,6 +84,7 @@ class SpinModel : virtual public MCModel {
             this->dist = new GaussianDist(0., 1.0);
             this->r.seed(rand());
 
+            this->cluster = true;
             this->mut.i = 0;
         }
 
@@ -99,11 +104,6 @@ class SpinModel : virtual public MCModel {
             return v;
         }
 
-        inline void set_spin(int n1, int n2, int n3, int s, Vector3f v) {
-            spins[flat_idx(n1, n2, n3, s)] = v;
-        }
-
-
         inline const Vector3f get_spin(int n1, int n2, int n3, int s) {
             return spins[flat_idx(n1, n2, n3, s)];
         }
@@ -115,7 +115,7 @@ class SpinModel : virtual public MCModel {
         }
 
         void add_bond(int d1, int d2, int d3, int ds, Vector3f v, function<float(Vector3f, Vector3f)> bondfunc) {
-            Bond b{d1, d2, d3, ds, v, bondfunc};
+            HeisBond b{d1, d2, d3, ds, v, bondfunc};
             this->bonds.push_back(b);
             int i; int j;
             for (int n1 = 0; n1 < N1; n1++) {
@@ -284,18 +284,50 @@ class SpinModel : virtual public MCModel {
             return Cij;
         }
 
-        void over_relaxation_mutation(int i) {
-            Vector3f H; H << 0., 0., 0.;
-            int j;
-            for (int n = 0; n < bonds.size(); n++) {
-                j = neighbors[i][n];
-                H += spins[j];
+        void cluster_update() {
+            s.clear();
+
+            float E1 = energy();
+
+            Vector3f ax; ax << dist->sample(), dist->sample(), dist->sample();
+            ax = ax.normalized();
+
+            int i = r() % V;
+            spins[i] = spins[i] - 2*spins[i].dot(ax)*ax;
+
+            stack<int> c;
+            c.push(i);
+
+            float dE;
+            Vector3f new_S;
+            int m; int j;
+            while (!c.empty()) {
+                m = c.top();
+                c.pop();
+
+                // Mark m as visited
+                s.insert(m);
+
+                for (int n = 0; n < bonds.size(); n++) {
+                    j = neighbors[m][n];
+                    // Check if each neighbor has been visited
+                    if (!s.count(j)) {
+                        // With appropriate probability, add neighbor to stack and flip it
+                        new_S = spins[j] - 2*spins[j].dot(ax)*ax;
+                        dE = bonds[n].bondfunc(spins[m], new_S) - bonds[n].bondfunc(spins[m], spins[j]);
+                        if ((float) r()/RAND_MAX < 1. - exp(dE/T)) {
+                            c.push(j);
+                            spins[j] = new_S;
+                        }
+                    }
+                }
             }
 
-            this->mut.dS = -2*spins[i] + 2.*spins[i].dot(H)/pow(H.norm(),2) * H;
+            float E2 = energy();
+            this->cluster_dE = E2 - E1;
         }
 
-        void metropolis_mutation(int i) {
+        void metropolis_mutation() {
             if (acceptance > 0.5) {
                 sigma = min(2., 1.01*sigma);
 
@@ -306,27 +338,22 @@ class SpinModel : virtual public MCModel {
             // Randomly generate mutation
             Vector3f Gamma;
             Gamma << dist->sample(), dist->sample(), dist->sample();
-            Vector3f S2 = (spins[i] + this->sigma*Gamma).normalized();
+            Vector3f S2 = (spins[mut.i] + this->sigma*Gamma).normalized();
 
 
             // Store mutation for consideration
-            this->mut.dS = S2 - spins[i];
+            this->mut.dS = S2 - spins[mut.i];
         }
 
         void generate_mutation() {
-            mut.i++;
-            if (mut.i == V) {
-                mut.i = 0;
-                mut_mode++;
-            }
-
-            if (mut_mode < 10) {
-                over_relaxation_mutation(mut.i);
-            } else if (mut_mode < 14) {
-                metropolis_mutation(mut.i);
-            } else {
-                metropolis_mutation(mut.i);
-                mut_mode = 0;
+            if (cluster) {
+                cluster_update();
+            } else { 
+                mut.i++;
+                if (mut.i == V) {
+                    mut.i = 0;
+                }
+                metropolis_mutation();
             }
         }
 
@@ -335,7 +362,9 @@ class SpinModel : virtual public MCModel {
         }
 
         void reject_mutation() {
-            spins[mut.i] = spins[mut.i] - mut.dS;
+            if (!cluster) {
+                spins[mut.i] = spins[mut.i] - mut.dS;
+            }
         }
 
         virtual const float onsite_energy(int i)=0;
@@ -363,11 +392,15 @@ class SpinModel : virtual public MCModel {
         }
 
         const float energy_change() {
-            float E1 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
-            spins[mut.i] = spins[mut.i] + mut.dS;
-            float E2 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
+            if (cluster) {
+                return this->cluster_dE;
+            } else {
+                float E1 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
+                spins[mut.i] = spins[mut.i] + mut.dS;
+                float E2 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
 
-            return E2 - E1;
+                return E2 - E1;
+            }
         }
 
         // Saves current spin configuration

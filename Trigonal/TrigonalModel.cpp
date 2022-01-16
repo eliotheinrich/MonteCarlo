@@ -103,6 +103,7 @@ class TrigonalModel : public SpinModel {
             this->mut.dS = -2*spins[i] + 2.*spins[i].dot(H)/pow(H.norm(),2) * H;
         }
 
+        /*
         void generate_mutation() {
             mut_counter++;
             mut_counter = mut_counter % V;
@@ -119,7 +120,7 @@ class TrigonalModel : public SpinModel {
                 metropolis_mutation(mut_counter);
                 mut_mode = 0;
             }
-        }
+        }*/
 
         const float onsite_energy(int i) {
             float E = 0;
@@ -129,7 +130,10 @@ class TrigonalModel : public SpinModel {
             E -= B.dot(S);
 
             float phi = atan2(S[1], S[0]);
-            float theta = acos(S[2]);
+            float theta;
+            if (S[2] > 1.0) { theta = PI; }
+            else if (S[2] < -1.0) { theta = -PI; }
+            else { theta = acos(S[2]); }
 
             E += K1*S[2]*S[2];
             //E += K2*pow(S[0]*S[0]+S[1]*S[1],2);

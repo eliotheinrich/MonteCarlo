@@ -53,9 +53,9 @@ int main(int argc, char* argv[]) {
     paramss = split(&line, ",");
 
     int resolution = stoi(paramss[0]);
-    int steps_per_run = stoi(paramss[1])*MCStep;
+    int steps_per_run = stoi(paramss[1]);
     int num_samples = stoi(paramss[2]);
-    int steps_per_sample = stoi(paramss[3])*MCStep;
+    int steps_per_sample = stoi(paramss[3]);
     int num_runs = stoi(paramss[4]);
 
     //float T_max = 60*BOLTZMANN_CONSTANT; // In Kelvin
@@ -77,8 +77,7 @@ int main(int argc, char* argv[]) {
 
     auto start = chrono::high_resolution_clock::now();
 
-
-    auto data = sample_r(magnetization_sampler, model, &T, 1, steps_per_run, num_samples, steps_per_sample, num_threads);
+    auto data = sample_r(magnetization_sampler, model, &T, 5, steps_per_run, num_samples, steps_per_sample, num_threads);
     auto stats = summary_statistics(&data);
     write_data(&stats, &T, foldername + "/MagnetizationCurve.txt");
 

@@ -15,7 +15,7 @@ int main() {
 
     const int MCStep = N*N*L;
 
-    EasyPlaneHeis *model = new EasyPlaneHeis(N, L, J, K);
+    EasyPlaneHeis *model = new EasyPlaneHeis(N, L, J, 0.);
 
     MonteCarlo<EasyPlaneHeis> *m = new MonteCarlo<EasyPlaneHeis>(model);
 

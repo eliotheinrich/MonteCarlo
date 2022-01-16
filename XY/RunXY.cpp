@@ -23,7 +23,7 @@ int main() {
     int num_samples = 1000;
     vector<vector<float>> log = vector<vector<float>>(num_samples, vector<float>(2));
     for (int i = 0; i < num_samples; i++) {
-        m->steps(MCStep, T);
+        m->steps(1, T);
         log[i][0] = model->get_magnetization().norm();
         log[i][1] = model->energy();
     }

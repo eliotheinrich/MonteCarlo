@@ -3,13 +3,13 @@
 
 #include <iostream>
 #include <vector>
+#include <unordered_set>
+#include <stack>
 #include <stdlib.h>
 #include <math.h>
 #include <random>
 #include <Eigen/Dense>
 #include <fstream>
-#include <sstream>
-#include <regex>
 #include "MonteCarlo.cpp"
 #include "Utility.cpp"
 
@@ -46,10 +46,14 @@ class ClockModel : virtual public MCModel {
         vector<ClockBond> bonds;
         vector<vector<int>> neighbors;
 
+        unordered_set<int> s;
+        float dE;
+
         minstd_rand r;
 
         // Mutation being considered is stored as an attribute of the model
         ClockMutation mut;
+        int mut_mode;
 
         ClockModel() {}
 
@@ -66,6 +70,7 @@ class ClockModel : virtual public MCModel {
             this->randomize_spins();
 
             this->mut.i = 0;
+            this->mut_mode = 0;
         }
 
         inline const int flat_idx(int n1, int n2, int n3) {
@@ -115,13 +120,67 @@ class ClockModel : virtual public MCModel {
             return sqrt(x*x + y*y)/(N1*N2*N3);
         }
 
+        void metropolis_mutation() {
+            mut.dq = r() % 3 - 1;
+        }
+
+        void cluster_update() {
+            s.clear();
+
+            float E1 = energy();
+
+            float p = r() % q;
+
+            int i = r() % V;
+            spins[i] = mod(2*spins[i] - p, q);
+
+            stack<int> c;
+            c.push(i);
+
+            float dE;
+            int new_q;
+            int m; int j;
+            while (!c.empty()) {
+                m = c.top();
+                c.pop();
+
+                // Mark m as visited
+                s.insert(m);
+
+                for (int n = 0; n < bonds.size(); n++) {
+                    j = neighbors[m][n];
+                    // Check if each neighbor has been visited
+                    if (!s.count(j)) {
+                        // With appropriate probability, add neighbor to stack and flip it
+                        new_q = mod(2*spins[m] - p, q);
+                        dE = bonds[n].bondfunc(spins[m], new_q) - bonds[n].bondfunc(spins[m], spins[j]);
+                        if ((float) r()/RAND_MAX < 1. - exp(dE/T)) {
+                            c.push(j);
+                            spins[j] = new_q;
+                        }
+                    }
+                }
+            }
+
+            float E2 = energy();
+            this->cluster_dE = E2 - E1;
+        }
+
         void generate_mutation() {
             // Randomly select a site to mutate
             mut.i++;
             if (mut.i == V) {
                 mut.i = 0;
+                mut_mode++;
             }
-            mut.dq = r() % 3 - 1;
+
+            if (mut_mode < 2) {
+                metropolis_mutation();
+            } else {
+                //metropolis_mutation();
+                //mut_mode = 0;
+                cluster_update();
+            }
         }
 
         void accept_mutation() {
@@ -156,11 +215,16 @@ class ClockModel : virtual public MCModel {
         }
 
         const float energy_change() {
-            float E1 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
-            this->spins[mut.i] = mod(this->spins[mut.i] + mut.dq, q);
-            float E2 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
-
-            return E2 - E1;
+            if (mut_mode == 2) { 
+                mut_mode = 0;
+                return this->dE; 
+            }
+            else {
+                float E1 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
+                this->spins[mut.i] = mod(this->spins[mut.i] + mut.dq, q);
+                float E2 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
+                return E2 - E1;
+            }
         }
 
         // Saves current spin configuration

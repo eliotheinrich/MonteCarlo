@@ -1,0 +1,6 @@
+g++ -std=c++11 -o3 RunClock.cpp -o output
+./output
+rm output
+
+python MagnetizationCurve.py Log.txt
+

@@ -32,6 +32,7 @@ vector<vector<A>> sample_pt(A sampling_func(ModelType*), ModelType *model, vecto
 
     for (int i = 0; i < resolution; i++) {
         models[i] = new MonteCarlo<ModelType>(model->clone());
+        models[i]->model->T = (*T)[i];
         models[i]->model->randomize_spins();
     }
 
@@ -94,6 +95,7 @@ vector<vector<A>> sample_r(A sampling_func(ModelType*), ModelType *model, vector
 
     for (int i = 0; i < resolution; i++) {
         models[i] = new MonteCarlo<ModelType>(model->clone());
+        models[i]->model->T = (*T)[i];
         models[i]->model->randomize_spins();
     }
 
@@ -130,6 +132,7 @@ vector<vector<A>> sample_r(A sampling_func(ModelType*), ModelType *model, vector
             }
         }
     };
+
 
     for (int i = 0; i < resolution; i++) {
         results[i] = threads.push(take_samples, i, models[i], (*T)[i], &arr[i]);
