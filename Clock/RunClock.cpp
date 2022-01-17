@@ -11,15 +11,13 @@ int main() {
     const float J = 1.;
     const float B = 0.;
     const float Bp = 0.;
-    const float T = 0.9;
+    const float T = 0.1;
 
 
     const int MCStep = 1;//N*N*L;
     const int q = 6;
 
     SquareClockModel<q> *model = new SquareClockModel<q>(N, L, J);
-    model->T = T;
-
     MonteCarlo<SquareClockModel<q>> *m = new MonteCarlo<SquareClockModel<q>>(model);
 
     int num_samples = 1000;

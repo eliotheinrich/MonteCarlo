@@ -6,6 +6,7 @@ Es = []
 Ms = []
 
 filename = sys.argv[1]
+
 with open(filename) as f:
     for line in f.readlines():
         M, E = line.split('\t')

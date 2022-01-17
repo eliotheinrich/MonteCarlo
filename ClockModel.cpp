@@ -13,10 +13,6 @@
 #include "MonteCarlo.cpp"
 #include "Utility.cpp"
 
-using namespace std;
-using namespace Eigen;
-
-
 template <int q>
 class ClockModel : virtual public MCModel {
     // Generic 3D Ising model
@@ -31,8 +27,8 @@ class ClockModel : virtual public MCModel {
             int d1;
             int d2;
             int d3;
-            Vector3f v;
-            function<float(int, int)> bondfunc;
+            Eigen::Vector3f v;
+            std::function<float(int, int)> bondfunc;
         };    
 
 
@@ -42,14 +38,13 @@ class ClockModel : virtual public MCModel {
         int N3;
         int V;
 
-        vector<int> spins;
-        vector<ClockBond> bonds;
-        vector<vector<int>> neighbors;
+        std::vector<int> spins;
+        std::vector<ClockBond> bonds;
+        std::vector<std::vector<int>> neighbors;
 
-        unordered_set<int> s;
-        float dE;
+        std::unordered_set<int> s;
 
-        minstd_rand r;
+        std::minstd_rand r;
 
         // Mutation being considered is stored as an attribute of the model
         ClockMutation mut;
@@ -63,8 +58,8 @@ class ClockModel : virtual public MCModel {
             this->N3 = N3;
             this->V = N1*N2*N3;
 
-            this->spins = vector<int>(V);
-            this->neighbors = vector<vector<int>>(V, vector<int>(0));
+            this->spins = std::vector<int>(V);
+            this->neighbors = std::vector<std::vector<int>>(V, std::vector<int>(0));
 
             this->r.seed(rand());
             this->randomize_spins();
@@ -77,13 +72,13 @@ class ClockModel : virtual public MCModel {
             return n1 + N1*(n2 + N2*n3);
         }
 
-        inline const Vector3i tensor_idx(int i) {
+        inline const Eigen::Vector3i tensor_idx(int i) {
             int n1 = i % N1;
             i = i / N1;
             int n2 = i % N2;
             i = i / N2;
             int n3 = i % N3;
-            Vector3i v; v << n1, n2, n3;
+            Eigen::Vector3i v; v << n1, n2, n3;
             return v;
         }
 
@@ -94,7 +89,7 @@ class ClockModel : virtual public MCModel {
             }
         }
 
-        void add_bond(int d1, int d2, int d3, Vector3f v, function<float(int, int)> bondfunc) {
+        void add_bond(int d1, int d2, int d3, Eigen::Vector3f v, std::function<float(int, int)> bondfunc) {
             ClockBond b{d1, d2, d3, v, bondfunc};
             this->bonds.push_back(b);
             int i; int j;
@@ -127,43 +122,35 @@ class ClockModel : virtual public MCModel {
         void cluster_update() {
             s.clear();
 
-            float E1 = energy();
+            std::stack<int> c;
+            int m = r() % V;
+            c.push(m);
 
-            float p = r() % q;
+            int p = r() % q;
 
-            int i = r() % V;
-            spins[i] = mod(2*spins[i] - p, q);
-
-            stack<int> c;
-            c.push(i);
-
-            float dE;
-            int new_q;
-            int m; int j;
+            int j; float dE;
+            int s_new; 
             while (!c.empty()) {
                 m = c.top();
                 c.pop();
 
-                // Mark m as visited
-                s.insert(m);
+                if (!s.count(m)) {
+                    s.insert(m);
 
-                for (int n = 0; n < bonds.size(); n++) {
-                    j = neighbors[m][n];
-                    // Check if each neighbor has been visited
-                    if (!s.count(j)) {
-                        // With appropriate probability, add neighbor to stack and flip it
-                        new_q = mod(2*spins[m] - p, q);
-                        dE = bonds[n].bondfunc(spins[m], new_q) - bonds[n].bondfunc(spins[m], spins[j]);
-                        if ((float) r()/RAND_MAX < 1. - exp(dE/T)) {
-                            c.push(j);
-                            spins[j] = new_q;
+                    s_new = mod(2*spins[m] - p, q);
+
+                    for (int n = 0; n < neighbors[m].size(); n++) {
+                        j = neighbors[m][n];
+
+                        if (!s.count(j)) {
+                            dE = bonds[n].bondfunc(spins[j], s_new) - bonds[n].bondfunc(spins[j], spins[m]);
+                            if ((float) r()/RAND_MAX < 1. - std::exp(-dE/T)) {
+                                c.push(j);
+                            }
                         }
                     }
                 }
             }
-
-            float E2 = energy();
-            this->cluster_dE = E2 - E1;
         }
 
         void generate_mutation() {
@@ -217,7 +204,7 @@ class ClockModel : virtual public MCModel {
         const float energy_change() {
             if (mut_mode == 2) { 
                 mut_mode = 0;
-                return this->dE; 
+                return -1.;
             }
             else {
                 float E1 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
@@ -228,13 +215,13 @@ class ClockModel : virtual public MCModel {
         }
 
         // Saves current spin configuration
-        void save_spins(string filename) {
-            ofstream output_file;
-            output_file.open(filename);
+        void save_spins(std::string filename) {
+            std::ofstream output_file(filename);
+
             output_file << N1 << "\t" << N2 << "\t" << N3 << "\n";
             for (int i = 0; i < V; i++) {
                 output_file << cos(2*PI*spins[i]/q) << "\t" << sin(2*PI*spins[i]/q);
-                if (i < V-1) { output_file << "\t"; }
+                if (i < V - 1) { output_file << "\t"; }
             }
             output_file.close();
         }        
