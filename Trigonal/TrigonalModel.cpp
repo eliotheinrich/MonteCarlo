@@ -7,10 +7,6 @@
 #include "../Utility.cpp"
 
 
-using namespace std;
-using namespace Eigen;
-
-
 class TrigonalModel : public SpinModel {
     public:
         int N;
@@ -20,14 +16,14 @@ class TrigonalModel : public SpinModel {
         float K1;
         float K2;
         float K3;
-        Vector3f B; 
+        Eigen::Vector3f B; 
 
-        Matrix3f R;
+        Eigen::Matrix3f R;
         int mut_type;
 
 
         TrigonalModel(int N, int L, float J1, float J2, float K1, float K2, float K3,
-                                    Vector3f B) : SpinModel(1, N, N, L) {
+                                    Eigen::Vector3f B) : SpinModel(1, N, N, L) {
 
             this->N = N;
             this->L = L;
@@ -40,15 +36,15 @@ class TrigonalModel : public SpinModel {
 
 
             if (false) {
-                cout << "J1 = " << J1 << endl;
-                cout << "J2 = " << J2 << endl;
-                cout << "K1 = " << K1 << endl;
-                cout << "K2 = " << K2 << endl;
-                cout << "K3 = " << K3 << endl;
+                std::cout << "J1 = " << J1 << std::endl;
+                std::cout << "J2 = " << J2 << std::endl;
+                std::cout << "K1 = " << K1 << std::endl;
+                std::cout << "K2 = " << K2 << std::endl;
+                std::cout << "K3 = " << K3 << std::endl;
 
-                cout << "Bx = " << B[0] << endl;
-                cout << "By = " << B[1] << endl;
-                cout << "Bz = " << B[2] << endl;
+                std::cout << "Bx = " << B[0] << std::endl;
+                std::cout << "By = " << B[1] << std::endl;
+                std::cout << "Bz = " << B[2] << std::endl;
             }
 
             this->R << sqrt(3)/2., -0.5, 0.,
@@ -56,13 +52,14 @@ class TrigonalModel : public SpinModel {
                        0., 0., 1.;
             this->mut_type = 0;
 
-            function<float(Vector3f S1, Vector3f S2)> bondfunc = [J1](Vector3f S1, Vector3f S2) {
+            std::function<float(const Eigen::Vector3f &, const Eigen::Vector3f &)> bondfunc = 
+            [J1](const Eigen::Vector3f &S1, const Eigen::Vector3f &S2) {
                 return -J1*S1.dot(S2);
             };
 
-            Vector3f v1; v1 << 1., 0., 0.;
-            Vector3f v2; v2 << 0.5, sqrt(3)/2., 0.;
-            Vector3f v3; v3 << 0.5, -sqrt(3)/2., 0.;
+            Eigen::Vector3f v1; v1 << 1., 0., 0.;
+            Eigen::Vector3f v2; v2 << 0.5, std::sqrt(3)/2., 0.;
+            Eigen::Vector3f v3; v3 << 0.5, -std::sqrt(3)/2., 0.;
             this->add_bond(1,0,0,0, v1, bondfunc);
             this->add_bond(-1,0,0,0, -v1, bondfunc);
             this->add_bond(0,1,0,0, v2, bondfunc);
@@ -70,101 +67,82 @@ class TrigonalModel : public SpinModel {
             this->add_bond(1,-1,0,0, v3, bondfunc);
             this->add_bond(-1,1,0,0, -v3, bondfunc);
 
-            function<float(Vector3f S1, Vector3f S2)> bondfunc_inter = [J2](Vector3f S1, Vector3f S2) {
+            std::function<float(const Eigen::Vector3f &, const Eigen::Vector3f &)> bondfunc_inter = 
+            [J2](const Eigen::Vector3f &S1, const Eigen::Vector3f &S2) {
                 return J2*S1.dot(S2);
             };
 
-            Vector3f v4; v4 << 0., 0., 1.;
-            this->add_bond(0,0,1,0, v4, bondfunc_inter);
-            this->add_bond(0,0,-1,0, -v4, bondfunc_inter);
+            if (std::abs(J2) > 1e-6) {
+                Eigen::Vector3f v4; v4 << 0., 0., 1.;
+                this->add_bond(0,0,1,0, v4, bondfunc_inter);
+                this->add_bond(0,0,-1,0, -v4, bondfunc_inter);
+            }
         }
 
         TrigonalModel* clone() {
             TrigonalModel* new_model = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B);
+            new_model->cluster = this->cluster;
             for (int i = 0; i < V; i++) {
                 new_model->spins[i] = this->spins[i];
             }
             return new_model;
         }
 
-        void over_relaxation_mutation(int i) {
-            Vector3f H; H << 0., 0., 0.;
+        void over_relaxation_mutation() {
+            Eigen::Vector3f H; H << 0., 0., 0.;
             int j;
             for (int n = 0; n < 6; n++) {
-                j = neighbors[i][n];
+                j = neighbors[mut.i][n];
                 H -= J1*spins[j];
             }
-            for (int n = 6; n < 8; n++) {
-                j = neighbors[i][n];
-                H += J2*spins[j];
+            if (bonds.size() > 7) {
+                for (int n = 6; n < 8; n++) {
+                    j = neighbors[mut.i][n];
+                    H += J2*spins[j];
+                }
             }
 
-            this->mut.i = i;
-            this->mut.dS = -2*spins[i] + 2.*spins[i].dot(H)/pow(H.norm(),2) * H;
+            this->mut.dS = -2*spins[mut.i] + 2.*spins[mut.i].dot(H)/std::pow(H.norm(),2) * H;
         }
 
-        /*
         void generate_mutation() {
-            mut_counter++;
-            mut_counter = mut_counter % V;
-
-            if (mut_counter == 0) {
-                mut_mode++;
-            }
-
-            if (mut_mode < 10) {
-                over_relaxation_mutation(mut_counter);
-            } else if (mut_mode < 14) {
-                metropolis_mutation(mut_counter);
+            if (cluster) { 
+                SpinModel::generate_mutation(); 
             } else {
-                metropolis_mutation(mut_counter);
-                mut_mode = 0;
-            }
-        }*/
+                mut.i = (mut.i + 1) % V;
 
-        const float onsite_energy(int i) {
+                if (mut.i == 0) {
+                    mut_mode++;
+                }
+
+                if (mut_mode < 10) {
+                    over_relaxation_mutation();
+                } else if (mut_mode < 14) {
+                    metropolis_mutation();
+                } else {
+                    metropolis_mutation();
+                    mut_mode = 0;
+                }
+            }
+        }
+
+        const float onsite_func(const Eigen::Vector3f &S) {
             float E = 0;
 
             // Onsite interactions
-            Vector3f S = spins[i];
             E -= B.dot(S);
 
-            float phi = atan2(S[1], S[0]);
+            float phi = std::atan2(S[1], S[0]);
             float theta;
             if (S[2] > 1.0) { theta = PI; }
             else if (S[2] < -1.0) { theta = -PI; }
-            else { theta = acos(S[2]); }
+            else { theta = std::acos(S[2]); }
 
             E += K1*S[2]*S[2];
             //E += K2*pow(S[0]*S[0]+S[1]*S[1],2);
-            E += K3*cos(6*phi)*pow(sin(theta), 6); // Sixfold magnetocrystalline field
+            E += K3*std::cos(6*phi)*std::pow(sin(theta), 6); // Sixfold magnetocrystalline field
 
             return E;
         }
-        /*
-        const float bond_energy(int i) {
-            float E = 0;
-
-            Vector4i idxs = tensor_idx(i);
-            Vector3f S = get_spin(i);
-
-            int n1 = idxs[0]; int n2 = idxs[1]; int n3 = idxs[2]; int s = idxs[3];
-
-            // NN interactions
-            E -= S.dot(get_spin(n1, mod(n2+1, N), n3, s));
-            E -= S.dot(get_spin(n1, mod(n2-1, N), n3, s));
-            E -= S.dot(get_spin(mod(n1+1, N), n2, n3, s));
-            E -= S.dot(get_spin(mod(n1-1, N), n2, n3, s));
-            E -= S.dot(get_spin(mod(n1+1, N), mod(n2-1, N), n3, s));
-            E -= S.dot(get_spin(mod(n1-1, N), mod(n2+1, N), n3, s));
-            E = 0.5*J1*E;
-
-            // PBC on interlayer coupling
-            E += 0.5*J2*S.dot(get_spin(n1, n2, mod(n3+1, L), s));
-            E += 0.5*J2*S.dot(get_spin(n1, n2, mod(n3-1, L), s));
-
-            return E;
-        }
-        */
 };
 

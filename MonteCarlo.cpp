@@ -14,8 +14,6 @@
 #define BOLTZMANN_CONSTANT 0.08617
 
 
-using namespace std;
-
 template <class MCModel>
 class MonteCarlo;
 
@@ -53,7 +51,7 @@ class MonteCarlo {
 
     public:
         MCModel *model;
-        minstd_rand r;
+        std::minstd_rand r;
         int accepted;
         unsigned long long nsteps;
         float energy;
@@ -74,12 +72,14 @@ class MonteCarlo {
             float rf;
             float dE;
 
+            model->T = T;
+
             for (unsigned long long i = 0; i < nsteps; i++) {
                 model->generate_mutation();
                 dE = model->energy_change();
                 
                 rf = float(r())/float(RAND_MAX);
-                if (rf < exp(-dE/T)) {
+                if (rf < std::exp(-dE/T)) {
                     accepted++;
 
                     model->accept_mutation();
@@ -96,11 +96,11 @@ class MonteCarlo {
 
 // run_MC with everything
 template <class MCModel, class A>
-vector<A> run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, string cooling,
+std::vector<A> run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, std::string cooling,
                                                                     float Ti,
                                                                     float Tf,
                                                                     int num_updates, 
-                                                                    function<A(MCModel*)> f) {
+                                                                    std::function<A(MCModel*)> f) {
 
     // Establish cooling schedule
     float (*update_T)(int n, int n_max, float Ti, float Tf);
@@ -109,7 +109,7 @@ vector<A> run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, string cooli
         update_T = *const_T;
     } else {
         if (Ti == -1 || Tf == -1) {
-            cout << "Need to supply Ti and Tf!" << endl;
+            std::cout << "Need to supply Ti and Tf!\n";
         }
         if (cooling == "trig") {
             update_T = *trig_T;
@@ -120,7 +120,7 @@ vector<A> run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, string cooli
         }
     }
     
-    vector<A> log(num_updates);
+    std::vector<A> log(num_updates);
     int update_freq = nsteps/num_updates;
 
     float T;
@@ -143,13 +143,13 @@ void run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, float T) {
 
 // run_MC with cooling schedule
 template <class MCModel>
-void run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, string cooling, float Ti, float Tf, int num_updates = 100) {
-    run_MC(m, nsteps, cooling, Ti, Tf, num_updates, function<int(MCModel*)>([](MCModel* g) { return 0; }));
+void run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, std::string cooling, float Ti, float Tf, int num_updates = 100) {
+    run_MC(m, nsteps, cooling, Ti, Tf, num_updates, std::function<int(MCModel*)>([](MCModel* g) { return 0; }));
 }
 
 // run_MC with logging function
 template <class MCModel, class A>
-vector<A> run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, float T, function<A(MCModel*)> f, int num_logitems) {
+std::vector<A> run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, float T, std::function<A(MCModel*)> f, int num_logitems) {
     return run_MC(m, nsteps, "const", T, T, num_logitems, f);
 }
 

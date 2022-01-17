@@ -3,7 +3,7 @@
 #define BOLTZMANN_CONSTANT 0.08617
 
 template <class ModelType>
-void exchange(vector<MonteCarlo<ModelType>*> *models, vector<float> *T) {
+void exchange(std::vector<MonteCarlo<ModelType>*> *models, std::vector<float> *T) {
     MonteCarlo<ModelType> *model_buffer;
     float r;
     float dE; float dB;
@@ -20,7 +20,7 @@ void exchange(vector<MonteCarlo<ModelType>*> *models, vector<float> *T) {
 }
 
 template <class ModelType, class A>
-vector<vector<A>> sample_pt(A sampling_func(ModelType*), ModelType *model, vector<float> *T, 
+std::vector<std::vector<A>> sample_pt(A sampling_func(ModelType*), ModelType *model, std::vector<float> *T, 
                                                                  unsigned long long steps_per_run, 
                                                                  unsigned long long num_samples, 
                                                                  unsigned long long steps_per_sample,
@@ -28,19 +28,18 @@ vector<vector<A>> sample_pt(A sampling_func(ModelType*), ModelType *model, vecto
 
     int resolution = T->size();
 
-    vector<MonteCarlo<ModelType>*> models(resolution);
+    std::vector<MonteCarlo<ModelType>*> models(resolution);
 
     for (int i = 0; i < resolution; i++) {
         models[i] = new MonteCarlo<ModelType>(model->clone());
-        models[i]->model->T = (*T)[i];
         models[i]->model->randomize_spins();
     }
 
-    vector<vector<A>> arr = vector<vector<A>>(resolution, vector<A>(num_samples));
+    std::vector<std::vector<A>> arr = std::vector<std::vector<A>>(resolution, std::vector<A>(num_samples));
 
     ctpl::thread_pool threads(num_threads);
 
-    vector<future<void>> results(resolution);
+    std::vector<std::future<void>> results(resolution);
 
     auto do_steps = [steps_per_run](int id, MonteCarlo<ModelType> *m, float T) {
         run_MC(m, steps_per_run, "trig", 3*T, T);
@@ -59,7 +58,7 @@ vector<vector<A>> sample_pt(A sampling_func(ModelType*), ModelType *model, vecto
 
     auto take_samples = [steps_per_sample, sampling_func](int id, int i, int n,
                                                                   MonteCarlo<ModelType> *m, float T, 
-                                                                  vector<A> *arr_i) {
+                                                                  std::vector<A> *arr_i) {
         m->steps(steps_per_sample, T);
         A sample = sampling_func(m->model);
         (*arr_i)[n] = sample;
@@ -82,7 +81,7 @@ vector<vector<A>> sample_pt(A sampling_func(ModelType*), ModelType *model, vecto
 }
 
 template <class ModelType, class A>
-vector<vector<A>> sample_r(A sampling_func(ModelType*), ModelType *model, vector<float> *T, 
+std::vector<std::vector<A>> sample_r(A sampling_func(ModelType*), ModelType *model, std::vector<float> *T, 
                                                         unsigned long long num_runs,
                                                         unsigned long long steps_per_run, 
                                                         unsigned long long num_samples, 
@@ -91,19 +90,18 @@ vector<vector<A>> sample_r(A sampling_func(ModelType*), ModelType *model, vector
 
     int resolution = T->size();
 
-    vector<MonteCarlo<ModelType>*> models(resolution);
+    std::vector<MonteCarlo<ModelType>*> models(resolution);
 
     for (int i = 0; i < resolution; i++) {
         models[i] = new MonteCarlo<ModelType>(model->clone());
-        models[i]->model->T = (*T)[i];
         models[i]->model->randomize_spins();
     }
 
-    vector<vector<A>> arr = vector<vector<A>>(resolution, vector<A>(num_runs*num_samples));
+    std::vector<std::vector<A>> arr = std::vector<std::vector<A>>(resolution, std::vector<A>(num_runs*num_samples));
 
     ctpl::thread_pool threads(num_threads);
 
-    vector<future<void>> results(resolution);
+    std::vector<std::future<void>> results(resolution);
 
     auto do_steps = [steps_per_run](int id, MonteCarlo<ModelType> *m, float T) {
         m->steps(steps_per_run, T);
@@ -121,7 +119,7 @@ vector<vector<A>> sample_r(A sampling_func(ModelType*), ModelType *model, vector
 
     auto take_samples = [num_samples, steps_per_sample, num_runs, steps_per_run, sampling_func](int id, int i,
                                                                                     MonteCarlo<ModelType> *m, float T, 
-                                                                                    vector<A> *arr_i) {
+                                                                                    std::vector<A> *arr_i) {
         for (int n = 0; n < num_runs; n++) {
             m->model->randomize_spins();
             m->steps(steps_per_run, T);
@@ -147,12 +145,12 @@ vector<vector<A>> sample_r(A sampling_func(ModelType*), ModelType *model, vector
 }
 
 template <class dtype>
-vector<vector<vector<dtype>>> summary_statistics(vector<vector<vector<dtype>>> *data) {
+std::vector<std::vector<std::vector<dtype>>> summary_statistics(std::vector<std::vector<std::vector<dtype>>> *data) {
     int resolution = (*data).size();
     int num_samples = (*data)[0].size();
     int dtype_size = (*data)[0][0].size();
 
-    vector<vector<vector<dtype>>> arr(resolution, vector<vector<dtype>>(2, vector<dtype>(dtype_size)));
+    std::vector<std::vector<std::vector<dtype>>> arr(resolution, std::vector<std::vector<dtype>>(2, std::vector<dtype>(dtype_size)));
 
     for (int i = 0; i < resolution; i++) {
         for (int k = 0; k < dtype_size; k++) {
@@ -175,11 +173,11 @@ vector<vector<vector<dtype>>> summary_statistics(vector<vector<vector<dtype>>> *
 }
 
 template <class dtype>
-void write_data(vector<vector<vector<dtype>>> *data, vector<float> *T, string filename, string header = "") {
+void write_data(std::vector<std::vector<std::vector<dtype>>> *data, std::vector<float> *T, std::string filename, std::string header = "") {
     int resolution = (*data).size();
     int dtype_size = (*data)[0][0].size();
 
-    ofstream output_file(filename);
+    std::ofstream output_file(filename);
 
     // Write header
     output_file << resolution << "\t" << header << "\n";
@@ -197,12 +195,12 @@ void write_data(vector<vector<vector<dtype>>> *data, vector<float> *T, string fi
 }
 
 template <class dtype>
-void write_samples(vector<vector<vector<dtype>>> *data, vector<float> *T, string filename, string header = "") {
+void write_samples(std::vector<std::vector<std::vector<dtype>>> *data, std::vector<float> *T, std::string filename, std::string header = "") {
     int resolution = (*data).size();
     int num_samples = (*data)[0].size();
     int dtype_size = (*data)[0][0].size();
 
-    ofstream output_file(filename);
+    std::ofstream output_file(filename);
 
     // Write header
     output_file << resolution << "\t" << header << "\n";
@@ -222,16 +220,16 @@ void write_samples(vector<vector<vector<dtype>>> *data, vector<float> *T, string
 
 
 template <class ModelType>
-void generate_spin_configs(ModelType *model, vector<float> T, unsigned long long equilibration_steps, 
+void generate_spin_configs(ModelType *model, std::vector<float> T, unsigned long long equilibration_steps, 
                                                               unsigned long long num_samples,
                                                               unsigned long long steps_per_sample,
                                                               unsigned long long num_threads, 
-                                                              string foldername) {
+                                                              std::string foldername) {
     
     int resolution = T.size();
 
     ctpl::thread_pool threads(num_threads);
-    vector<future<void>> results(resolution);
+    std::vector<std::future<void>> results(resolution);
 
     auto spin_samples = [equilibration_steps, num_samples, steps_per_sample, model, foldername](int id, float T) {
         MonteCarlo<ModelType> *m = new MonteCarlo<ModelType>(model->clone());
@@ -240,7 +238,7 @@ void generate_spin_configs(ModelType *model, vector<float> T, unsigned long long
         m->steps(equilibration_steps, T);
         for (int j = 0; j < num_samples; j++) {
             m->steps(steps_per_sample, T);
-            m->model->save_spins(foldername + "/Spins" + to_string(T) + "_" + to_string(j) + ".txt");
+            m->model->save_spins(foldername + "/Spins" + std::to_string(T) + "_" + std::to_string(j) + ".txt");
         }
     };
 

@@ -13,9 +13,6 @@
 #include "MonteCarlo.cpp"
 #include "Utility.cpp"
 
-using namespace std;
-using namespace Eigen;
-
 
 class SpinModel : virtual public MCModel {
     // Generic 3D Heisenberg model
@@ -27,7 +24,7 @@ class SpinModel : virtual public MCModel {
         // dS must conserve the norm of S[n1,n2,n3,s]
         struct SpinMutation {
             int i;
-            Vector3f dS;
+            Eigen::Vector3f dS;
         };
 
         struct HeisBond {
@@ -35,8 +32,8 @@ class SpinModel : virtual public MCModel {
             int d2;
             int d3;
             int ds;
-            Vector3f v;
-            function<float(Vector3f, Vector3f)> bondfunc;
+            Eigen::Vector3f v;
+            std::function<float(const Eigen::Vector3f&, const Eigen::Vector3f&)> bondfunc;
         };    
 
 
@@ -49,17 +46,17 @@ class SpinModel : virtual public MCModel {
 
         float acceptance;
         float sigma;
-        vector<Vector3f> spins;
-        vector<vector<int>> neighbors;
-        vector<HeisBond> bonds;
+        std::vector<Eigen::Vector3f> spins;
+        std::vector<std::vector<int>> neighbors;
+        std::vector<HeisBond> bonds;
 
-        unordered_set<int> s;
+        std::unordered_set<int> s;
 
-        minstd_rand r;
+        std::minstd_rand r;
 
         int mut_mode;
         bool cluster;
-        float cluster_dE;
+        Eigen::Matrix3f s0;
 
         // Mutation being considered is stored as an attribute of the model
         SpinMutation mut;
@@ -73,8 +70,14 @@ class SpinModel : virtual public MCModel {
             if (N3 == -1) { this->N3 = N1; } else { this->N3 = N3; }
             this->V = N1*N2*N3*sl;
 
-            this->spins = vector<Vector3f>(V);
-            this->neighbors = vector<vector<int>>(V, vector<int>(0));
+            this->spins = std::vector<Eigen::Vector3f>(V);
+            this->neighbors = std::vector<std::vector<int>>(V+1, std::vector<int>(0));
+
+            // Connect every site to the ghost 
+            for (int i = 0; i < V; i++) {
+                neighbors[V].push_back(i);
+                neighbors[i].push_back(V);
+            }
 
             this->randomize_spins();
 
@@ -86,13 +89,14 @@ class SpinModel : virtual public MCModel {
 
             this->cluster = true;
             this->mut.i = 0;
+            this->s0 = Eigen::Matrix3f::Identity();
         }
 
         inline const int flat_idx(int n1, int n2, int n3, int s) {
             return n1 + N1*(n2 + N2*(n3 + N3*s));
         }
 
-        inline const Vector4i tensor_idx(int i) {
+        inline const Eigen::Vector4i tensor_idx(int i) {
             int n1 = i % N1;
             i = i / N1;
             int n2 = i % N2;
@@ -100,21 +104,21 @@ class SpinModel : virtual public MCModel {
             int n3 = i % N3;
             i = i / N3;
             int s = i % sl;
-            Vector4i v; v << n1, n2, n3, s;
+            Eigen::Vector4i v; v << n1, n2, n3, s;
             return v;
         }
 
-        inline const Vector3f get_spin(int n1, int n2, int n3, int s) {
+        inline const Eigen::Vector3f get_spin(int n1, int n2, int n3, int s) {
             return spins[flat_idx(n1, n2, n3, s)];
         }
 
         void randomize_spins() {
             for (int i = 0; i < V; i++) {
-                spins[i] = Vector3f::Random(3).normalized();
+                spins[i] = Eigen::Vector3f::Random(3).normalized();
             }
         }
 
-        void add_bond(int d1, int d2, int d3, int ds, Vector3f v, function<float(Vector3f, Vector3f)> bondfunc) {
+        void add_bond(int d1, int d2, int d3, int ds, Eigen::Vector3f v, std::function<float(Eigen::Vector3f, Eigen::Vector3f)> bondfunc) {
             HeisBond b{d1, d2, d3, ds, v, bondfunc};
             this->bonds.push_back(b);
             int i; int j;
@@ -125,19 +129,20 @@ class SpinModel : virtual public MCModel {
                             i = flat_idx(n1, n2, n3, s);
                             j = flat_idx(mod(n1 + b.d1, N1), mod(n2 + b.d2, N2), mod(n3 + b.d3, N3), mod(s + b.ds, sl));
                             neighbors[i].push_back(j);
+                            std::rotate(neighbors[i].rbegin(), neighbors[i].rbegin()+1, neighbors[i].rend());
                         }
                     }
                 }
             }
         }
 
-        inline vector<double> twist_stiffness() {
+        inline std::vector<double> twist_stiffness() {
             // Returns the first and second derivative in response to a phase twist
             float alpha = 0.01;
             float f;
-            Matrix3f R1; 
-            Matrix3f R2;
-            Matrix3f R3;
+            Eigen::Matrix3f R1; 
+            Eigen::Matrix3f R2;
+            Eigen::Matrix3f R3;
 
             double E0 = 0.;
             double E1 = 0.;
@@ -148,8 +153,8 @@ class SpinModel : virtual public MCModel {
             double Em3 = 0.;
 
 
-            Vector3f S1;
-            Vector3f S2;
+            Eigen::Vector3f S1;
+            Eigen::Vector3f S2;
             int j;
             for (int i = 0; i < V; i++) {
                 for (int n = 0; n < bonds.size(); n++) {
@@ -184,11 +189,11 @@ class SpinModel : virtual public MCModel {
             double d3E = (1./8.*Em3 - 1.*Em2 + 13./8.*Em1 - 13./8.*E1 + 1.*E2 - 1./8.*E3)/pow(alpha, 3);
             double d4E = (-1./6.*Em3 + 2.*Em2 - 13./2.*Em1 + 28./3.*E0 - 13./2.*E1 + 2.*E2 - 1./6.*E3)/pow(alpha, 4);
             
-            return vector<double>{d1E/2., d2E/2., d3E/2., d4E/2.};
+            return std::vector<double>{d1E/2., d2E/2., d3E/2., d4E/2.};
         }
 
-        inline Vector3f get_magnetization() {
-            Vector3f M = Vector3f::Constant(0);
+        inline Eigen::Vector3f get_magnetization() {
+            Eigen::Vector3f M = Eigen::Vector3f::Constant(0);
             for (int i = 0; i < V; i++) {
                 M += spins[i];
             }
@@ -196,11 +201,11 @@ class SpinModel : virtual public MCModel {
             return M/(N1*N2*N3*sl);
         }
 
-        vector<float> correlation_function(int i, int a = 2, int b = 2) {
-            vector<float> Cij = vector<float>(V); 
+        std::vector<float> correlation_function(int i, int a = 2, int b = 2) {
+            std::vector<float> Cij = std::vector<float>(V); 
 
             int j;
-            Vector4i idxs = tensor_idx(i);
+            Eigen::Vector4i idxs = tensor_idx(i);
             int m1 = idxs[0]; int m2 = idxs[1]; int m3 = idxs[2]; int k = idxs[3];
             for (int n1 = 0; n1 < N1; n1++) {
                 for (int n2 = 0; n2 < N2; n2++) {
@@ -218,11 +223,11 @@ class SpinModel : virtual public MCModel {
             return Cij;
         }
 
-        vector<float> full_correlation_function(int i) {
-            vector<float> Cij = vector<float>(V); 
+        std::vector<float> full_correlation_function(int i) {
+            std::vector<float> Cij = std::vector<float>(V); 
 
             int j;
-            Vector4i idxs = tensor_idx(i);
+            Eigen::Vector4i idxs = tensor_idx(i);
             int m1 = idxs[0]; int m2 = idxs[1]; int m3 = idxs[2]; int k = idxs[3];
             for (int n1 = 0; n1 < N1; n1++) {
                 for (int n2 = 0; n2 < N2; n2++) {
@@ -243,8 +248,8 @@ class SpinModel : virtual public MCModel {
         float skyrmion_density(int i) {
             int j;
 
-            Vector3f dSdX; dSdX << 0., 0., 0.;
-            Vector3f dSdY; dSdY << 0., 0., 0.;
+            Eigen::Vector3f dSdX; dSdX << 0., 0., 0.;
+            Eigen::Vector3f dSdY; dSdY << 0., 0., 0.;
             for (int n = 0; n < bonds.size(); n++) {
                 j = neighbors[i][n];
                 if (bonds[n].v[0] != 0.) {
@@ -261,11 +266,11 @@ class SpinModel : virtual public MCModel {
             return spins[i].dot(dSdX.cross(dSdY));
         }
 
-        vector<float> skyrmion_correlation_function(int i) {
-            vector<float> Cij = vector<float>(V); 
+        std::vector<float> skyrmion_correlation_function(int i) {
+            std::vector<float> Cij = std::vector<float>(V); 
 
             int j;
-            Vector4i idxs = tensor_idx(i);
+            Eigen::Vector4i idxs = tensor_idx(i);
             int m1 = idxs[0]; int m2 = idxs[1]; int m3 = idxs[2]; int k = idxs[3];
             float Si = skyrmion_density(i);
             for (int n1 = 0; n1 < N1; n1++) {
@@ -287,58 +292,76 @@ class SpinModel : virtual public MCModel {
         void cluster_update() {
             s.clear();
 
-            float E1 = energy();
 
-            Vector3f ax; ax << dist->sample(), dist->sample(), dist->sample();
+            std::stack<int> c;
+            int m = r() % (V + 1);
+            c.push(m);
+
+            //Eigen::Vector3f tmp; tmp << dist->sample(), dist->sample(), dist->sample();
+            //Eigen::Vector3f ax = spins[m] + tmp.cross(spins[m]).normalized()*dist->sample();
+            Eigen::Vector3f ax; ax << dist->sample(), dist->sample(), dist->sample();
             ax = ax.normalized();
+            Eigen::Matrix3f R = Eigen::Matrix3f::Identity() - 2*ax*ax.transpose()/std::pow(ax.norm(), 2);
 
-            int i = r() % V;
-            spins[i] = spins[i] - 2*spins[i].dot(ax)*ax;
-
-            stack<int> c;
-            c.push(i);
-
-            float dE;
-            Vector3f new_S;
-            int m; int j;
+            int j; float dE;
+            Eigen::Matrix3f s0_new;
+            Eigen::Vector3f s_new;
+            bool is_ghost; bool neighbor_is_ghost;
             while (!c.empty()) {
                 m = c.top();
                 c.pop();
 
-                // Mark m as visited
-                s.insert(m);
 
-                for (int n = 0; n < bonds.size(); n++) {
-                    j = neighbors[m][n];
-                    // Check if each neighbor has been visited
-                    if (!s.count(j)) {
-                        // With appropriate probability, add neighbor to stack and flip it
-                        new_S = spins[j] - 2*spins[j].dot(ax)*ax;
-                        dE = bonds[n].bondfunc(spins[m], new_S) - bonds[n].bondfunc(spins[m], spins[j]);
-                        if ((float) r()/RAND_MAX < 1. - exp(dE/T)) {
-                            c.push(j);
-                            spins[j] = new_S;
+                if (!s.count(m)) {
+                    s.insert(m);
+
+                    is_ghost = (m == V);
+                    if (is_ghost) { // Site is ghost
+                        s0_new = R*s0;
+                    } else {
+                        s_new = R*spins[m];
+                    }
+
+                    for (int n = 0; n < neighbors[m].size(); n++) {
+                        j = neighbors[m][n];
+                        neighbor_is_ghost = (j == V);
+
+                        if (!s.count(j)) {
+                            if (neighbor_is_ghost) {
+                                dE = onsite_func(s0.inverse()*s_new) - onsite_func(s0.inverse()*spins[m]);
+                            } else if (is_ghost) {
+                                dE = onsite_func(s0_new.inverse()*spins[j]) - onsite_func(s0.inverse()*spins[j]);
+                            } else { // Normal bond
+                                dE = bonds[n].bondfunc(spins[j], s_new) - bonds[n].bondfunc(spins[j], spins[m]);
+                            }
+
+                            if ((float) r()/RAND_MAX < 1. - std::exp(-dE/T)) {
+                                c.push(j);
+                            }
                         }
+                    }
+
+                    if (is_ghost) {
+                        s0 = s0_new;
+                    } else {
+                        spins[m] = s_new;
                     }
                 }
             }
-
-            float E2 = energy();
-            this->cluster_dE = E2 - E1;
         }
 
         void metropolis_mutation() {
             if (acceptance > 0.5) {
-                sigma = min(2., 1.01*sigma);
+                sigma = std::min(2., 1.01*sigma);
 
             } else {
-                sigma = max(0.05, 0.99*sigma);
+                sigma = std::max(0.05, 0.99*sigma);
             }
 
             // Randomly generate mutation
-            Vector3f Gamma;
+            Eigen::Vector3f Gamma;
             Gamma << dist->sample(), dist->sample(), dist->sample();
-            Vector3f S2 = (spins[mut.i] + this->sigma*Gamma).normalized();
+            Eigen::Vector3f S2 = (spins[mut.i] + this->sigma*Gamma).normalized();
 
 
             // Store mutation for consideration
@@ -367,7 +390,11 @@ class SpinModel : virtual public MCModel {
             }
         }
 
-        virtual const float onsite_energy(int i)=0;
+        virtual const float onsite_func(const Eigen::Vector3f& S)=0;
+
+        virtual const float onsite_energy(int i) {
+            return onsite_func(spins[i]);
+        }
 
         virtual const float bond_energy(int i) {
             float E = 0.;
@@ -393,7 +420,7 @@ class SpinModel : virtual public MCModel {
 
         const float energy_change() {
             if (cluster) {
-                return this->cluster_dE;
+                return -1.;
             } else {
                 float E1 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
                 spins[mut.i] = spins[mut.i] + mut.dS;
@@ -404,11 +431,11 @@ class SpinModel : virtual public MCModel {
         }
 
         // Saves current spin configuration
-        void save_spins(string filename) {
-            ofstream output_file;
+        void save_spins(std::string filename) {
+            std::ofstream output_file;
             output_file.open(filename);
             output_file << N1 << "\t" << N2 << "\t" << N3 << "\t" << sl << "\n";
-            int i; Vector3f S;
+            int i; Eigen::Vector3f S;
             for (int i = 0; i < V; i++) {
                 S = spins[i];
                 output_file << S[0] << "\t" << S[1] << "\t" << S[2];

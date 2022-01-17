@@ -16,6 +16,7 @@ vector<float> magnetization_sampler(TrigonalModel *model) {
 
 
 int main(int argc, char* argv[]) {
+    bool cluster = true;
     srand((unsigned)time( NULL ));
 
     // Folder to store data
@@ -54,8 +55,10 @@ int main(int argc, char* argv[]) {
 
     int resolution = stoi(paramss[0]);
     int steps_per_run = stoi(paramss[1]);
+    if (!cluster) { steps_per_run *= MCStep; }
     int num_samples = stoi(paramss[2]);
     int steps_per_sample = stoi(paramss[3]);
+    if (!cluster) { steps_per_sample *= MCStep; }
     int num_runs = stoi(paramss[4]);
 
     //float T_max = 60*BOLTZMANN_CONSTANT; // In Kelvin
@@ -68,6 +71,8 @@ int main(int argc, char* argv[]) {
     }
 
     TrigonalModel *model = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B);
+    model->cluster = cluster;
+
 
     int num_threads = stoi(argv[4]);
     unsigned long long int nsteps = (long long) resolution*(steps_per_run + num_samples*steps_per_sample);
