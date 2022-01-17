@@ -8,10 +8,6 @@
 #include "../ClockModel.cpp"
 #include "../Utility.cpp"
 
-
-using namespace std;
-using namespace Eigen;
-
 template <int q>
 class SquareClockModel : public ClockModel<q> {
     public:
@@ -32,14 +28,14 @@ class SquareClockModel : public ClockModel<q> {
                 }
             }
 
-            function<float(int, int)> bondfunc = [J, this](int p1, int p2) {
+            std::function<float(int, int)> bondfunc = [J, this](int p1, int p2) {
                 return this->bond_table[p1][p2];
             };
 
 
 
-            Vector3f v1; v1 << 1.,0.,0.;
-            Vector3f v2; v2 << 0.,1.,0.;
+            Eigen::Vector3f v1; v1 << 1.,0.,0.;
+            Eigen::Vector3f v2; v2 << 0.,1.,0.;
             this->add_bond(1,0,0,   v1, bondfunc);
             this->add_bond(-1,0,0, -v1, bondfunc);
             this->add_bond(0,1,0,   v2, bondfunc);

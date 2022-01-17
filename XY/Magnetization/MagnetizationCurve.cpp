@@ -3,11 +3,9 @@
 #include <iostream>
 #include <chrono>
 
-using namespace std;
-
 template <int q>
-vector<float> magnetization_sampler(SquareXYModel *model) {
-    return vector<float>{
+std::vector<float> magnetization_sampler(SquareXYModel *model) {
+    return std::vector<float>{
                 static_cast<float>(model->get_magnetization().norm()),
                 static_cast<float>(model->energy()/model->V)
            };
@@ -15,7 +13,7 @@ vector<float> magnetization_sampler(SquareXYModel *model) {
 
 int main(int argc, char* argv[]) {    
     int N = stoi(argv[2]);
-    string filename = argv[1];
+    std::string filename = argv[1];
     int num_threads = 4;
 
     srand((unsigned)time( NULL ));
@@ -33,8 +31,7 @@ int main(int argc, char* argv[]) {
     const float Tmin = 0.1;
     int resolution = 60;
 
-    vector<float> T(resolution);
-    ofstream output(filename);
+    std::vector<float> T(resolution);
 
     for (int i = 0; i < resolution; i++) {
         T[i] = float(i)/resolution*Tmax + float(resolution - i)/resolution*Tmin;
@@ -47,18 +44,18 @@ int main(int argc, char* argv[]) {
 
     unsigned long long nsteps = (unsigned long long) resolution*(steps_per_run + num_samples*steps_per_sample);
 
-    auto start = chrono::high_resolution_clock::now();
+    auto start = std::chrono::high_resolution_clock::now();
 
     auto data = sample_r(magnetization_sampler<q>, model, &T, 10, steps_per_run, num_samples, steps_per_sample, num_threads);
     auto stats = summary_statistics(&data);
-    string header = to_string(N) + "\t" + to_string(L);
+    std::string header = to_string(N) + "\t" + to_string(L);
     write_data(&stats, &T, filename, header); 
 
-    auto stop = chrono::high_resolution_clock::now();
+    auto stop = std::chrono::high_resolution_clock::now();
     
-    auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
     int microseconds = duration.count();
 
-    cout << "Duration: " << microseconds/1e6 << endl;
-    cout << "Steps/s/thread: " << nsteps/float(microseconds)*1e6/num_threads << endl;
+    std::cout << "Duration: " << microseconds/1e6 << std::endl;
+    std::cout << "Steps/s/thread: " << nsteps/float(microseconds)*1e6/num_threads << std::endl;
 }

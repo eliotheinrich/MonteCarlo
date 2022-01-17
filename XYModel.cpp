@@ -104,15 +104,6 @@ class XYModel : virtual public MCModel {
             return v;
         }
 
-        inline void set_spin(int n1, int n2, int n3, int s, Eigen::Vector2f v) {
-            spins[flat_idx(n1, n2, n3, s)] = v;
-        }
-
-
-        inline const Eigen::Vector2f get_spin(int n1, int n2, int n3, int s) {
-            return spins[flat_idx(n1, n2, n3, s)];
-        }
-
         void randomize_spins() {
             float p;
             Eigen::Vector2f v;

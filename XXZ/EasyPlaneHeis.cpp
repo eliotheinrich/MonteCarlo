@@ -7,10 +7,6 @@
 #include "../SpinModel.cpp"
 #include "../Utility.cpp"
 
-
-using namespace std;
-using namespace Eigen;
-
 class EasyPlaneHeis : public SpinModel {
     public:
         int N;
@@ -25,12 +21,13 @@ class EasyPlaneHeis : public SpinModel {
             this->K = K;
 
 
-            function<float(Vector3f, Vector3f)> bondfunc = [J](Vector3f S1, Vector3f S2) {
+            std::function<float(Eigen::Vector3f, Eigen::Vector3f)> bondfunc = 
+            [J](Eigen::Vector3f S1, Eigen::Vector3f S2) {
                 return -J*S1.dot(S2);
             };
 
-            Vector3f v1; v1 << 1.,0.,0.;
-            Vector3f v2; v2 << 0.,1.,0.;
+            Eigen::Vector3f v1; v1 << 1.,0.,0.;
+            Eigen::Vector3f v2; v2 << 0.,1.,0.;
             this->add_bond(1,0,0,0,   v1, bondfunc);
             this->add_bond(-1,0,0,0, -v1, bondfunc);
             this->add_bond(0,1,0,0,   v2, bondfunc);
@@ -45,13 +42,13 @@ class EasyPlaneHeis : public SpinModel {
             return new_model;
         }
 
-        inline vector<double> vorticity() {
+        inline std::vector<double> vorticity() {
             float v1 = 0;
             float v2 = 0;
 
-            vector<vector<vector<float>>> phi = vector<vector<vector<float>>>(N,
-                                                        vector<vector<float>>(N,
-                                                                vector<float>(L)));
+            std::vector<std::vector<std::vector<float>>> phi = std::vector<std::vector<std::vector<float>>>(N,
+                                                        std::vector<std::vector<float>>(N,
+                                                                std::vector<float>(L)));
 
             int i;
             for (int n1 = 0; n1 < N; n1++) {
@@ -70,19 +67,19 @@ class EasyPlaneHeis : public SpinModel {
                     for (int n3 = 0; n3 < L; n3++) {
                         p1 = phi[n1][n2][n3]; p2 = phi[(n1+1)%N][n2][n3];
                         p3 = phi[(n1+1)%N][(n2+1)%N][n3]; p4 = phi[n1][(n2+1)%N][n3];
-                        w = arg(exp(complex<float>(0., p2 - p1))) + arg(exp(complex<float>(0., p3 - p2)))
-                          + arg(exp(complex<float>(0., p4 - p3))) + arg(exp(complex<float>(0., p1 - p4)));
+                        w = arg(exp(std::complex<float>(0., p2 - p1))) + arg(exp(std::complex<float>(0., p3 - p2)))
+                          + arg(exp(std::complex<float>(0., p4 - p3))) + arg(exp(std::complex<float>(0., p1 - p4)));
                         if (w > 0) { v1 += w; } else { v2 += w; }
                     }
                 }
             }
             
-            return vector<double>{v1/(2*PI*N*N*L), v2/(2*PI*N*N*L)};
+            return std::vector<double>{v1/(2*PI*N*N*L), v2/(2*PI*N*N*L)};
         }
 
-        const float onsite_energy(int i) {
+        const float onsite_func(const Eigen::Vector3f &S) {
             // Onsite interactions
-            return K*pow(this->spins[i][2], 2);
+            return K*pow(S[2], 2);
         }
 };
 

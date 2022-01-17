@@ -79,8 +79,8 @@ class SquareXYModel : public XYModel {
                     for (int n3 = 0; n3 < L; n3++) {
                         p1 = phi[n1][n2][n3]; p2 = phi[(n1+1)%N][n2][n3];
                         p3 = phi[(n1+1)%N][(n2+1)%N][n3]; p4 = phi[n1][(n2+1)%N][n3];
-                        w = arg(exp(complex<float>(0., p2 - p1))) + arg(exp(complex<float>(0., p3 - p2)))
-                          + arg(exp(complex<float>(0., p4 - p3))) + arg(exp(complex<float>(0., p1 - p4)));
+                        w = arg(exp(std::complex<float>(0., p2 - p1))) + arg(exp(std::complex<float>(0., p3 - p2)))
+                          + arg(exp(std::complex<float>(0., p4 - p3))) + arg(exp(std::complex<float>(0., p1 - p4)));
                         if (w > 0) { v1 += w; } else { v2 += w; }
                     }
                 }

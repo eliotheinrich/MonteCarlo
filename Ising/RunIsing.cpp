@@ -1,8 +1,6 @@
 #include "SquareIsingModel.cpp"
 #include <iostream>
 
-using namespace std;
-
 int main() {
     srand((unsigned)time( NULL ));
 
@@ -16,10 +14,11 @@ int main() {
     const int MCStep = N*N*L;
 
     SquareIsingModel *model = new SquareIsingModel(N, L, J, B);
+    MonteCarlo<SquareIsingModel> *m = new MonteCarlo<SquareIsingModel>(model);
 
-    cout << model->get_magnetization() << endl;
-    run_MC<MagnetizationLogItem>(model, 50000*MCStep, "trig", T, T, true);
-    cout << model->get_magnetization() << endl;
+    std::cout << model->get_magnetization() << std::endl;
+    m->steps(50000*MCStep, T);
+    std::cout << model->get_magnetization() << std::endl;
 
     model->save_spins("Spins.txt");
     

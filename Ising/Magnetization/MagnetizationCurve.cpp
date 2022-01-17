@@ -4,37 +4,34 @@
 #include <iostream>
 #include <math.h>
 
-using namespace std;
-using namespace Eigen;
-
 template <class ModelType>
-void magnetization_run(ModelType *model, vector<float> *T, int num_runs,
+void magnetization_run(ModelType *model, std::vector<float> *T, int num_runs,
                                                            int steps_per_run, 
                                                            int num_samples, 
                                                            int steps_per_sample,
                                                            int num_threads,
-                                                           string filename) {
+                                                           std::string filename) {
 
     int resolution = T->size();
 
-    vector<MonteCarlo<ModelType>*> models(resolution);
+    std::vector<MonteCarlo<ModelType>*> models(resolution);
 
     for (int i = 0; i < resolution; i++) {
         models[i] = new MonteCarlo<ModelType>(model->clone());
         models[i]->model->randomize_spins();
     }
 
-    vector<vector<float>> M = vector<vector<float>>(resolution, vector<float>(num_samples*num_runs));
-    vector<vector<float>> E = vector<vector<float>>(resolution, vector<float>(num_samples*num_runs));
+    std::vector<std::vector<float>> M = std::vector<std::vector<float>>(resolution, std::vector<float>(num_samples*num_runs));
+    std::vector<std::vector<float>> E = std::vector<std::vector<float>>(resolution, std::vector<float>(num_samples*num_runs));
 
     ctpl::thread_pool threads(num_threads);
 
-    vector<future<void>> results(resolution);
+    std::vector<std::future<void>> results(resolution);
 
     auto magnetization_samples = [num_runs, steps_per_run, num_samples, steps_per_sample](int id, int i, 
                                                                                           MonteCarlo<ModelType> *m, float T, 
-                                                                                          vector<float> *M, 
-                                                                                          vector<float> *E) {
+                                                                                          std::vector<float> *M, 
+                                                                                          std::vector<float> *E) {
         for (int n = 0; n < num_runs; n++) {
             m->model->randomize_spins();
             m->steps(steps_per_run, T);
@@ -54,11 +51,11 @@ void magnetization_run(ModelType *model, vector<float> *T, int num_runs,
         results[i].get();
     }
 
-    vector<float> avg_M(resolution);
-    vector<float> avg_E(resolution);
+    std::vector<float> avg_M(resolution);
+    std::vector<float> avg_E(resolution);
 
-    vector<float> err_M(resolution);
-    vector<float> err_E(resolution);
+    std::vector<float> err_M(resolution);
+    std::vector<float> err_E(resolution);
 
     for (int i = 0; i < resolution; i++) {
         avg_M[i] = avg(&M[i]);
@@ -67,13 +64,13 @@ void magnetization_run(ModelType *model, vector<float> *T, int num_runs,
         err_E[i] = stdev(&E[i], avg_E[i]);
     }
 
-    ofstream output_file(filename);
+    std::ofstream output_file(filename);
 
     // Write header
-    output_file << resolution << endl;
+    output_file << resolution << std::endl;
 
     for (int i = 0; i < resolution; i++) {
-        output_file << (*T)[i] << "\t" << avg_M[i] << "\t" << err_M[i] << "\t" << avg_E[i] << "\t" << err_E[i] << endl;
+        output_file << (*T)[i] << "\t" << avg_M[i] << "\t" << err_M[i] << "\t" << avg_E[i] << "\t" << err_E[i] << std::endl;
     }
 
     output_file.close();
@@ -101,26 +98,26 @@ int main(int argc, char* argv[]) {
     float T_max = 4.;
     float T_min = 0.05;
 
-    vector<float> T(resolution);
+    std::vector<float> T(resolution);
     for (int i = 0; i < resolution; i++) {
         T[i] = T_max*i/resolution + T_min*(resolution - i)/resolution;
     }
 
     unsigned long long int nsteps = 3*resolution*(steps_per_run + num_samples*steps_per_sample);
 
-    cout << "Number steps: " << nsteps << endl;
-    cout << "Expected completion time: " << (long long) 2*nsteps/3300000./num_threads/60. << " minutes. " << endl;
+    std::cout << "Number steps: " << nsteps << std::endl;
+    std::cout << "Expected completion time: " << (long long) 2*nsteps/3300000./num_threads/60. << " minutes. " << std::endl;
 
-    auto start = chrono::high_resolution_clock::now();
+    auto start = std::chrono::high_resolution_clock::now();
 
 
     magnetization_run(model, &T, num_runs, steps_per_run, num_samples, steps_per_sample, num_threads, "MagnetizationCurve.txt");
 
-    auto stop = chrono::high_resolution_clock::now();
-    auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
     int seconds = duration.count()/1000000.;
 
-    cout << "Completion time: " << seconds/60. << " minutes." << endl;
+    std::cout << "Completion time: " << seconds/60. << " minutes." << std::endl;
 
 
 }

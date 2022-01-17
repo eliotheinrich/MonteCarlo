@@ -3,10 +3,6 @@
 #include <chrono>
 #include <ctpl.h>
 
-using namespace std;
-using namespace Eigen;
-
-
 int main(int charc, char* argv[]) {
 
     srand((unsigned)time( NULL ));
@@ -28,18 +24,18 @@ int main(int charc, char* argv[]) {
     //int num_trials = stoi(argv[1]);
     int nsteps = 1000*MCstep;
 
-    auto start = chrono::high_resolution_clock::now();
+    auto start = std::chrono::high_resolution_clock::now();
 
     m->steps(nsteps, T);
 
-    auto stop = chrono::high_resolution_clock::now();
+    auto stop = std::chrono::high_resolution_clock::now();
     
 
-    auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
     int microseconds = duration.count();
 
-    cout << to_string(nsteps) << " steps took " << to_string(float(microseconds)/1000000.) << "s." << endl;
-    cout << to_string(float(nsteps)/(float(microseconds)/1000000)) << " steps/second." << endl;
+    std::cout << to_string(nsteps) << " steps took " << to_string(float(microseconds)/1000000.) << "s." << std::endl;
+    std::cout << to_string(float(nsteps)/(float(microseconds)/1000000)) << " steps/second." << std::endl;
 
 }
 

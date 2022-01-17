@@ -4,13 +4,9 @@
 #include <iostream>
 #include <math.h>
 
-using namespace std;
-using namespace Eigen;
-
-
-vector<float> Cij_sampler(TrigonalModel *model) {
-    vector<float> Cij = vector<float>(model->V, 0.);
-    vector<float> Cij_avg = vector<float>(model->V, 0.);
+std::vector<float> Cij_sampler(TrigonalModel *model) {
+    std::vector<float> Cij = std::vector<float>(model->V, 0.);
+    std::vector<float> Cij_avg = std::vector<float>(model->V, 0.);
 
     int i;
     int j;
@@ -29,22 +25,22 @@ vector<float> Cij_sampler(TrigonalModel *model) {
 }
 
 int main(int argc, char* argv[]) {
-    srand((unsigned)time( NULL ));
+    std::srand((unsigned)std::time( NULL ));
 
-    string filename = argv[1];
-    int num_threads = stoi(argv[2]);
-    int N = stoi(argv[3]);
+    std::string filename = argv[1];
+    int num_threads = std::stoi(argv[2]);
+    int N = std::stoi(argv[3]);
     int L = 1;
 
-    cout << "N = " << N << endl;
+    std::cout << "N = " << N << std::endl;
 
     // Base case
-    float J1 = stof(argv[4]);
-    float J2 = stof(argv[5]);
-    float K1 = stof(argv[6]);
-    float K2 = stof(argv[7]);
-    float K3 = stof(argv[8]);
-    Vector3f B; B << stof(argv[9]), stof(argv[10]), stof(argv[11]);
+    float J1 = std::stof(argv[4]);
+    float J2 = std::stof(argv[5]);
+    float K1 = std::stof(argv[6]);
+    float K2 = std::stof(argv[7]);
+    float K3 = std::stof(argv[8]);
+    Eigen::Vector3f B; B << std::stof(argv[9]), stof(argv[10]), stof(argv[11]);
 
     const int MCStep = N*N*L;
 
@@ -52,37 +48,37 @@ int main(int argc, char* argv[]) {
 
     const float Tmax = 3.;
     const float Tmin = 0.1;
-    unsigned int resolution = stoi(argv[12]);
+    unsigned int resolution = std::stoi(argv[12]);
 
-    vector<float> T(resolution);
+    std::vector<float> T(resolution);
 
     for (int i = 0; i < resolution; i++) {
         T[i] = float(i)/resolution*Tmax + float(resolution - i)/resolution*Tmin;
     }
 
-    unsigned long long int steps_per_run = stoi(argv[13])*MCStep;
+    unsigned long long int steps_per_run = std::stoi(argv[13])*MCStep;
 
-    unsigned int num_samples = stoi(argv[14]);
-    unsigned long long int steps_per_sample = stoi(argv[15])*MCStep;
+    unsigned int num_samples = std::stoi(argv[14]);
+    unsigned long long int steps_per_sample = std::stoi(argv[15])*MCStep;
 
-    int num_runs = stoi(argv[16]);
+    int num_runs = std::stoi(argv[16]);
 
     unsigned long long nsteps = resolution*num_runs*(steps_per_run + num_samples*steps_per_sample);
-    cout << "Expected completion time: " << (long long) 2*nsteps/3300000./num_threads/60. << " minutes. " << endl;
+    std::cout << "Expected completion time: " << (long long) 2*nsteps/3300000./num_threads/60. << " minutes. " << std::endl;
 
-    auto start = chrono::high_resolution_clock::now();
+    auto start = std::chrono::high_resolution_clock::now();
 
     auto data = sample_r(Cij_sampler, model, &T, num_runs, steps_per_run, num_samples, steps_per_sample, num_threads);
     auto stats = summary_statistics(&data);
-    string header = to_string(model->N1) + "\t" + to_string(model->N2) + "\t" + to_string(model->N3);
+    std::string header = std::to_string(model->N1) + "\t" + std::to_string(model->N2) + "\t" + std::to_string(model->N3);
     write_data(&stats, &T, filename, header);
 
 
-    auto stop = chrono::high_resolution_clock::now();
-    auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
     int seconds = duration.count()/1000000.;
 
-    cout << "Completion time: " << seconds/60. << " minutes." << endl;
+    std::cout << "Completion time: " << seconds/60. << " minutes." << std::endl;
 
 
 }

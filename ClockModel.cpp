@@ -149,24 +149,23 @@ class ClockModel : virtual public MCModel {
                             }
                         }
                     }
+                    spins[m] = s_new;
                 }
             }
         }
 
         void generate_mutation() {
-            // Randomly select a site to mutate
             mut.i++;
             if (mut.i == V) {
                 mut.i = 0;
                 mut_mode++;
             }
 
-            if (mut_mode < 2) {
+            if (mut_mode < 3) {
                 metropolis_mutation();
             } else {
-                //metropolis_mutation();
-                //mut_mode = 0;
                 cluster_update();
+                mut_mode = 0;
             }
         }
 
@@ -202,8 +201,7 @@ class ClockModel : virtual public MCModel {
         }
 
         const float energy_change() {
-            if (mut_mode == 2) { 
-                mut_mode = 0;
+            if (mut_mode == 0) { 
                 return -1.;
             }
             else {

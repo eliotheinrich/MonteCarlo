@@ -9,6 +9,7 @@ import sys
 
 # Load spins from texture file
 def load_texture(filename):
+    print(filename)
     with open(filename, 'r') as f:
         firstline = f.readline()
         (N1, N2, N3) = np.array([int(i.strip()) for i in firstline.split('\t')])
@@ -16,6 +17,7 @@ def load_texture(filename):
         spins = np.array([float(x) for x in f.readline().split('\t')])
         spins = spins.reshape((N1*N2*N3, 2))
 
+        print(np.linalg.norm(np.sum(spins,axis=0))/(N1*N2*N3))
         return spins.reshape((N1, N2, N3, 2), order='F')
 
 

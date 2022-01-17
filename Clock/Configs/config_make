@@ -1,0 +1,10 @@
+g++ -pthread -I ~/lib -O3 -std=c++11 GenerateConfigs.cpp -o output
+
+rm data/*
+for L in 32; do
+    foldername=data
+    ./output $foldername $L 3
+done
+
+rm output
+

@@ -6,11 +6,6 @@
 #include "../IsingModel.cpp"
 #include "../Utility.cpp"
 
-
-using namespace std;
-using namespace Eigen;
-
-
 class SquareIsingModel : public IsingModel {
     public:
         int N;
@@ -45,7 +40,7 @@ class SquareIsingModel : public IsingModel {
         const float bond_energy(int i) {
             float E = 0;
 
-            Vector3i idxs = tensor_idx(i);
+            Eigen::Vector3i idxs = tensor_idx(i);
             int n1 = idxs[0]; int n2 = idxs[1]; int n3 = idxs[2]; 
 
             // NN interactions

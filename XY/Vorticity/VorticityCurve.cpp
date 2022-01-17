@@ -4,12 +4,10 @@
 #include <iostream>
 #include <chrono>
 
-using namespace std;
-
-void func(string filename, int N, int num_threads) {
+void func(std::string filename, int N, int num_threads) {
     srand((unsigned)time( NULL ));
 
-    cout << "N = " << N << endl;
+    std::cout << "N = " << N << std::endl;
     const int L = 1;
     const float J = 1.;
     const float B = 0.;
@@ -26,8 +24,8 @@ void func(string filename, int N, int num_threads) {
     const float Tmin = 0.3;
     int res = 50;
 
-    vector<float> Ts(res);
-    ofstream output(filename);
+    std::vector<float> Ts(res);
+    std::ofstream output(filename);
 
     for (int i = 0; i < res; i++) {
         Ts[i] = float(i)/res*Tmax + float(res - i)/res*Tmin;
@@ -45,11 +43,11 @@ void func(string filename, int N, int num_threads) {
     int num_samples = 100;
     int steps_per_sample = 5*MCStep;
     ctpl::thread_pool threads(num_threads);
-    vector<future<vector<vector<double>>>> results(res);
-    vector<vector<double>> samples(num_samples);
+    std::vector<std::future<std::vector<std::vector<double>>>> results(res);
+    std::vector<std::vector<double>> samples(num_samples);
 
     auto twist_sampling = [&models, &Ts, steps_per_sample, num_samples](int id, int i) {
-        vector<vector<double>> samples(num_samples);
+        std::vector<std::vector<double>> samples(num_samples);
         for (int j = 0; j < num_samples; j++) {
             samples[j] = models[i]->model->vorticity();
             models[i]->steps(steps_per_sample, Ts[i]);
@@ -58,7 +56,7 @@ void func(string filename, int N, int num_threads) {
     };
 
     // Write header
-    output << res << "\t" << num_samples << endl;
+    output << res << "\t" << num_samples << std::endl;
 
     // Give threads jobs
     for (int i = 0; i < res; i++) {
@@ -72,30 +70,30 @@ void func(string filename, int N, int num_threads) {
             output << "(" << samples[j][0] << ", " << samples[j][1] << ")";
             if (j < num_samples - 1) { output << '\t'; }
         }
-        output << endl;
+        output << std::endl;
     }
 
     output.close();
-    cout << "Total steps: " << res*(num_samples*steps_per_sample + num_exchanges*steps_per_exchange + equilibration_steps) << endl;
+    std::cout << "Total steps: " << res*(num_samples*steps_per_sample + num_exchanges*steps_per_exchange + equilibration_steps) << std::endl;
 }
 
 int main(int argc, char* argv[]) {    
     int num_threads = 4;
-    //string filename = argv[1];
+    //std::string filename = argv[1];
 //    int N = stoi(argv[2]);
-    string filename = "data/vorticity16.txt";
+    std::string filename = "data/vorticity16.txt";
     int N = 16;
 
-    auto start = chrono::high_resolution_clock::now();
+    auto start = std::chrono::high_resolution_clock::now();
 
     func(filename, N, num_threads);
 
-    auto stop = chrono::high_resolution_clock::now();
+    auto stop = std::chrono::high_resolution_clock::now();
     
-    auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
     int microseconds = duration.count();
 
-    cout << "Duration: " << microseconds/1e6 << endl;
+    std::cout << "Duration: " << microseconds/1e6 << std::endl;
 
 }
 

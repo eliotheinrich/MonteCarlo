@@ -6,7 +6,7 @@ using namespace std;
 int main() {
     srand((unsigned)time( NULL ));
 
-    const int N = 8;
+    const int N = 32;
     const int L = 1;
     const float J = 1.;
     const float B = 0.;
@@ -14,12 +14,13 @@ int main() {
     const float T = 0.1;
 
 
-    const int MCStep = 1;//N*N*L;
+    const int MCStep = N*N*L;
     const int q = 6;
 
     SquareClockModel<q> *model = new SquareClockModel<q>(N, L, J);
     MonteCarlo<SquareClockModel<q>> *m = new MonteCarlo<SquareClockModel<q>>(model);
 
+    
     int num_samples = 1000;
     vector<vector<float>> log = vector<vector<float>>(num_samples, vector<float>(2));
     for (int i = 0; i < num_samples; i++) {
