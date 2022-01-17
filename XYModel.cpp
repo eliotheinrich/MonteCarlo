@@ -13,9 +13,6 @@
 #include "MonteCarlo.cpp"
 #include "Utility.cpp"
 
-using namespace std;
-using namespace Eigen;
-
     
 class XYModel : virtual public MCModel {
     // Generic 3D XY model
@@ -24,7 +21,7 @@ class XYModel : virtual public MCModel {
         // dS must conserve the norm of S[n1,n2,n3,s]
         struct XYMutation {
             int i;
-            Vector2f dS;
+            Eigen::Vector2f dS;
         };
 
         struct XYBond {
@@ -32,8 +29,8 @@ class XYModel : virtual public MCModel {
             int d2;
             int d3;
             int ds;
-            Vector3f v;
-            function<float(Vector2f, Vector2f)> bondfunc;
+            Eigen::Vector3f v;
+            std::function<float(Eigen::Vector2f, Eigen::Vector2f)> bondfunc;
         };
 
 
@@ -46,13 +43,13 @@ class XYModel : virtual public MCModel {
 
         float acceptance;
         float sigma;
-        vector<Vector2f> spins;
-        vector<vector<int>> neighbors;
-        vector<XYBond> bonds;
+        std::vector<Eigen::Vector2f> spins;
+        std::vector<std::vector<int>> neighbors;
+        std::vector<XYBond> bonds;
 
-        unordered_set<int> s;
+        std::unordered_set<int> s;
 
-        minstd_rand r;
+        std::minstd_rand r;
 
         bool cluster;
         float dE;
@@ -69,8 +66,8 @@ class XYModel : virtual public MCModel {
             if (N3 == -1) { this->N3 = N1; } else { this->N3 = N3; }
             this->V = N1*N2*N3*sl;
 
-            this->spins = vector<Vector2f>(V);
-            this->neighbors = vector<vector<int>>(V, vector<int>(0));
+            this->spins = std::vector<Eigen::Vector2f>(V);
+            this->neighbors = std::vector<std::vector<int>>(V, std::vector<int>(0));
 
             this->randomize_spins();
 
@@ -87,7 +84,7 @@ class XYModel : virtual public MCModel {
             return n1 + N1*(n2 + N2*(n3 + N3*s));
         }
 
-        inline const Vector4i tensor_idx(int i) {
+        inline const Eigen::Vector4i tensor_idx(int i) {
             int n1 = i % N1;
             i = i / N1;
             int n2 = i % N2;
@@ -95,22 +92,22 @@ class XYModel : virtual public MCModel {
             int n3 = i % N3;
             i = i / N3;
             int s = i % sl;
-            Vector4i v; v << n1, n2, n3, s;
+            Eigen::Vector4i v; v << n1, n2, n3, s;
             return v;
         }
 
-        inline void set_spin(int n1, int n2, int n3, int s, Vector2f v) {
+        inline void set_spin(int n1, int n2, int n3, int s, Eigen::Vector2f v) {
             spins[flat_idx(n1, n2, n3, s)] = v;
         }
 
 
-        inline const Vector2f get_spin(int n1, int n2, int n3, int s) {
+        inline const Eigen::Vector2f get_spin(int n1, int n2, int n3, int s) {
             return spins[flat_idx(n1, n2, n3, s)];
         }
 
         void randomize_spins() {
             float p;
-            Vector2f v;
+            Eigen::Vector2f v;
 
             for (int i = 0; i < V; i++) {
                 p = 2*PI*float(r())/float(RAND_MAX);
@@ -118,7 +115,7 @@ class XYModel : virtual public MCModel {
             }
         }
 
-        void add_bond(int d1, int d2, int d3, int ds, Vector3f v, function<float(Vector2f, Vector2f)> bondfunc) {
+        void add_bond(int d1, int d2, int d3, int ds, Eigen::Vector3f v, std::function<float(Eigen::Vector2f, Eigen::Vector2f)> bondfunc) {
             XYBond b{d1, d2, d3, ds, v, bondfunc};
             this->bonds.push_back(b);
             int i; int j;
@@ -135,13 +132,13 @@ class XYModel : virtual public MCModel {
             }
         }
 
-        inline vector<double> twist_stiffness() {
+        inline std::vector<double> twist_stiffness() {
             // Returns the first and second derivative in response to a phase twist
             float alpha = 0.01;
             float f;
-            Matrix2f R1; 
-            Matrix2f R2;
-            Matrix2f R3;
+            Eigen::Matrix2f R1; 
+            Eigen::Matrix2f R2;
+            Eigen::Matrix2f R3;
 
             double E0 = 0.;
             double E1 = 0.;
@@ -152,14 +149,14 @@ class XYModel : virtual public MCModel {
             double Em3 = 0.;
 
 
-            Vector2f S1;
-            Vector2f S2;
+            Eigen::Vector2f S1;
+            Eigen::Vector2f S2;
             int j;
             for (int i = 0; i < V; i++) {
                 for (int n = 0; n < bonds.size(); n++) {
                     f = bonds[0].v.dot(bonds[n].v);
-                    R1 << cos(f*alpha), -sin(f*alpha),
-                          sin(f*alpha), cos(f*alpha);
+                    R1 << std::cos(f*alpha), -std::sin(f*alpha),
+                          std::sin(f*alpha), std::cos(f*alpha);
                     R2 = R1*R1;
                     R3 = R1*R1*R1;
 
@@ -187,11 +184,11 @@ class XYModel : virtual public MCModel {
             double d3E = (1./8.*Em3 - 1.*Em2 + 13./8.*Em1 - 13./8.*E1 + 1.*E2 - 1./8.*E3)/pow(alpha, 3);
             double d4E = (-1./6.*Em3 + 2.*Em2 - 13./2.*Em1 + 28./3.*E0 - 13./2.*E1 + 2.*E2 - 1./6.*E3)/pow(alpha, 4);
             
-            return vector<double>{d1E/2., d2E/2., d3E/2., d4E/2.};
+            return std::vector<double>{d1E/2., d2E/2., d3E/2., d4E/2.};
         }
 
-        inline Vector2f get_magnetization() {
-            Vector2f M = Vector2f::Constant(0);
+        inline Eigen::Vector2f get_magnetization() {
+            Eigen::Vector2f M = Eigen::Vector2f::Constant(0);
             for (int i = 0; i < V; i++) {
                 M += spins[i];
             }
@@ -202,20 +199,18 @@ class XYModel : virtual public MCModel {
         void cluster_update() {
             s.clear();
 
-            float E1 = energy();
-
             float p = (float) r()/RAND_MAX;
-            Vector2f ax; ax << cos(p), sin(p);
+            Eigen::Vector2f ax; ax << std::cos(p), std::sin(p);
             ax = ax.normalized();
 
             int i = r() % V;
             spins[i] = spins[i] - 2*spins[i].dot(ax)*ax;
 
-            stack<int> c;
+            std::stack<int> c;
             c.push(i);
 
             float dE;
-            Vector2f new_S;
+            Eigen::Vector2f new_S;
             int m; int j;
             while (!c.empty()) {
                 m = c.top();
@@ -238,18 +233,15 @@ class XYModel : virtual public MCModel {
                     }
                 }
             }
-
-            float E2 = energy();
-            this->cluster_dE = E2 - E1;
         }
 
         void metropolis_mutation() {
             float dp = sigma*(float(r())/float(RAND_MAX) - 0.5)*2.*PI;
-            Vector2f S1 = spins[mut.i];
-            Vector2f S2; S2 << cos(dp)*S1[0]
-                             - sin(dp)*S1[1],
-                               cos(dp)*S1[1]
-                             + sin(dp)*S1[0];
+            Eigen::Vector2f S1 = spins[mut.i];
+            Eigen::Vector2f S2; S2 << std::cos(dp)*S1[0]
+                             - std::sin(dp)*S1[1],
+                               std::cos(dp)*S1[1]
+                             + std::sin(dp)*S1[0];
 
             // Store mutation for consideration
             this->mut.dS = S2 - S1;
@@ -277,7 +269,11 @@ class XYModel : virtual public MCModel {
             }
         }
 
-        virtual const float onsite_energy(int i)=0;
+        virtual const float onsite_func(const Eigen::Vector2f& S)=0;
+
+        virtual const float onsite_energy(int i) {
+            return onsite_func(spins[i]);
+        }
 
         virtual const float bond_energy(int i) {
             float E = 0.;
@@ -303,7 +299,7 @@ class XYModel : virtual public MCModel {
 
         const float energy_change() {
             if (cluster) {
-                return this->dE;
+                return -1.;
             } else {
                 float E1 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
                 spins[mut.i] = spins[mut.i] + mut.dS;
@@ -313,12 +309,12 @@ class XYModel : virtual public MCModel {
             }
         }
 
-        void save_spins(string filename) {
-            ofstream output_file;
+        void save_spins(std::string filename) {
+            std::ofstream output_file;
             output_file.open(filename);
-            output_file << N1 << "\t" << N2 << "\t" << N3 << "\t" << sl << endl;
+            output_file << N1 << "\t" << N2 << "\t" << N3 << "\t" << sl << "\n";
 
-            Vector2f S;
+            Eigen::Vector2f S;
             for (int i = 0; i < V; i++) {
                 S = spins[i];
                 output_file << S[0] << "\t" << S[1];

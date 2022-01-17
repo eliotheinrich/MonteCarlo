@@ -24,13 +24,14 @@ class TrigonalXYModel : public XYModel {
             this->J = J;
             this->A = A;
 
-            function<float(Vector2f, Vector2f)> dotfunc = [J](Vector2f S1, Vector2f S2) {
+            std::function<float(Eigen::Vector2f, Eigen::Vector2f)> dotfunc = 
+            [J](Eigen::Vector2f S1, Eigen::Vector2f S2) {
                 return -J*S1.dot(S2);
             };
 
-            Vector3f v1; v1 << 1., 0., 0.;
-            Vector3f v2; v2 << 0.5, sqrt(3)/2., 0.;
-            Vector3f v3; v3 << 0.5, -sqrt(3)/2., 0.;
+            Eigen::Vector3f v1; v1 << 1., 0., 0.;
+            Eigen::Vector3f v2; v2 << 0.5, sqrt(3)/2., 0.;
+            Eigen::Vector3f v3; v3 << 0.5, -sqrt(3)/2., 0.;
             this->add_bond(1, 0,0,0,v1, dotfunc);
             this->add_bond(-1,0,0,0,-v1,dotfunc);
             this->add_bond(0, 1,0,0,v2, dotfunc);
@@ -48,13 +49,13 @@ class TrigonalXYModel : public XYModel {
             return new_model;
         }
 
-        inline vector<double> vorticity() {
+        inline std::vector<double> vorticity() {
             float v1 = 0;
             float v2 = 0;
 
-            vector<vector<vector<float>>> phi = vector<vector<vector<float>>>(N,
-                                                        vector<vector<float>>(N,
-                                                                vector<float>(L)));
+            std::vector<std::vector<std::vector<float>>> phi = std::vector<std::vector<std::vector<float>>>(N,
+                                                        std::vector<std::vector<float>>(N,
+                                                                std::vector<float>(L)));
 
             int i;
             for (int n1 = 0; n1 < N; n1++) {
@@ -80,12 +81,12 @@ class TrigonalXYModel : public XYModel {
                 }
             }
             
-            return vector<double>{v1/(2*PI*N*N*L), v2/(2*PI*N*N*L)};
+            return std::vector<double>{v1/(2*PI*N*N*L), v2/(2*PI*N*N*L)};
         }
 
-        const float onsite_energy(int i) {
-            float phi = atan2(spins[i][1], spins[i][0]);
-            return A*cos(6*phi);
+        const float onsite_func(const Vector2f &S) {
+            float phi = atan2(S[1], S[0]);
+            return A*std::cos(6*phi);
         }
 };
 

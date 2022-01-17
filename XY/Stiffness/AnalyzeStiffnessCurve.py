@@ -7,6 +7,9 @@ import os
 def avg(A):
     return np.mean(A, axis=1)
 
+def err(A):
+    return np.std(A, axis=1)
+
 def load_stiffness_data(filename):
     i = filename.index('.')
 
@@ -18,7 +21,7 @@ def load_stiffness_data(filename):
         L = int(s[3])
     
     T = np.zeros(res)
-    dEs = np.zeros((res, num_samples, 4))
+    dEs = np.zeros((res, num_samples, 7))
 
     with open(filename) as f:
         line = f.readline()
@@ -27,13 +30,16 @@ def load_stiffness_data(filename):
 
             data = line.split('\t')[:-1]
             T[i] = float(data[0])
-            dEs[i] = np.array([float(x) for x in data[1:]]).reshape((num_samples, 4))
+            dEs[i] = np.array([float(x) for x in data[1:]]).reshape((num_samples, 7))
 
     V = N*N*L
     d1E = dEs[:,:,0]
     d2E = dEs[:,:,1]
     d3E = dEs[:,:,2]
     d4E = dEs[:,:,3]
+    U2s = dEs[:,:,4]
+    e = dEs[:,:,5]
+    s4 = dEs[:,:,6]
 
     U2 = (avg(d2E) - (avg(d1E**2) - avg(d1E)**2)/T)/V
 
@@ -42,6 +48,20 @@ def load_stiffness_data(filename):
        + 4/T*avg(d3E)*avg(d1E) - 12/T**2*avg(d1E*d2E)*avg(d1E) + 4/T**3*avg(d1E**3)*avg(d1E) \
        - 1/T**3*avg(d1E**4) + 6/T**2*avg(d1E**2*d2E) - 3/T*avg(d2E**2) - 4/T*avg(d1E*d3E) \
        + avg(d4E))/V/V
+
+    U22 = avg(U2s)
+    U42 = (-4*avg(U2s) + 3*(avg(e) - V/T*err(U2s)**2) + 2*(V/T)**3*avg(s4))/V
+
+
+    #plt.plot(T, U2, 'r-')
+    #plt.plot(T, U22, 'b-')
+    #plt.title(r'$\Upsilon_2$' + f', L = {N}')
+    #plt.show()
+
+    #plt.plot(T, U4, 'r-')
+    #plt.plot(T, U42, 'b-')
+    #plt.title(r'$\Upsilon_4$' + f', L = {N}')
+    #plt.show()
 
     return N, T, U2, U4
 
@@ -88,7 +108,6 @@ def plot_stiffness_curve(L, T, U2, L0, T_KT):
     plt.ylim(-0.05, np.max(U2L) + 0.2)
     plt.xlabel(r'$T/J$', fontsize=15)
     plt.ylabel(r'$\Upsilon(L,T)/(1+(2\log(L/L_0))^{-1})$', fontsize=15)
-#    plt.ylabel(r'$\Upsilon(L,T)$', fontsize=15)
     plt.show()
 
 def plot_raw_data(L, T, U2, U4):
