@@ -48,6 +48,7 @@ class XYModel : virtual public MCModel {
         std::vector<XYBond> bonds;
 
         std::unordered_set<int> s;
+        Eigen::Matrix2f s0;
 
         std::minstd_rand r;
 
@@ -67,7 +68,13 @@ class XYModel : virtual public MCModel {
             this->V = N1*N2*N3*sl;
 
             this->spins = std::vector<Eigen::Vector2f>(V);
-            this->neighbors = std::vector<std::vector<int>>(V, std::vector<int>(0));
+            this->neighbors = std::vector<std::vector<int>>(V+1, std::vector<int>(0));
+
+            // Connect every site to the ghost 
+            for (int i = 0; i < V; i++) {
+                neighbors[V].push_back(i);
+                neighbors[i].push_back(V);
+            }
 
             this->randomize_spins();
 
@@ -78,6 +85,7 @@ class XYModel : virtual public MCModel {
 
             this->mut.i = 0;
             this->cluster = true;
+            this->s0 = Eigen::Matrix2f::Identity();
         }
 
         inline const int flat_idx(int n1, int n2, int n3, int s) {
@@ -126,6 +134,7 @@ class XYModel : virtual public MCModel {
                             i = flat_idx(n1, n2, n3, s);
                             j = flat_idx(mod(n1 + b.d1, N1), mod(n2 + b.d2, N2), mod(n3 + b.d3, N3), mod(s + b.ds, sl));
                             neighbors[i].push_back(j);
+                            std::rotate(neighbors[i].rbegin(), neighbors[i].rbegin()+1, neighbors[i].rend());
                         }
                     }
                 }
@@ -199,6 +208,63 @@ class XYModel : virtual public MCModel {
         void cluster_update() {
             s.clear();
 
+            std::stack<int> c;
+            int m = r() % (V + 1);
+            c.push(m);
+
+            float p = (float) 2*PI*r()/RAND_MAX;
+            Eigen::Vector2f ax; ax << std::cos(p), std::sin(p);
+            Eigen::Matrix2f R = Eigen::Matrix2f::Identity() - 2*ax*ax.transpose()/std::pow(ax.norm(), 2);
+
+            int j; float dE;
+            Eigen::Matrix2f s0_new;
+            Eigen::Vector2f s_new;
+            bool is_ghost; bool neighbor_is_ghost;
+            while (!c.empty()) {
+                m = c.top();
+                c.pop();
+
+                if (!s.count(m)) {
+                    s.insert(m);
+
+                    is_ghost = (m == V);
+                    if (is_ghost) { // Site is ghost
+                        s0_new = R*s0;
+                    } else {
+                        s_new = R*spins[m];
+                    }
+
+                    for (int n = 0; n < neighbors[m].size(); n++) {
+                        j = neighbors[m][n];
+                        neighbor_is_ghost = (j == V);
+
+                        if (!s.count(j)) {
+                            if (neighbor_is_ghost) {
+                                dE = onsite_func(s0.inverse()*s_new) - onsite_func(s0.inverse()*spins[m]);
+                            } else if (is_ghost) {
+                                dE = onsite_func(s0_new.inverse()*spins[j]) - onsite_func(s0.inverse()*spins[j]);
+                            } else { // Normal bond
+                                dE = bonds[n].bondfunc(spins[j], s_new) - bonds[n].bondfunc(spins[j], spins[m]);
+                            }
+
+                            if ((float) r()/RAND_MAX < 1. - std::exp(-dE/T)) {
+                                c.push(j);
+                            }
+                        }
+                    }
+
+                    if (is_ghost) {
+                        s0 = s0_new;
+                    } else {
+                        spins[m] = s_new;
+                    }
+                }
+            }
+        }
+/*
+        void cluster_update() {
+            s.clear();
+
             float p = (float) r()/RAND_MAX;
             Eigen::Vector2f ax; ax << std::cos(p), std::sin(p);
             ax = ax.normalized();
@@ -234,7 +300,7 @@ class XYModel : virtual public MCModel {
                 }
             }
         }
-
+*/
         void metropolis_mutation() {
             float dp = sigma*(float(r())/float(RAND_MAX) - 0.5)*2.*PI;
             Eigen::Vector2f S1 = spins[mut.i];

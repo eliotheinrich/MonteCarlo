@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
     std::string filename = argv[1];
     int N = std::stoi(argv[2]);
     std::cout << "N = " << N << std::endl;
-    int num_threads = 4;
+    int num_threads = 1;
 
     const int L = 1;
     const float J = 1.;

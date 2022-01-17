@@ -139,7 +139,7 @@ class SquareXYModel : public XYModel {
 
         void generate_mutation() {
             if (cluster) { 
-                XYModel::generate_mutation(); 
+                cluster_update(); 
             } else {
                 mut.i = (mut.i + 1) % V;
 

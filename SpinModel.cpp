@@ -108,10 +108,6 @@ class SpinModel : virtual public MCModel {
             return v;
         }
 
-        inline const Eigen::Vector3f get_spin(int n1, int n2, int n3, int s) {
-            return spins[flat_idx(n1, n2, n3, s)];
-        }
-
         void randomize_spins() {
             for (int i = 0; i < V; i++) {
                 spins[i] = Eigen::Vector3f::Random(3).normalized();
