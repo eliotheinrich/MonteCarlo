@@ -6,7 +6,7 @@
 
 std::vector<float> susceptibility_x(TrigonalModel *model) {
     return std::vector<float>{
-                static_cast<float>(model->get_magnetization()[0]/model->B.norm()),
+                static_cast<float>(model->get_magnetization().norm()/model->B.norm()),
                 static_cast<float>(model->energy()/model->V)
            };
 }
@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
     std::string foldername = argv[1];
 
     // Load params config file
-    ifstream paramfile(argv[2]);
+    std::ifstream paramfile(argv[2]);
 
     //float S = 3.5;
     float S = 1.;
@@ -87,15 +87,24 @@ int main(int argc, char* argv[]) {
     TrigonalModel *model2 = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B2);
     TrigonalModel *model3 = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B3);
 
+    model1->cluster = false;
+    model2->cluster = false;
+    model3->cluster = false;
+
     int num_threads = std::stoi(argv[4]);
     unsigned long long int nsteps = (long long) 3*resolution*(steps_per_run + num_samples*steps_per_sample);
 
     std::cout << "Number steps: " << nsteps << std::endl;
     std::cout << "Expected completion time: " << (long long) 2*nsteps/3300000./num_threads/60. << " minutes. " << std::endl;
 
-    auto start = chrono::high_resolution_clock::now();
+    std::cout << "steps_per_run: " << steps_per_run << std::endl;
+    std::cout << "num_samples: " << num_samples << std::endl;
+    std::cout << "steps_per_sample: " << steps_per_sample << std::endl;
+    std::cout << "num_threads: " << num_threads << std::endl;
 
-    auto data1 = sample_pt(susceptibility_y, model1, &T, steps_per_run, num_samples, steps_per_sample, num_threads);
+    auto start = std::chrono::high_resolution_clock::now();
+
+    auto data1 = sample_pt(susceptibility_x, model1, &T, steps_per_run, num_samples, steps_per_sample, num_threads);
     auto stats1 = summary_statistics(&data1);
     write_data(&stats1, &T, foldername + "/SusceptibilityCurve1.txt");
 
@@ -103,12 +112,12 @@ int main(int argc, char* argv[]) {
     auto stats2 = summary_statistics(&data2);
     write_data(&stats2, &T, foldername + "/SusceptibilityCurve2.txt");
 
-    auto data3 = sample_pt(susceptibility_z, model3, &T, steps_per_run, num_samples, steps_per_sample, num_threads);
+    auto data3 = sample_pt(susceptibility_x, model3, &T, steps_per_run, num_samples, steps_per_sample, num_threads);
     auto stats3 = summary_statistics(&data3);
     write_data(&stats3, &T, foldername + "/SusceptibilityCurve3.txt");
 
-    auto stop = chrono::high_resolution_clock::now();
-    auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
     int seconds = duration.count()/1000000.;
 
     std::cout << "Completion time: " << seconds/60. << " minutes." << std::endl;

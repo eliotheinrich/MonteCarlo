@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
     }
 
     unsigned long long int equilibration_steps = 1000*MCStep;
-    unsigned long long int num_samples = 50;
+    unsigned long long int num_samples = 20;
     unsigned long long int steps_per_sample = 50*MCStep;
 
     auto start = std::chrono::high_resolution_clock::now();
@@ -41,7 +41,7 @@ int main(int argc, char* argv[]) {
     generate_spin_configs(model, T, equilibration_steps, num_samples, steps_per_sample, num_threads, foldername);
 
     auto stop = std::chrono::high_resolution_clock::now();
-    auto duration = chrono::duration_cast<std::chrono::microseconds>(stop - start);
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
     int seconds = duration.count()/1000000.;
 
     std::cout << "Completion time: " << seconds/60. << " minutes." << std::endl;

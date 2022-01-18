@@ -1,13 +1,11 @@
 num="_1";
-g++ -I ~/lib -pthread -O3 -std=c++11 -I ~/lib MagnetizationCurveB.cpp -o "output$num"
+g++ -I ~/lib -pthread -O3 -std=c++11 -I ~/lib SusceptibilityCurve.cpp -o "output$num"
 
-foldername=mT"$num";
+foldername=mX"$num";
 paramsname="$foldername/params.txt"
 rm -r "data/$foldername"
 mkdir "data/$foldername";
-./make_params "data/$paramsname" 32 1 0.64 0. 0. 0. 0. 0.2 0. 0. 80 3000 100 1 1;
+./make_params "data/$paramsname" 16 1 0.64 0.05 2.56 0. 0.15 0. 0. 0. 80 1000 1000 10 1;
 "./output$num" "data/$foldername" "data/$paramsname" 0.41 4
 
 rm output"$num"
-
-python PlotMagnetizationCurve.py mT T

@@ -53,15 +53,19 @@ def load_stiffness_data(filename):
     U42 = (-4*avg(U2s) + 3*(avg(e) - V/T*err(U2s)**2) + 2*(V/T)**3*avg(s4))/V
 
 
-    #plt.plot(T, U2, 'r-')
-    #plt.plot(T, U22, 'b-')
-    #plt.title(r'$\Upsilon_2$' + f', L = {N}')
-    #plt.show()
+    fig, axs = plt.subplots(nrows=2, ncols=1, sharex=True)
+    axs[0].plot(T, U2, 'r-', label='General equation')
+    axs[0].plot(T, U22, 'b-', label='Square XY equation')
+    axs[0].set_ylabel(r'$\Upsilon_2$', fontsize=15)
+    axs[0].set_title(f'L = {N}', fontsize=15)
+    axs[0].legend()
 
-    #plt.plot(T, U4, 'r-')
-    #plt.plot(T, U42, 'b-')
-    #plt.title(r'$\Upsilon_4$' + f', L = {N}')
-    #plt.show()
+    axs[1].plot(T, U4, 'r-')
+    axs[1].plot(T, U42, 'b-')
+    axs[1].set_ylabel(r'$\Upsilon_4$', fontsize=15)
+    axs[1].set_xlabel('T', fontsize=15)
+    plt.subplots_adjust(hspace=0, wspace=0)
+    plt.show()
 
     return N, T, U2, U4
 
