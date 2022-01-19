@@ -59,7 +59,7 @@ def display_trigonal_spins(ax, spins, layer, color=None):
 
     if color is None:
         color = 'k'
-    ax.quiver(xs, ys, spinxs, spinys, scale_units='x', scale=scale, width=width, color=color)
+    ax.quiver(xs-spinxs/2, ys-spinys/2, spinxs, spinys, scale_units='x', scale=scale, width=width, color=color)
 
     plt.axis('off')
     ax.get_xaxis().set_visible(False)

@@ -1,11 +1,11 @@
-num="_1";
+num="_2";
 g++ -I ~/lib -pthread -O3 -std=c++11 -I ~/lib SusceptibilityCurve.cpp -o "output$num"
 
 foldername=mX"$num";
 paramsname="$foldername/params.txt"
 rm -r "data/$foldername"
 mkdir "data/$foldername";
-./make_params "data/$paramsname" 16 1 0.64 0.05 2.56 0. 0.15 0. 0. 0. 80 1000 1000 10 1;
+./make_params "data/$paramsname" 32 8 0.64 0.05 2.56 0. 0.15 0. 0.2 0. 80 500 1000 1 1;
 "./output$num" "data/$foldername" "data/$paramsname" 0.41 4
 
 rm output"$num"

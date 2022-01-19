@@ -32,7 +32,14 @@ int main(int argc, char* argv[]) {
 
     int N = std::stoi(paramss[0]);
     int L = std::stoi(paramss[1]);
+
+#ifdef CLUSTER_UPDATE
+    const int MCStep = 1;
+    std::cout << "cluster" << std::endl;
+#else
     const int MCStep = N*N*L;
+    std::cout << "noncluster" << std::endl;
+#endif
 
     float J1 = S*S*stof(paramss[2]);
     float J2 = S*S*stof(paramss[3]);
@@ -75,7 +82,7 @@ int main(int argc, char* argv[]) {
     auto start = std::chrono::high_resolution_clock::now();
 
 
-    auto data = sample_pt(susceptibility_sampler, model, &T, steps_per_run, num_samples, steps_per_sample, num_threads,
+    auto data = sample_r(susceptibility_sampler, model, T, steps_per_run, num_samples, steps_per_sample, num_threads);
     write_data(&data, &T, foldername + "/SusceptibilityCurve.txt");
 
     auto stop = std::chrono::high_resolution_clock::now();

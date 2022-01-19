@@ -13,6 +13,7 @@
 #include "MonteCarlo.cpp"
 #include "Utility.cpp"
 
+#define CLUSTER_UPDATE
 
 class SpinModel : virtual public MCModel {
     // Generic 3D Heisenberg model
@@ -55,8 +56,9 @@ class SpinModel : virtual public MCModel {
         std::minstd_rand r;
 
         int mut_mode;
-        bool cluster;
+#ifdef CLUSTER_UPDATE
         Eigen::Matrix3f s0;
+#endif
 
         // Mutation being considered is stored as an attribute of the model
         SpinMutation mut;
@@ -87,9 +89,10 @@ class SpinModel : virtual public MCModel {
             this->dist = new GaussianDist(0., 1.0);
             this->r.seed(rand());
 
-            this->cluster = true;
             this->mut.i = 0;
+#ifdef CLUSTER_UPDATE
             this->s0 = Eigen::Matrix3f::Identity();
+#endif
         }
 
         inline const int flat_idx(int n1, int n2, int n3, int s) {
@@ -194,7 +197,11 @@ class SpinModel : virtual public MCModel {
                 M += spins[i];
             }
             
-            return M/(N1*N2*N3*sl);
+#ifdef CLUSTER_UPDATE
+            return s0.transpose()*M/V;
+#else
+            return M/V;
+#endif
         }
 
         std::vector<float> correlation_function(int i, int a = 2, int b = 2) {
@@ -285,18 +292,18 @@ class SpinModel : virtual public MCModel {
             return Cij;
         }
 
+#ifdef CLUSTER_UPDATE
         void cluster_update() {
             s.clear();
 
-
             std::stack<int> c;
-            int m = r() % (V + 1);
+            //int m = r() % (V + 1);
+            int m = V;
             c.push(m);
 
             //Eigen::Vector3f tmp; tmp << dist->sample(), dist->sample(), dist->sample();
             //Eigen::Vector3f ax = spins[m] + tmp.cross(spins[m]).normalized()*dist->sample();
             Eigen::Vector3f ax; ax << dist->sample(), dist->sample(), dist->sample();
-            ax = ax.normalized();
             Eigen::Matrix3f R = Eigen::Matrix3f::Identity() - 2*ax*ax.transpose()/std::pow(ax.norm(), 2);
 
             int j; float dE;
@@ -324,9 +331,9 @@ class SpinModel : virtual public MCModel {
 
                         if (!s.count(j)) {
                             if (neighbor_is_ghost) {
-                                dE = onsite_func(s0.inverse()*s_new) - onsite_func(s0.inverse()*spins[m]);
+                                dE = onsite_func(s0.transpose()*s_new) - onsite_func(s0.transpose()*spins[m]);
                             } else if (is_ghost) {
-                                dE = onsite_func(s0_new.inverse()*spins[j]) - onsite_func(s0.inverse()*spins[j]);
+                                dE = onsite_func(s0_new.transpose()*spins[j]) - onsite_func(s0.transpose()*spins[j]);
                             } else { // Normal bond
                                 dE = bonds[n].bondfunc(spins[j], s_new) - bonds[n].bondfunc(spins[j], spins[m]);
                             }
@@ -345,6 +352,7 @@ class SpinModel : virtual public MCModel {
                 }
             }
         }
+#endif
 
         void metropolis_mutation() {
             if (acceptance > 0.5) {
@@ -365,15 +373,15 @@ class SpinModel : virtual public MCModel {
         }
 
         void generate_mutation() {
-            if (cluster) {
-                cluster_update();
-            } else { 
-                mut.i++;
-                if (mut.i == V) {
-                    mut.i = 0;
-                }
-                metropolis_mutation();
+#ifdef CLUSTER_UPDATE
+            cluster_update();
+#else
+            mut.i++;
+            if (mut.i == V) {
+                mut.i = 0;
             }
+            metropolis_mutation();
+#endif
         }
 
         void accept_mutation() {
@@ -381,15 +389,19 @@ class SpinModel : virtual public MCModel {
         }
 
         void reject_mutation() {
-            if (!cluster) {
-                spins[mut.i] = spins[mut.i] - mut.dS;
-            }
+#ifndef CLUSTER_UPDATE
+            spins[mut.i] = spins[mut.i] - mut.dS;
+#endif
         }
 
         virtual const float onsite_func(const Eigen::Vector3f& S)=0;
 
         virtual const float onsite_energy(int i) {
+#ifdef CLUSTER_UPDATE
+            return onsite_func(s0.transpose()*spins[i]);
+#else
             return onsite_func(spins[i]);
+#endif
         }
 
         virtual const float bond_energy(int i) {
@@ -415,15 +427,15 @@ class SpinModel : virtual public MCModel {
         }
 
         const float energy_change() {
-            if (cluster) {
-                return -1.;
-            } else {
-                float E1 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
-                spins[mut.i] = spins[mut.i] + mut.dS;
-                float E2 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
+#ifdef CLUSTER_UPDATE
+            return -1.;
+#else
+            float E1 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
+            spins[mut.i] = spins[mut.i] + mut.dS;
+            float E2 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
 
-                return E2 - E1;
-            }
+            return E2 - E1;
+#endif
         }
 
         // Saves current spin configuration
@@ -433,7 +445,11 @@ class SpinModel : virtual public MCModel {
             output_file << N1 << "\t" << N2 << "\t" << N3 << "\t" << sl << "\n";
             int i; Eigen::Vector3f S;
             for (int i = 0; i < V; i++) {
+#ifdef CLUSTER_UPDATE
+                S = s0.transpose()*spins[i];
+#else
                 S = spins[i];
+#endif
                 output_file << S[0] << "\t" << S[1] << "\t" << S[2];
                 if (i < V-1) { output_file << "\t"; }
             }

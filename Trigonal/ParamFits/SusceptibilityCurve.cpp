@@ -6,7 +6,7 @@
 
 std::vector<float> susceptibility_x(TrigonalModel *model) {
     return std::vector<float>{
-                static_cast<float>(model->get_magnetization().norm()/model->B.norm()),
+                static_cast<float>(model->get_magnetization()[0]/model->B.norm()),
                 static_cast<float>(model->energy()/model->V)
            };
 }
@@ -48,7 +48,11 @@ int main(int argc, char* argv[]) {
 
     int N = std::stoi(paramss[0]);
     int L = std::stoi(paramss[1]);
+#ifdef CLUSTER_UPDATE
+    const int MCStep = 1;
+#else
     const int MCStep = N*N*L;
+#endif
 
     float J1 = S*S*std::stof(paramss[2]);
     float J2 = S*S*std::stof(paramss[3]);
@@ -69,8 +73,8 @@ int main(int argc, char* argv[]) {
 
     //float T_max = 60*BOLTZMANN_CONSTANT; // In Kelvin
     //float T_min = 0.1*BOLTZMANN_CONSTANT;
-    float T_max = 4.;
-    float T_min = 0.05;
+    float T_max = 0.01;
+    float T_min = 0.1;
     std::vector<float> T(resolution);
     for (int i = 0; i < resolution; i++) {
         T[i] = T_max*i/resolution + T_min*(resolution - i)/resolution;
@@ -87,10 +91,6 @@ int main(int argc, char* argv[]) {
     TrigonalModel *model2 = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B2);
     TrigonalModel *model3 = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B3);
 
-    model1->cluster = false;
-    model2->cluster = false;
-    model3->cluster = false;
-
     int num_threads = std::stoi(argv[4]);
     unsigned long long int nsteps = (long long) 3*resolution*(steps_per_run + num_samples*steps_per_sample);
 
@@ -104,17 +104,14 @@ int main(int argc, char* argv[]) {
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    auto data1 = sample_pt(susceptibility_x, model1, &T, steps_per_run, num_samples, steps_per_sample, num_threads);
-    auto stats1 = summary_statistics(&data1);
-    write_data(&stats1, &T, foldername + "/SusceptibilityCurve1.txt");
+    auto data1 = sample_r(susceptibility_y, model1, T, steps_per_run, num_samples, steps_per_sample, num_threads);
+    write_data(&data1, &T, foldername + "/SusceptibilityCurve1.txt");
 
-    auto data2 = sample_pt(susceptibility_x, model2, &T, steps_per_run, num_samples, steps_per_sample, num_threads);
-    auto stats2 = summary_statistics(&data2);
-    write_data(&stats2, &T, foldername + "/SusceptibilityCurve2.txt");
+    auto data2 = sample_r(susceptibility_x, model2, T, steps_per_run, num_samples, steps_per_sample, num_threads);
+    write_data(&data2, &T, foldername + "/SusceptibilityCurve2.txt");
 
-    auto data3 = sample_pt(susceptibility_x, model3, &T, steps_per_run, num_samples, steps_per_sample, num_threads);
-    auto stats3 = summary_statistics(&data3);
-    write_data(&stats3, &T, foldername + "/SusceptibilityCurve3.txt");
+    auto data3 = sample_r(susceptibility_z, model3, T, steps_per_run, num_samples, steps_per_sample, num_threads);
+    write_data(&data3, &T, foldername + "/SusceptibilityCurve3.txt");
 
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);

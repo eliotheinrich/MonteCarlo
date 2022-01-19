@@ -6,7 +6,6 @@
 #include "../SpinModel.cpp"
 #include "../Utility.cpp"
 
-
 class TrigonalModel : public SpinModel {
     public:
         int N;
@@ -19,6 +18,7 @@ class TrigonalModel : public SpinModel {
         Eigen::Vector3f B; 
 
         Eigen::Matrix3f R;
+        int mut_counter;
         int mut_type;
 
 
@@ -51,6 +51,7 @@ class TrigonalModel : public SpinModel {
                        0.5, sqrt(3)/2., 0.,
                        0., 0., 1.;
             this->mut_type = 0;
+            this->mut_counter = 0; 
 
             std::function<float(const Eigen::Vector3f &, const Eigen::Vector3f &)> bondfunc = 
             [J1](const Eigen::Vector3f &S1, const Eigen::Vector3f &S2) {
@@ -72,7 +73,7 @@ class TrigonalModel : public SpinModel {
                 return J2*S1.dot(S2);
             };
 
-            if (std::abs(J2) > 1e-6) {
+            if ((std::abs(J2) > 1e-6) && (L > 1)) {
                 Eigen::Vector3f v4; v4 << 0., 0., 1.;
                 this->add_bond(0,0,1,0, v4, bondfunc_inter);
                 this->add_bond(0,0,-1,0, -v4, bondfunc_inter);
@@ -81,7 +82,6 @@ class TrigonalModel : public SpinModel {
 
         TrigonalModel* clone() {
             TrigonalModel* new_model = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B);
-            new_model->cluster = this->cluster;
             for (int i = 0; i < V; i++) {
                 new_model->spins[i] = this->spins[i];
             }
@@ -90,6 +90,8 @@ class TrigonalModel : public SpinModel {
 
         void over_relaxation_mutation() {
             Eigen::Vector3f H; H << 0., 0., 0.;
+            H = H + B;
+
             int j;
             for (int n = 0; n < 6; n++) {
                 j = neighbors[mut.i][n];
@@ -106,24 +108,26 @@ class TrigonalModel : public SpinModel {
         }
 
         void generate_mutation() {
-            if (cluster) { 
-                SpinModel::generate_mutation(); 
-            } else {
-                mut.i = (mut.i + 1) % V;
+#ifdef CLUSTER_UPDATE
+            SpinModel::generate_mutation(); 
+#else
+            mut.i = r() % V;
+            mut_counter++;
 
-                if (mut.i == 0) {
-                    mut_mode++;
-                }
-
-                if (mut_mode < 10) {
-                    over_relaxation_mutation();
-                } else if (mut_mode < 14) {
-                    metropolis_mutation();
-                } else {
-                    metropolis_mutation();
-                    mut_mode = 0;
-                }
+            if (mut_counter == V) {
+                mut_counter = 0;
+                mut_mode++;
             }
+
+            if (mut_mode < 10) {
+                over_relaxation_mutation();
+            } else if (mut_mode < 14) {
+                metropolis_mutation();
+            } else {
+                metropolis_mutation();
+                mut_mode = 0;
+            }
+#endif
         }
 
         const float onsite_func(const Eigen::Vector3f &S) {
