@@ -34,7 +34,9 @@ class SquareXYModel : public XYModel {
                 return -J*S1.dot(S2);
             };
 
+#ifdef CLUSTER_UPDATE
             this->mut_mode = 0;
+#endif
 
             Eigen::Vector3f v1; v1 << 1.,0.,0.;
             Eigen::Vector3f v2; v2 << 0.,1.,0.;
@@ -46,7 +48,6 @@ class SquareXYModel : public XYModel {
 
         SquareXYModel* clone() {
             SquareXYModel* new_model = new SquareXYModel(N, L, J, B, Bp);
-            new_model->cluster = this->cluster;
             for (int i = 0; i < V; i++) {
                 new_model->spins[i]  = spins[i];
             }
@@ -115,7 +116,7 @@ class SquareXYModel : public XYModel {
 
         inline std::vector<double> twist_stiffness() {
             auto Y = XYModel::twist_stiffness();
-            return std::vector<double>{Y[0], Y[1], Y[2], Y[3], U2(), e1(), pow(e2(),4)};
+            return std::vector<double>{Y[0], Y[1], Y[2], Y[3], U2(), e1(), pow(e2(), 4)};
         }
 
         const float onsite_func(const Eigen::Vector2f &S) {
@@ -126,6 +127,7 @@ class SquareXYModel : public XYModel {
             return E;
         }
 
+#ifndef CLUSTER_UPDATE
         void over_relaxation_mutation() {
             Eigen::Vector2f H; H << 0., 0.;
             int j;
@@ -136,26 +138,28 @@ class SquareXYModel : public XYModel {
 
             this->mut.dS = -2*spins[mut.i] + 2.*spins[mut.i].dot(H)/std::pow(H.norm(),2) * H;
         }
+#endif
 
         void generate_mutation() {
-            if (cluster) { 
-                cluster_update(); 
-            } else {
-                mut.i = (mut.i + 1) % V;
+#ifdef CLUSTER_UPDATE
+            cluster_update(); 
+#else
+            mut.i = r() % V;
 
-                if (mut.i == 0) {
-                    mut_mode++;
-                }
-
-                if (mut_mode < 10) {
-                    over_relaxation_mutation();
-                } else if (mut_mode < 14) {
-                    metropolis_mutation();
-                } else {
-                    metropolis_mutation();
-                    mut_mode = 0;
-                }
+            if (mut.i == 0) {
+                mut_mode++;
             }
+
+            if (mut_mode < 10) {
+                over_relaxation_mutation();
+            } else if (mut_mode < 14) {
+                metropolis_mutation();
+            } else {
+                metropolis_mutation();
+                mut_mode = 0;
+            }
+#endif
         }
+
 };
 

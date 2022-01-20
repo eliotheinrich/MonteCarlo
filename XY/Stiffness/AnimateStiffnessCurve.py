@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import sys
 import os
 from matplotlib import animation
+from AnalyzeStiffnessCurve import load_stiffness_data
 
 def make_animation(Ts, ρs, Ls, L0s, fps, filename):
     frn = len(L0s)
@@ -41,63 +42,28 @@ def make_animation(Ts, ρs, Ls, L0s, fps, filename):
 
 
 
-def load_stiffness_data(filename):
-    i = filename.index('.')
-    L = int(filename[9:i])
-
-    with open(filename) as f:
-        s = f.readline().split('\t')
-        res = int(s[0])
-        num_samples = int(s[1])
-    
-    Ts = np.zeros(res)
-    rhos = np.zeros(res)
-    dEs = np.zeros((res, num_samples))
-    ddEs = np.zeros((res, num_samples))
-
-    with open(filename) as f:
-        f.readline()
-        for i in range(res):
-            line = f.readline()
-            data = np.array(line.split('\t'))
-            Ti = float(data[0])
-            data = data[1:-1]
-
-            for n,x in enumerate(data):
-                dE, ddE = x.split(',')
-                dEs[i, n] = float(dE[1:])
-                ddEs[i, n] = float(ddE[:-1])
-
-
-
-            Ts[i] = Ti
-
-    return L, Ts, dEs, ddEs
 
 if __name__ == "__main__":
     cwd = os.getcwd()
     os.chdir('data')
 
     fs = [f for f in os.listdir() if f[:9] == "stiffness"]
-    _, _, dEs, _ = load_stiffness_data(fs[0])
+    _, Ts, _, _ = load_stiffness_data(fs[0])
 
     N = len(fs)
-    res, num_samples = dEs.shape
+    res = len(Ts)
 
     Ts = np.zeros(res)
     ρs = np.zeros((N, res))
-    dEs = np.zeros((N, res, num_samples))
-    ddEs = np.zeros((N, res, num_samples))
+    dEs = np.zeros((N, res))
+    ddEs = np.zeros((N, res))
     Ls = np.zeros(N, dtype=int)
 
     for n, f in enumerate(fs):
         if f[:9] == 'stiffness':
             i = f.index('.')
-            L, Ts, dE, ddE = load_stiffness_data(f)
+            L, Ts, ρs[n,:], _ = load_stiffness_data(f)
             Ls[n] = L
-            dEs[n,:,:] = dE
-            ddEs[n,:,:] = ddE
-            ρs[n,:] = (np.mean(ddE, axis=1) - np.std(dE, axis=1)**2/Ts)/(L**2)
 
     inds = np.argsort(Ls)
     ρs = ρs[inds]

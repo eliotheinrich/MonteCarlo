@@ -61,14 +61,9 @@ std::vector<std::vector<std::vector<dtype>>> sample_r(std::vector<dtype> samplin
         results[i].get();
     }
 
-    const int buffer_size = 1000;
     auto take_samples = [num_samples, steps_per_sample, dtype_size, sampling_func](int id, int i,
                                                                        MonteCarlo<ModelType> *m, float T, 
                                                                        std::vector<std::vector<dtype>> *arr_i) {
-
-        std::vector<std::vector<dtype>> buffer = std::vector<std::vector<dtype>>(buffer_size, 
-                                                             std::vector<dtype>(dtype_size));
-        int n = 0; int k = 0;
         for (int n = 1; n < num_samples+1; n++) {
             for (int j = 0; j < dtype_size; j++) {
                 auto sample = sampling_func(m->model);
@@ -76,6 +71,11 @@ std::vector<std::vector<std::vector<dtype>>> sample_r(std::vector<dtype> samplin
                 (*arr_i)[j][1] = ((n-1)*(*arr_i)[j][1] + pow(sample[j], 2))/n;
             }
             m->steps(steps_per_sample, T);
+        }
+
+        // Setting error = sqrt(<A^2> - <A>^2)
+        for (int j = 0; j < dtype_size; j++) {
+            (*arr_i)[j][1] = sqrt(abs((*arr_i)[j][1] - pow((*arr_i)[j][0], 2)));
         }
     };
 
@@ -87,8 +87,6 @@ std::vector<std::vector<std::vector<dtype>>> sample_r(std::vector<dtype> samplin
     for (int i = 0; i < resolution; i++) {
         results[i].get();
     }
-
-    std::cout << models[0]->nsteps << std::endl;
 
     return arr;
 }
@@ -193,7 +191,7 @@ void write_data(std::vector<std::vector<std::vector<dtype>>> *data, std::vector<
     std::ofstream output_file(filename);
 
     // Write header
-    output_file << resolution << "\t" << header << "\n";
+    output_file << resolution << "\t" << dtype_size << "\t" << header << "\n";
 
     for (int i = 0; i < resolution; i++) {
         output_file << (*T)[i] << "\t";
@@ -206,31 +204,6 @@ void write_data(std::vector<std::vector<std::vector<dtype>>> *data, std::vector<
 
     output_file.close();
 }
-
-template <class dtype>
-void write_samples(std::vector<std::vector<std::vector<dtype>>> *data, std::vector<float> *T, std::string filename, std::string header = "") {
-    int resolution = (*data).size();
-    int num_samples = (*data)[0].size();
-    int dtype_size = (*data)[0][0].size();
-
-    std::ofstream output_file(filename);
-
-    // Write header
-    output_file << resolution << "\t" << header << "\n";
-
-    for (int i = 0; i < resolution; i++) {
-        output_file << (*T)[i] << "\t";
-        for (int n = 0; n < num_samples; n++) {
-            for (int k = 0; k < dtype_size; k++) {
-                output_file << (*data)[i][n][k] << "\t";
-            }
-        }
-        output_file << "\n";
-    }
-
-    output_file.close();
-}
-
 
 template <class ModelType>
 void generate_spin_configs(ModelType *model, std::vector<float> T, unsigned long long equilibration_steps, 

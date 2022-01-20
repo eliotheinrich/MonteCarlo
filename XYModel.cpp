@@ -12,7 +12,6 @@
 #include <fstream>
 #include "MonteCarlo.cpp"
 #include "Utility.cpp"
-
     
 class XYModel : virtual public MCModel {
     // Generic 3D XY model
@@ -47,13 +46,12 @@ class XYModel : virtual public MCModel {
         std::vector<std::vector<int>> neighbors;
         std::vector<XYBond> bonds;
 
+#ifdef CLUSTER_UPDATE
         std::unordered_set<int> s;
         Eigen::Matrix2f s0;
+#endif
 
         std::minstd_rand r;
-
-        bool cluster;
-        float dE;
 
         // Mutation being considered is stored as an attribute of the model
         XYMutation mut;
@@ -68,24 +66,26 @@ class XYModel : virtual public MCModel {
             this->V = N1*N2*N3*sl;
 
             this->spins = std::vector<Eigen::Vector2f>(V);
-            this->neighbors = std::vector<std::vector<int>>(V+1, std::vector<int>(0));
 
+#ifdef CLUSTER_UPDATE
+            this->neighbors = std::vector<std::vector<int>>(V+1, std::vector<int>(0));
+            this->s0 = Eigen::Matrix2f::Identity();
             // Connect every site to the ghost 
             for (int i = 0; i < V; i++) {
                 neighbors[V].push_back(i);
                 neighbors[i].push_back(V);
             }
+#else
+            this->neighbors = std::vector<std::vector<int>>(V, std::vector<int>(0));
+#endif
 
             this->randomize_spins();
 
-            this->acceptance = 0.5;
-            this->sigma = 0.25;
 
             this->r.seed(rand());
 
             this->mut.i = 0;
-            this->cluster = true;
-            this->s0 = Eigen::Matrix2f::Identity();
+            this->sigma = 0.25;
         }
 
         inline const int flat_idx(int n1, int n2, int n3, int s) {
@@ -179,12 +179,12 @@ class XYModel : virtual public MCModel {
             }
 
             // Compute derivates from finite difference
-            double d1E = (1./12.*Em2 - 2./3.*Em1 + 2./3.*E1 - 1./12.*E2)/alpha;
-            double d2E = (-1./12.*Em2 + 4./3.*Em1 - 5./2.*E0 + 4./3.*E1 - 1./12.*E2)/pow(alpha, 2);
-            double d3E = (1./8.*Em3 - 1.*Em2 + 13./8.*Em1 - 13./8.*E1 + 1.*E2 - 1./8.*E3)/pow(alpha, 3);
-            double d4E = (-1./6.*Em3 + 2.*Em2 - 13./2.*Em1 + 28./3.*E0 - 13./2.*E1 + 2.*E2 - 1./6.*E3)/pow(alpha, 4);
+            double d1E = (1./12.*Em2 - 2./3.*Em1 + 2./3.*E1 - 1./12.*E2)/alpha/2.;
+            double d2E = (-1./12.*Em2 + 4./3.*Em1 - 5./2.*E0 + 4./3.*E1 - 1./12.*E2)/pow(alpha, 2)/2.;
+            double d3E = (1./8.*Em3 - 1.*Em2 + 13./8.*Em1 - 13./8.*E1 + 1.*E2 - 1./8.*E3)/pow(alpha, 3)/2.;
+            double d4E = (-1./6.*Em3 + 2.*Em2 - 13./2.*Em1 + 28./3.*E0 - 13./2.*E1 + 2.*E2 - 1./6.*E3)/pow(alpha, 4)/2.;
             
-            return std::vector<double>{d1E/2., d2E/2., d3E/2., d4E/2.};
+            return std::vector<double>{d1E, d2E, d3E, d4E};
         }
 
         inline Eigen::Vector2f get_magnetization() {
@@ -193,14 +193,21 @@ class XYModel : virtual public MCModel {
                 M += spins[i];
             }
             
-            return M/(N1*N2*N3*sl);
+#ifdef CLUSTER_UPDATE
+            return s0.transpose()*M/V;
+#else
+            return M/V;
+#endif
         }
 
+#ifdef CLUSTER_UPDATE
         void cluster_update() {
             s.clear();
 
             std::stack<int> c;
             int m = r() % (V + 1);
+            Eigen::Matrix2f s0_new;
+            bool is_ghost; bool neighbor_is_ghost;
             c.push(m);
 
             float p = (float) 2*PI*r()/RAND_MAX;
@@ -208,16 +215,13 @@ class XYModel : virtual public MCModel {
             Eigen::Matrix2f R = Eigen::Matrix2f::Identity() - 2*ax*ax.transpose()/std::pow(ax.norm(), 2);
 
             int j; float dE;
-            Eigen::Matrix2f s0_new;
             Eigen::Vector2f s_new;
-            bool is_ghost; bool neighbor_is_ghost;
             while (!c.empty()) {
                 m = c.top();
                 c.pop();
 
                 if (!s.count(m)) {
                     s.insert(m);
-
                     is_ghost = (m == V);
                     if (is_ghost) { // Site is ghost
                         s0_new = R*s0;
@@ -227,9 +231,9 @@ class XYModel : virtual public MCModel {
 
                     for (int n = 0; n < neighbors[m].size(); n++) {
                         j = neighbors[m][n];
+                        if (!s.count(j)) {
                         neighbor_is_ghost = (j == V);
 
-                        if (!s.count(j)) {
                             if (neighbor_is_ghost) {
                                 dE = onsite_func(s0.inverse()*s_new) - onsite_func(s0.inverse()*spins[m]);
                             } else if (is_ghost) {
@@ -252,46 +256,11 @@ class XYModel : virtual public MCModel {
                 }
             }
         }
-/*
-        void cluster_update() {
-            s.clear();
 
-            float p = (float) r()/RAND_MAX;
-            Eigen::Vector2f ax; ax << std::cos(p), std::sin(p);
-            ax = ax.normalized();
-
-            int i = r() % V;
-            spins[i] = spins[i] - 2*spins[i].dot(ax)*ax;
-
-            std::stack<int> c;
-            c.push(i);
-
-            float dE;
-            Eigen::Vector2f new_S;
-            int m; int j;
-            while (!c.empty()) {
-                m = c.top();
-                c.pop();
-
-                // Mark m as visited
-                s.insert(m);
-
-                for (int n = 0; n < bonds.size(); n++) {
-                    j = neighbors[m][n];
-                    // Check if each neighbor has been visited
-                    if (!s.count(j)) {
-                        // With appropriate probability, add neighbor to stack and flip it
-                        new_S = spins[j] - 2*spins[j].dot(ax)*ax;
-                        dE = bonds[n].bondfunc(spins[m], new_S) - bonds[n].bondfunc(spins[m], spins[j]);
-                        if ((float) r()/RAND_MAX < 1. - exp(dE/T)) {
-                            c.push(j);
-                            spins[j] = new_S;
-                        }
-                    }
-                }
-            }
+        void generate_mutation() {
+            cluster_update();
         }
-*/
+#else
         void metropolis_mutation() {
             float dp = sigma*(float(r())/float(RAND_MAX) - 0.5)*2.*PI;
             Eigen::Vector2f S1 = spins[mut.i];
@@ -305,31 +274,30 @@ class XYModel : virtual public MCModel {
         }
 
         void generate_mutation() {
-            if (cluster) {
-                cluster_update();
-            } else {
-                mut.i++;
-                if (mut.i == V) {
-                    mut.i = 0;
-                }
-                metropolis_mutation();
-            }
+            mut.i = r() % V;
+            metropolis_mutation();
+
         }
+#endif
 
         void accept_mutation() {
             return;
         }
 
         void reject_mutation() {
-            if (!cluster) {
-                spins[mut.i] = spins[mut.i] - mut.dS;
-            }
+#ifndef CLUSTER_UPDATE
+            spins[mut.i] = spins[mut.i] - mut.dS;
+#endif
         }
 
         virtual const float onsite_func(const Eigen::Vector2f& S)=0;
 
         virtual const float onsite_energy(int i) {
+#ifdef CLUSTER_UPDATE
+            return onsite_func(s0.transpose()*spins[i]);
+#else
             return onsite_func(spins[i]);
+#endif
         }
 
         virtual const float bond_energy(int i) {
@@ -355,15 +323,14 @@ class XYModel : virtual public MCModel {
         }
 
         const float energy_change() {
-            if (cluster) {
-                return -1.;
-            } else {
-                float E1 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
-                spins[mut.i] = spins[mut.i] + mut.dS;
-                float E2 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
-
-                return E2 - E1;
-            }
+#ifdef CLUSTER_UPDATE
+            return -1.;
+#else
+            float E1 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
+            spins[mut.i] = spins[mut.i] + mut.dS;
+            float E2 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
+            return E2 - E1;
+#endif
         }
 
         void save_spins(std::string filename) {
@@ -373,7 +340,11 @@ class XYModel : virtual public MCModel {
 
             Eigen::Vector2f S;
             for (int i = 0; i < V; i++) {
+#ifdef CLUSTER_UPDATE
+                S = s0.transpose()*spins[i];
+#else
                 S = spins[i];
+#endif
                 output_file << S[0] << "\t" << S[1];
                 if (i < V-1) { output_file << "\t"; }
             }

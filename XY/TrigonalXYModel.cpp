@@ -18,6 +18,8 @@ class TrigonalXYModel : public XYModel {
         float J;
         float A;
 
+        int mut_mode;
+
         TrigonalXYModel(int N, int L, float J, float A) : XYModel(1, N, N, L) {
             this->N = N;
             this->L = L;
@@ -38,6 +40,7 @@ class TrigonalXYModel : public XYModel {
             this->add_bond(0,-1,0,0,-v2,dotfunc);
             this->add_bond(1,-1,0,0,v3, dotfunc);
             this->add_bond(-1,1,0,0,-v3,dotfunc);
+            this->mut_mode = 0;
         }
 
 
@@ -87,6 +90,40 @@ class TrigonalXYModel : public XYModel {
         const float onsite_func(const Vector2f &S) {
             float phi = atan2(S[1], S[0]);
             return A*std::cos(6*phi);
+        }
+
+#ifndef CLUSTER_UPDATE
+        void over_relaxation_mutation() {
+            Eigen::Vector2f H; H << 0., 0.;
+            int j;
+            for (int n = 0; n < bonds.size(); n++) {
+                j = neighbors[mut.i][n];
+                H -= J*spins[j];
+            }
+
+            this->mut.dS = -2*spins[mut.i] + 2.*spins[mut.i].dot(H)/std::pow(H.norm(),2) * H;
+        }
+#endif
+
+        void generate_mutation() {
+#ifdef CLUSTER_UPDATE
+            cluster_update(); 
+#else
+            mut.i = r() % V;
+
+            if (mut.i == 0) {
+                mut_mode++;
+            }
+
+            if (mut_mode < 10) {
+                over_relaxation_mutation();
+            } else if (mut_mode < 14) {
+                metropolis_mutation();
+            } else {
+                metropolis_mutation();
+                mut_mode = 0;
+            }
+#endif
         }
 };
 

@@ -1,4 +1,4 @@
-num="_2";
+num="_3";
 g++ -I ~/lib -pthread -O3 -std=c++11 -I ~/lib SusceptibilityCurve.cpp -o "output$num"
 
 foldername=mX"$num";
