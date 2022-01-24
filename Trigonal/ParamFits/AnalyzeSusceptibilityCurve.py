@@ -20,9 +20,9 @@ def load_susceptibility_data(filename):
     
     T = np.zeros(res)
     X = np.zeros(res)
-    X2 = np.zeros(res)
+    dX = np.zeros(res)
     E = np.zeros(res)
-    E2 = np.zeros(res)
+    dE = np.zeros(res)
 
     with open(filename) as f:
         line = f.readline()
@@ -31,11 +31,8 @@ def load_susceptibility_data(filename):
 
             data = np.array([x.strip('\n') for x in line.split('\t')])
             T[i] = float(data[0])/kB
-            (X[i], X2[i]) = (float(x) for x in data[1].split(','))
-            (E[i], E2[i]) = (float(x) for x in data[2].split(','))
-
-    dX = np.sqrt(np.abs(X2 - X*X))
-    dE = np.sqrt(np.abs(E2 - E*E))
+            (X[i], dX[i]) = (float(x) for x in data[1].split(','))
+            (E[i], dE[i]) = (float(x) for x in data[2].split(','))
 
     return T, X*susc_factor, dX*susc_factor, E, dE
 
@@ -92,6 +89,8 @@ if __name__ == "__main__":
         plot_susceptibility_curve(T, X1, dX1, ax, **kwargs1)
         plot_susceptibility_curve(T, X2, dX2, ax, **kwargs2)
         plot_susceptibility_curve(T, X3, dX3, ax, **kwargs3)
+        ax.set_xlabel(r'T (meV)')
+        ax.set_ylabel(r'$\chi$')
         plt.show()
 
 

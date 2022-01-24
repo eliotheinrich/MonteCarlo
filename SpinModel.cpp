@@ -13,14 +13,9 @@
 #include "MonteCarlo.cpp"
 #include "Utility.cpp"
 
-#define CLUSTER_UPDATE
-
 class SpinModel : virtual public MCModel {
     // Generic 3D Heisenberg model
     private:
-        // Internal normally distributed random number generator
-        GaussianDist *dist;
-
         // A mutation consists of a change in spin dS on site (n1,n2,n3,s)
         // dS must conserve the norm of S[n1,n2,n3,s]
         struct SpinMutation {
@@ -51,17 +46,19 @@ class SpinModel : virtual public MCModel {
         std::vector<std::vector<int>> neighbors;
         std::vector<HeisBond> bonds;
 
-        std::unordered_set<int> s;
-
         std::minstd_rand r;
 
         int mut_mode;
 #ifdef CLUSTER_UPDATE
+        std::unordered_set<int> s;
         Eigen::Matrix3f s0;
 #endif
 
         // Mutation being considered is stored as an attribute of the model
         SpinMutation mut;
+
+        // Internal normally distributed random number generator
+        GaussianDist *dist;
 
         SpinModel() {}
 
@@ -75,11 +72,15 @@ class SpinModel : virtual public MCModel {
             this->spins = std::vector<Eigen::Vector3f>(V);
             this->neighbors = std::vector<std::vector<int>>(V+1, std::vector<int>(0));
 
+#ifdef CLUSTER_UPDATE
             // Connect every site to the ghost 
             for (int i = 0; i < V; i++) {
                 neighbors[V].push_back(i);
                 neighbors[i].push_back(V);
             }
+
+            this->s0 = Eigen::Matrix3f::Identity();
+#endif
 
             this->randomize_spins();
 
@@ -90,9 +91,6 @@ class SpinModel : virtual public MCModel {
             this->r.seed(rand());
 
             this->mut.i = 0;
-#ifdef CLUSTER_UPDATE
-            this->s0 = Eigen::Matrix3f::Identity();
-#endif
         }
 
         inline const int flat_idx(int n1, int n2, int n3, int s) {
@@ -183,12 +181,12 @@ class SpinModel : virtual public MCModel {
             }
 
             // Compute derivates from finite difference
-            double d1E = (1./12.*Em2 - 2./3.*Em1 + 2./3.*E1 - 1./12.*E2)/alpha;
-            double d2E = (-1./12.*Em2 + 4./3.*Em1 - 5./2.*E0 + 4./3.*E1 - 1./12.*E2)/pow(alpha, 2);
-            double d3E = (1./8.*Em3 - 1.*Em2 + 13./8.*Em1 - 13./8.*E1 + 1.*E2 - 1./8.*E3)/pow(alpha, 3);
-            double d4E = (-1./6.*Em3 + 2.*Em2 - 13./2.*Em1 + 28./3.*E0 - 13./2.*E1 + 2.*E2 - 1./6.*E3)/pow(alpha, 4);
+            double d1E = (1./12.*Em2 - 2./3.*Em1 + 2./3.*E1 - 1./12.*E2)/alpha/2.;
+            double d2E = (-1./12.*Em2 + 4./3.*Em1 - 5./2.*E0 + 4./3.*E1 - 1./12.*E2)/pow(alpha, 2)/2.;
+            double d3E = (1./8.*Em3 - 1.*Em2 + 13./8.*Em1 - 13./8.*E1 + 1.*E2 - 1./8.*E3)/pow(alpha, 3)/2.;
+            double d4E = (-1./6.*Em3 + 2.*Em2 - 13./2.*Em1 + 28./3.*E0 - 13./2.*E1 + 2.*E2 - 1./6.*E3)/pow(alpha, 4)/2.;
             
-            return std::vector<double>{d1E/2., d2E/2., d3E/2., d4E/2.};
+            return std::vector<double>{d1E, d2E, d3E, d4E};
         }
 
         inline Eigen::Vector3f get_magnetization() {
@@ -297,12 +295,9 @@ class SpinModel : virtual public MCModel {
             s.clear();
 
             std::stack<int> c;
-            //int m = r() % (V + 1);
-            int m = V;
+            int m = r() % V;
             c.push(m);
 
-            //Eigen::Vector3f tmp; tmp << dist->sample(), dist->sample(), dist->sample();
-            //Eigen::Vector3f ax = spins[m] + tmp.cross(spins[m]).normalized()*dist->sample();
             Eigen::Vector3f ax; ax << dist->sample(), dist->sample(), dist->sample();
             Eigen::Matrix3f R = Eigen::Matrix3f::Identity() - 2*ax*ax.transpose()/std::pow(ax.norm(), 2);
 
@@ -352,8 +347,11 @@ class SpinModel : virtual public MCModel {
                 }
             }
         }
-#endif
 
+        void generate_mutation() {
+            cluster_update();
+        }
+#else
         void metropolis_mutation() {
             if (acceptance > 0.5) {
                 sigma = std::min(2., 1.01*sigma);
@@ -373,16 +371,14 @@ class SpinModel : virtual public MCModel {
         }
 
         void generate_mutation() {
-#ifdef CLUSTER_UPDATE
-            cluster_update();
-#else
             mut.i++;
             if (mut.i == V) {
                 mut.i = 0;
             }
             metropolis_mutation();
-#endif
         }
+#endif
+
 
         void accept_mutation() {
             return;

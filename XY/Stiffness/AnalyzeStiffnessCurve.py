@@ -4,12 +4,6 @@ from matplotlib import cm
 import sys
 import os
 
-def avg(A):
-    return np.mean(A, axis=1)
-
-def err(A):
-    return np.std(A, axis=1)
-
 def load_stiffness_data(filename):
     i = filename.index('.')
 
@@ -23,8 +17,8 @@ def load_stiffness_data(filename):
 
     
     T = np.zeros(res)
-    dEs = np.zeros((res, dtype_size))
-    err_dEs = np.zeros((res, dtype_size))
+    ps = np.zeros((res, dtype_size))
+    dps = np.zeros((res, dtype_size))
 
     with open(filename) as f:
         line = f.readline()
@@ -34,56 +28,52 @@ def load_stiffness_data(filename):
             data = line.split('\t')
             T[i] = float(data[0])
             for j in range(dtype_size):
-                (dEs[i,j], err_dEs[i,j]) = (float(x) for x in data[j+1].split(','))
+                (ps[i,j], dps[i,j]) = (float(x) for x in data[j+1].split(','))
 
     V = N*N*L
-    d1E = dEs[:,0]
-    err_d1E = err_dEs[:,0]
-    d2E = dEs[:,1]
-    err_d2E = err_dEs[:,1]
-    d3E = dEs[:,2]
-    err_d3E = err_dEs[:,2]
-    d4E = dEs[:,3]
-    err_d4E = err_dEs[:,3]
-    U2s = dEs[:,4]
-    err_U2s = err_dEs[:,4]
-    e = dEs[:,5]
-    err_e = err_dEs[:,5]
-    s4 = dEs[:,6]
-    err_s4 = err_dEs[:,6]
 
-    U2 = (d2E - err_d1E**2/T)/V
+    U2 = (ps[:,4] - (ps[:,8] - ps[:,2]**2)/T)/V
+    #dU2 = (dps[:,4] - 2*dps[:,2]*ps[:,2]/T)/V
+    #plt.errorbar(T, U2, dU2)
+    #plt.show()
+#return std::vector<double>{d4E, d3E, d1E, pow(d2E,2), d2E, d1E*d3E, pow(d1E,2)*d2E, 
+#                           d1E*d2E, pow(d1E,2), pow(d1E,4), pow(d1E,3)};
+    d4E = ps[:,0]
+    d3E = ps[:,1]
+    d1E = ps[:,2]
+    d2E2 = ps[:,3]
+    d2E = ps[:,4]
+    d1E_d3E = ps[:,5]
+    d1E2_d2E = ps[:,6]
+    d1E_d2E = ps[:,7]
+    d1E2 = ps[:,8]
+    d1E4 = ps[:,9]
+    d1E3 = ps[:,10]
+
+    U4 = (d4E + 1/T*(4*d3E*d1E - 3*d2E2 + 3*d2E**2 - 4*d1E_d3E) \
+             + 1/T**2*(6*d1E2_d2E - 12*d1E_d2E*d1E - 6*d1E2*d2E + 12*d1E**2*d2E) \
+             + 1/T**3*(d1E4 + 4*d1E3*d1E + 3*d1E2**2 - 12*d1E2*d1E**2 + 6*d1E**4))/V**2
+    plt.plot(T, U4, label='my version')
+    # e = ps[:,11]
+    # s4 = ps[:,12]
+    # U2 = ps[:,13]
+    U4 = -4*ps[:,13] + 3*(ps[:,11] - V/T*dps[:,13]**2) + 2*(V/T)**3*ps[:,12]
+    U4 = U4/V
+    plt.plot(T, U4, label='from formula')
+    plt.legend()
+    plt.show()
+
+    #U2 = (d2E - err_d1E**2/T)/V
     #err_U2 = err_d2E/V - 2*err_d1E/T/V
     #plt.errorbar(T, U2, err_U2)
     #plt.show()
-    
     #U4 = (d4E + (1/T)*(4*avg(d3E)*avg(d1E) - 3*avg(d2E**2) + 3*avg(d2E)**2 - 4*avg(d1E*d3E)) \
     #              + (1/T**2)*(6*avg(d1E**2*d2E) - 12*avg(d1E*d2E)*avg(d1E) - 6*avg(d1E**2)*avg(d2E) + 12*avg(d1E)**2*avg(d2E)) \
     #              + (1/T**3)*(avg(d1E**4) + 4*avg(d1E**3)*avg(d1E) + 3*avg(d1E**2)**2 - 12*avg(d1E**2)*avg(d1E)**2 + 6*avg(d1E)**4))/(V**2)
+    
 
 
-    #U22 = avg(U2s)
-    #U42 = (-4*avg(U2s) + 3*(avg(e) - V/T*err(U2s)**2) + 2*(V/T)**3*avg(s4))/V
 
-    #if N == 64:
-    #    plt.errorbar(T, d1E, err_d1E)
-    #    plt.show()
-
-    #fig, axs = plt.subplots(nrows=2, ncols=1, sharex=True)
-    #axs[0].plot(T, U2, 'r-', label='General equation')
-    #axs[0].plot(T, U22, 'b-', label='Square XY equation')
-    #axs[0].set_ylabel(r'$\Upsilon_2$', fontsize=15)
-    #axs[0].set_title(f'L = {N}', fontsize=15)
-    #axs[0].legend()
-
-    #axs[1].plot(T, U4, 'r-')
-    #axs[1].plot(T, U42, 'b-')
-    #axs[1].set_ylabel(r'$\Upsilon_4$', fontsize=15)
-    #axs[1].set_xlabel('T', fontsize=15)
-    #plt.subplots_adjust(hspace=0, wspace=0)
-    #plt.show()
-
-    U4 = 1
     return N, T, U2, U4
 
 def get_L0(L, T, U2, Lmin = 0.5, Lmax = 3., num_Ls=100):
@@ -173,14 +163,14 @@ if __name__ == "__main__":
     U4 = U4[inds]
     L = L[inds]
 
-#    plot_raw_data(L, T, U2, U4)
+    plot_raw_data(L, T, U2, U4)
 
 
-    L0, T_KT = get_L0(L, T, U2, 0.1, 4.0, 10000)
+    L0, T_KT = get_L0(L, T, U2, 0.1, 2., 10000)
 #    L0 = 1/1.4
 #    T_KT = 0.88
     print(L0, T_KT)
-    plot_stiffness_curve(L, T, U2, L0, T_KT)
+#    plot_stiffness_curve(L, T, U2, L0, T_KT)
 
 
 

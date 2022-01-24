@@ -31,10 +31,10 @@ int main(int argc, char* argv[]) {
     const int MCStep = N*N*L;
 #endif
 
-    unsigned long long int steps_per_run = 6000*MCStep;
+    unsigned long long int steps_per_run = 10000*MCStep;
 
     unsigned long long int num_samples = 6000;
-    unsigned long long int steps_per_sample = 1*MCStep;
+    unsigned long long int steps_per_sample = MCStep;
 
     std::vector<float> T(resolution);
 

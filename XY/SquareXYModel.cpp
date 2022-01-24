@@ -34,7 +34,7 @@ class SquareXYModel : public XYModel {
                 return -J*S1.dot(S2);
             };
 
-#ifdef CLUSTER_UPDATE
+#ifndef CLUSTER_UPDATE
             this->mut_mode = 0;
 #endif
 
@@ -114,9 +114,46 @@ class SquareXYModel : public XYModel {
             return e1() - V/T*pow(e2(), 2);
         }
 
-        inline std::vector<double> twist_stiffness() {
-            auto Y = XYModel::twist_stiffness();
-            return std::vector<double>{Y[0], Y[1], Y[2], Y[3], U2(), e1(), pow(e2(), 4)};
+        std::vector<double> twist_stiffness() {
+            // Returns the first and second derivative in response to a phase twist
+            double E0 = 0.;
+            double E1 = 0.;
+            double E2 = 0.;
+            double E3 = 0.;
+            double Em1 = 0.;
+            double Em2 = 0.;
+            double Em3 = 0.;
+
+
+            Eigen::Vector2f S1;
+            Eigen::Vector2f S2;
+            int j;
+            for (int i = 0; i < V; i++) {
+                j = neighbors[i][0];
+
+                S1 = spins[i];
+                S2 = spins[j];
+
+                E0 += bonds[0].bondfunc(S1, S2);
+
+                E1 += bonds[0].bondfunc(S1, R1s[0]*S2);
+                Em1 += bonds[0].bondfunc(S1, R1s[0].transpose()*S2);
+
+                E2 += bonds[0].bondfunc(S1, R2s[0]*S2);
+                Em2 += bonds[0].bondfunc(S1, R2s[0].transpose()*S2);
+
+                E3 += bonds[0].bondfunc(S1, R3s[0]*S2);
+                Em3 += bonds[0].bondfunc(S1, R3s[0].transpose()*S2);
+            }
+
+            // Compute derivates from finite difference
+            double d1E = (1./12.*Em2 - 2./3.*Em1 + 2./3.*E1 - 1./12.*E2)/alpha;
+            double d2E = (-1./12.*Em2 + 4./3.*Em1 - 5./2.*E0 + 4./3.*E1 - 1./12.*E2)/pow(alpha, 2);
+            double d3E = (1./8.*Em3 - 1.*Em2 + 13./8.*Em1 - 13./8.*E1 + 1.*E2 - 1./8.*E3)/pow(alpha, 3);
+            double d4E = (-1./6.*Em3 + 2.*Em2 - 13./2.*Em1 + 28./3.*E0 - 13./2.*E1 + 2.*E2 - 1./6.*E3)/pow(alpha, 4);
+            
+            return std::vector<double>{d4E, d3E, d1E, pow(d2E,2), d2E, d1E*d3E, pow(d1E,2)*d2E, 
+                                       d1E*d2E, pow(d1E,2), pow(d1E,4), pow(d1E,3), e1(), pow(e2(),4), U2()};
         }
 
         const float onsite_func(const Eigen::Vector2f &S) {

@@ -21,6 +21,8 @@ class TrigonalModel : public SpinModel {
         int mut_counter;
         int mut_type;
 
+        GaussianDist *dist_r;
+
 
         TrigonalModel(int N, int L, float J1, float J2, float K1, float K2, float K3,
                                     Eigen::Vector3f B) : SpinModel(1, N, N, L) {
@@ -107,10 +109,73 @@ class TrigonalModel : public SpinModel {
             this->mut.dS = -2*spins[mut.i] + 2.*spins[mut.i].dot(H)/std::pow(H.norm(),2) * H;
         }
 
-        void generate_mutation() {
 #ifdef CLUSTER_UPDATE
-            SpinModel::generate_mutation(); 
-#else
+        void cluster_update() {
+            s.clear();
+
+            std::stack<int> c;
+            int m = r() % V;
+            c.push(m);
+
+            this->dist_r = new GaussianDist(0., sqrt(2*T/(3 + B.norm()/2))/2);
+            Eigen::Vector3f tmp; tmp << dist->sample(), dist->sample(), dist->sample();
+            Eigen::Vector3f ax = spins[m] + tmp.cross(spins[m]).normalized()*dist_r->sample();
+            //Eigen::Vector3f ax; ax << dist->sample(), dist->sample(), dist->sample();
+            Eigen::Matrix3f R = Eigen::Matrix3f::Identity() - 2*ax*ax.transpose()/std::pow(ax.norm(), 2);
+
+            int j; float dE;
+            Eigen::Matrix3f s0_new;
+            Eigen::Vector3f s_new;
+            bool is_ghost; bool neighbor_is_ghost;
+            while (!c.empty()) {
+                m = c.top();
+                c.pop();
+
+
+                if (!s.count(m)) {
+                    s.insert(m);
+
+                    is_ghost = (m == V);
+                    if (is_ghost) { // Site is ghost
+                        s0_new = R*s0;
+                    } else {
+                        s_new = R*spins[m];
+                    }
+
+                    for (int n = 0; n < neighbors[m].size(); n++) {
+                        j = neighbors[m][n];
+                        neighbor_is_ghost = (j == V);
+
+                        if (!s.count(j)) {
+                            if (neighbor_is_ghost) {
+                                dE = onsite_func(s0.transpose()*s_new) - onsite_func(s0.transpose()*spins[m]);
+                            } else if (is_ghost) {
+                                dE = onsite_func(s0_new.transpose()*spins[j]) - onsite_func(s0.transpose()*spins[j]);
+                            } else { // Normal bond
+                                dE = bonds[n].bondfunc(spins[j], s_new) - bonds[n].bondfunc(spins[j], spins[m]);
+                            }
+
+                            if ((float) r()/RAND_MAX < 1. - std::exp(-dE/T)) {
+                                c.push(j);
+                            }
+                        }
+                    }
+
+                    if (is_ghost) {
+                        s0 = s0_new;
+                    } else {
+                        spins[m] = s_new;
+                    }
+                }
+            }
+        }
+
+        void generate_mutation() {
+            cluster_update(); 
+        }
+
+#else 
+        void generate_mutation() {
             mut.i = r() % V;
             mut_counter++;
 
@@ -127,8 +192,8 @@ class TrigonalModel : public SpinModel {
                 metropolis_mutation();
                 mut_mode = 0;
             }
-#endif
         }
+#endif
 
         const float onsite_func(const Eigen::Vector3f &S) {
             float E = 0;

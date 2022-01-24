@@ -33,6 +33,7 @@ class XYModel : virtual public MCModel {
         };
 
 
+
     public:
         int sl;
         int N1;
@@ -46,8 +47,14 @@ class XYModel : virtual public MCModel {
         std::vector<std::vector<int>> neighbors;
         std::vector<XYBond> bonds;
 
-#ifdef CLUSTER_UPDATE
+        static constexpr double alpha = 0.01;
+        std::vector<Eigen::Matrix2f> R1s;
+        std::vector<Eigen::Matrix2f> R2s;
+        std::vector<Eigen::Matrix2f> R3s;
+
+
         std::unordered_set<int> s;
+#ifdef CLUSTER_UPDATE
         Eigen::Matrix2f s0;
 #endif
 
@@ -130,16 +137,17 @@ class XYModel : virtual public MCModel {
                     }
                 }
             }
+
+            Eigen::Matrix2f R;
+            R << std::cos(v[0]*alpha), -std::sin(v[0]*alpha),
+                 std::sin(v[0]*alpha), std::cos(v[0]*alpha);
+            R1s.push_back(R);
+            R2s.push_back(R*R);
+            R3s.push_back(R*R*R);
         }
 
-        inline std::vector<double> twist_stiffness() {
+        std::vector<double> twist_stiffness() {
             // Returns the first and second derivative in response to a phase twist
-            float alpha = 0.01;
-            float f;
-            Eigen::Matrix2f R1; 
-            Eigen::Matrix2f R2;
-            Eigen::Matrix2f R3;
-
             double E0 = 0.;
             double E1 = 0.;
             double E2 = 0.;
@@ -154,12 +162,6 @@ class XYModel : virtual public MCModel {
             int j;
             for (int i = 0; i < V; i++) {
                 for (int n = 0; n < bonds.size(); n++) {
-                    f = bonds[0].v.dot(bonds[n].v);
-                    R1 << std::cos(f*alpha), -std::sin(f*alpha),
-                          std::sin(f*alpha), std::cos(f*alpha);
-                    R2 = R1*R1;
-                    R3 = R1*R1*R1;
-
                     j = neighbors[i][n];
 
                     S1 = spins[i];
@@ -167,14 +169,14 @@ class XYModel : virtual public MCModel {
 
                     E0 += bonds[n].bondfunc(S1, S2);
 
-                    E1 += bonds[n].bondfunc(S1, R1*S2);
-                    Em1 += bonds[n].bondfunc(S1, R1.transpose()*S2);
+                    E1 += bonds[n].bondfunc(S1, R1s[n]*S2);
+                    Em1 += bonds[n].bondfunc(S1, R1s[n].transpose()*S2);
 
-                    E2 += bonds[n].bondfunc(S1, R2*S2);
-                    Em2 += bonds[n].bondfunc(S1, R2.transpose()*S2);
+                    E2 += bonds[n].bondfunc(S1, R2s[n]*S2);
+                    Em2 += bonds[n].bondfunc(S1, R2s[n].transpose()*S2);
 
-                    E3 += bonds[n].bondfunc(S1, R3*S2);
-                    Em3 += bonds[n].bondfunc(S1, R3.transpose()*S2);
+                    E3 += bonds[n].bondfunc(S1, R3s[n]*S2);
+                    Em3 += bonds[n].bondfunc(S1, R3s[n].transpose()*S2);
                 }
             }
 
@@ -184,7 +186,8 @@ class XYModel : virtual public MCModel {
             double d3E = (1./8.*Em3 - 1.*Em2 + 13./8.*Em1 - 13./8.*E1 + 1.*E2 - 1./8.*E3)/pow(alpha, 3)/2.;
             double d4E = (-1./6.*Em3 + 2.*Em2 - 13./2.*Em1 + 28./3.*E0 - 13./2.*E1 + 2.*E2 - 1./6.*E3)/pow(alpha, 4)/2.;
             
-            return std::vector<double>{d1E, d2E, d3E, d4E};
+            return std::vector<double>{d4E, d3E, d1E, pow(d2E,2), d2E, d1E*d3E, pow(d1E,2)*d2E, 
+                                       d1E*d2E, pow(d1E,2), pow(d1E,4), pow(d1E,3)};
         }
 
         inline Eigen::Vector2f get_magnetization() {

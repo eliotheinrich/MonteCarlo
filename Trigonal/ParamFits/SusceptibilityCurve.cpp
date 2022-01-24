@@ -73,8 +73,8 @@ int main(int argc, char* argv[]) {
 
     //float T_max = 60*BOLTZMANN_CONSTANT; // In Kelvin
     //float T_min = 0.1*BOLTZMANN_CONSTANT;
-    float T_max = 0.01;
-    float T_min = 0.1;
+    float T_max = 3.;
+    float T_min = 0.15;
     std::vector<float> T(resolution);
     for (int i = 0; i < resolution; i++) {
         T[i] = T_max*i/resolution + T_min*(resolution - i)/resolution;
