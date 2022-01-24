@@ -71,14 +71,15 @@ def correlation_length(C):
     C = C.reshape(N*N)
     r = r.reshape(N*N)
 
-    #(ξ,), _ = spo.curve_fit(exp_func, r, C/C[0])
-    ξ = -r[-1]/np.log(C[-1])
+    (ξ,), _ = spo.curve_fit(exp_func, r, C/C[0])
+    #ξ = -r[-1]/np.log(C[-1])
     #print(f'ξ = {ξ}') 
     #plt.plot(r, [exp_func(x, 2.) for x in r], label='Fit')
 
-    #plt.plot(r, C, label='Data')
-    #plt.legend()
-    #plt.show()
+    plt.plot(r, C, label='Data')
+    plt.ylim(0, 1.1)
+    plt.legend()
+    plt.show()
     return ξ
 
 
@@ -107,7 +108,7 @@ def plot_structure_factor(C, ax):
 
     KX, KY, Ck = fourier_transform(C)
 
-#    Ck = recenter(Ck, axes=(0,1))
+    Ck = recenter(Ck, axes=(0,1))
 
     ax.pcolor(KX, KY, np.abs(Ck), vmin = 0., vmax = np.max(np.abs(Ck)), shading='auto')
     ax.set_aspect('equal')
@@ -130,19 +131,9 @@ if __name__ == "__main__":
     N = C.shape[1]
     L = C.shape[-1]
 
-    Ci = C[20,:,:,L//2]
-    
-    ξ = [correlation_length(x) for x in C[1:]]
-    plt.plot(T[1:], ξ)
-    plt.show()
-
-
-#    ax = plt.gca()
-#    plot_correlation_function(Ci, ax)
-#    plt.show()
-
-#    ax = plt.gca()
-#    plot_structure_factor(Ci, ax)
+#    ξ = [correlation_length(x) for x in C[1:]]
+    correlation_length(C[1])
+#    plt.plot(T[1:], ξ)
 #    plt.show()
 
 

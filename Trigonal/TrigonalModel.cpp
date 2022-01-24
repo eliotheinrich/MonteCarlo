@@ -90,9 +90,30 @@ class TrigonalModel : public SpinModel {
             return new_model;
         }
 
-        void over_relaxation_mutation() {
-            Eigen::Vector3f H; H << 0., 0., 0.;
-            H = H + B;
+        const Vector3f molecular_field(int i) {
+            float x = spins[i][0];
+            float y = spins[i][1];
+            float z = spins[i][2];
+            Vector3f H; H << K3*(6*pow(x, 5) - 60*pow(x, 3)*pow(y, 2) + 30*x*pow(y, 4)),
+                             K3*(-6*pow(y, 5) + 60*pow(x, 2)*pow(y, 3) - 30*pow(x, 4)*y),
+                             K1*pow(spins[i][2], 2);
+            H += B;
+
+            int j;
+            for (int n = 0; n < 6; n++) {
+                j = neighbors[i][n];
+                H -= J1*spins[j];
+            }
+            for (int n = 6; n < 8; n++) {
+                j = neighbors[i][n];
+                H += J2*spins[j];
+            }
+
+            return H;
+        }
+
+        void over_relaxation_mutation(int i) {
+            Vector3f H = B;
 
             int j;
             for (int n = 0; n < 6; n++) {
@@ -212,6 +233,34 @@ class TrigonalModel : public SpinModel {
             E += K3*std::cos(6*phi)*std::pow(sin(theta), 6); // Sixfold magnetocrystalline field
 
             return E;
+        }
+
+        void rotate_spin(int i, Vector3f v, float p) {
+            float vx = v[0]/v.norm(); float vy = v[1]/v.norm(); float vz = v[2]/v.norm();
+            Matrix3f R; R << cos(p) + vx*vx*(1 - cos(p)), vx*vy*(1 - cos(p)) - vz*sin(p), vx*vz*(1 - cos(p)) + vy*sin(p),
+                             vy*vx*(1 - cos(p)) + vz*sin(p), cos(p) + vy*vy*(1 - cos(p)), vy*vz*(1 - cos(p)) - vx*sin(p),
+                             vz*vx*(1 - cos(p)) - vy*sin(p), vz*vy*(1 - cos(p)) + vx*sin(p), cos(p) + vz*vz*(1 - cos(p));
+            spins[i] = R*spins[i];
+        }
+
+        void dynamic_step(float dt) {
+            vector<Vector3f> H = vector<Vector3f>(V);
+            int j;
+
+            // Compute local molecular fields
+            for (int i = 0; i < V; i++) {
+                H[i] = molecular_field(i);
+            }
+
+            float dT;
+            float Hm;
+
+            // Precess around local molecular field
+            for (int i = 0; i < V; i++) {
+                Hm = H[i].norm();
+                dT = Hm*dt;
+                spins[i] = cos(dT)*spins[i] + sin(dT)*H[i].cross(spins[i])/Hm + (1 - cos(dT))*H[i].dot(spins[i])*H[i]/pow(Hm, 2);
+            }
         }
 };
 

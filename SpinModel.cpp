@@ -271,7 +271,9 @@ class SpinModel : virtual public MCModel {
             std::vector<float> Cij = std::vector<float>(V); 
 
             int j;
-            Eigen::Vector4i idxs = tensor_idx(i);
+
+            float Si = skyrmion_density(i);
+            Vector4i idxs = tensor_idx(i);
             int m1 = idxs[0]; int m2 = idxs[1]; int m3 = idxs[2]; int k = idxs[3];
             float Si = skyrmion_density(i);
             for (int n1 = 0; n1 < N1; n1++) {

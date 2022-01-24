@@ -36,6 +36,7 @@ int main(int argc, char* argv[]) {
     unsigned long long int num_samples = 6000;
     unsigned long long int steps_per_sample = MCStep;
 
+
     std::vector<float> T(resolution);
 
     const float Tmax = 3.;

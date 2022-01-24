@@ -48,6 +48,7 @@ int main(int argc, char* argv[]) {
 
     const float Tmax = 3.;
     const float Tmin = 0.1;
+
     unsigned int resolution = std::stoi(argv[12]);
 
     std::vector<float> T(resolution);
