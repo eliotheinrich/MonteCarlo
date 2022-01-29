@@ -1,11 +1,13 @@
 g++ -I ~/lib -pthread -O3 -std=c++11 -I ~/lib SusceptibilityCurve.cpp -o outputK1
 
 for K1 in 0.5 1.0 2.0 4.0  
+do
     foldername=sK1_"$K1";
     paramsname="$foldername/params.txt"
     rm -r "data/$foldername"
     mkdir "data/$foldername";
-    ./make_params "data/$paramsname" 32 8 0.64 0.05 $K 0. 0.15 0. 0.2 0. 80 500 1000 1 1;
-    ./outputJ "data/$foldername" "data/$paramsname" 0.41 4
+    ./make_params "data/$paramsname" 16 4 0.64 0.05 $K1 0. 0.15 0. 0.2 0. 80 5000 1000 10 1;
+    ./outputK1 "data/$foldername" "data/$paramsname" 0.41 4
+done
 
 rm outputK1

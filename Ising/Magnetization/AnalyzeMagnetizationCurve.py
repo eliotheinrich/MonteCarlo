@@ -68,14 +68,14 @@ if __name__ == "__main__":
     T, M, dM, E, dE = load_magnetization_data("MagnetizationCurve.txt")
 
 
-    fig, axs = plt.subplots(nrows=3, ncols=1, sharex=True)
+    fig, axs = plt.subplots(nrows=2, ncols=1, sharex=True)
     plot_magnetization_curve(T, M, dM, axs[0])
     axs[0].set_ylabel('M(T)', fontsize=16)
     plot_energy_curve(T, E, dE, axs[1])
     axs[1].set_ylabel('u(T)/J', fontsize=16)
-    plot_heat_capacity(T, dE, axs[2])
-    axs[2].set_ylabel('c(T)', fontsize=16)
-    axs[2].set_xlabel('T/J', fontsize=16)
+#    plot_heat_capacity(T, dE, axs[2])
+#    axs[2].set_ylabel('c(T)', fontsize=16)
+    axs[1].set_xlabel('T/J', fontsize=16)
 
     plt.subplots_adjust(wspace=0, hspace=0)
     plt.show()

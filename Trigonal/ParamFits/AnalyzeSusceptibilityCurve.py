@@ -7,7 +7,6 @@ import os
 
 
 kB = 0.0816
-kB = 1
 
 # Expected / measured
 susc_factor = 7.88/11.74

@@ -1,0 +1,7 @@
+g++ -DCLUSTER_UPDATE -pthread -I ~/lib -O3 -std=c++11 EnergyConfigs.cpp -o output
+
+./output
+rm output
+
+python PlotEnergyDensity.py
+

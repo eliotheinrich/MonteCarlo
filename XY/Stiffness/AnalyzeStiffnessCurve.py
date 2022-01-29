@@ -33,48 +33,30 @@ def load_stiffness_data(filename):
     V = N*N*L
 
     U2 = (ps[:,4] - (ps[:,8] - ps[:,2]**2)/T)/V
-    #dU2 = (dps[:,4] - 2*dps[:,2]*ps[:,2]/T)/V
-    #plt.errorbar(T, U2, dU2)
-    #plt.show()
-#return std::vector<double>{d4E, d3E, d1E, pow(d2E,2), d2E, d1E*d3E, pow(d1E,2)*d2E, 
-#                           d1E*d2E, pow(d1E,2), pow(d1E,4), pow(d1E,3)};
-    d4E = ps[:,0]
-    d3E = ps[:,1]
-    d1E = ps[:,2]
-    d2E2 = ps[:,3]
-    d2E = ps[:,4]
-    d1E_d3E = ps[:,5]
-    d1E2_d2E = ps[:,6]
-    d1E_d2E = ps[:,7]
-    d1E2 = ps[:,8]
-    d1E4 = ps[:,9]
-    d1E3 = ps[:,10]
+    dU2 = (dps[:,4] - 2*dps[:,2]*ps[:,2]/T)/V
+
+    (d4E, err_d4E) = (ps[:,0], dps[:,0])
+    (d3E, err_d3E) = (ps[:,1], dps[:,1])
+    (d1E, err_d1E) = (ps[:,2], dps[:,2])
+    (d2E2, err_d2E2) = (ps[:,3], dps[:,3])
+    (d2E, err_d2E) = (ps[:,4], dps[:,4])
+    (d1E_d3E, err_d1E_d3E) = (ps[:,5], dps[:,5])
+    (d1E2_d2E, err_d1E2_d2E) = (ps[:,6], dps[:,6])
+    (d1E_d2E, err_d1E_d2E) = (ps[:,7], dps[:,7])
+    (d1E2, err_d1E2) = (ps[:,8], dps[:,8])
+    (d1E4, err_d1E4) = (ps[:,9], dps[:,9])
+    (d1E3, err_d1E3) = (ps[:,10], dps[:,10])
 
     U4 = (d4E + 1/T*(4*d3E*d1E - 3*d2E2 + 3*d2E**2 - 4*d1E_d3E) \
              + 1/T**2*(6*d1E2_d2E - 12*d1E_d2E*d1E - 6*d1E2*d2E + 12*d1E**2*d2E) \
-             + 1/T**3*(d1E4 + 4*d1E3*d1E + 3*d1E2**2 - 12*d1E2*d1E**2 + 6*d1E**4))/V**2
-    plt.plot(T, U4, label='my version')
-    # e = ps[:,11]
-    # s4 = ps[:,12]
-    # U2 = ps[:,13]
-    U4 = -4*ps[:,13] + 3*(ps[:,11] - V/T*dps[:,13]**2) + 2*(V/T)**3*ps[:,12]
-    U4 = U4/V
-    plt.plot(T, U4, label='from formula')
-    plt.legend()
-    plt.show()
-
-    #U2 = (d2E - err_d1E**2/T)/V
-    #err_U2 = err_d2E/V - 2*err_d1E/T/V
-    #plt.errorbar(T, U2, err_U2)
-    #plt.show()
-    #U4 = (d4E + (1/T)*(4*avg(d3E)*avg(d1E) - 3*avg(d2E**2) + 3*avg(d2E)**2 - 4*avg(d1E*d3E)) \
-    #              + (1/T**2)*(6*avg(d1E**2*d2E) - 12*avg(d1E*d2E)*avg(d1E) - 6*avg(d1E**2)*avg(d2E) + 12*avg(d1E)**2*avg(d2E)) \
-    #              + (1/T**3)*(avg(d1E**4) + 4*avg(d1E**3)*avg(d1E) + 3*avg(d1E**2)**2 - 12*avg(d1E**2)*avg(d1E)**2 + 6*avg(d1E)**4))/(V**2)
-    
-
-
-
-    return N, T, U2, U4
+             + 1/T**3*(-d1E4 + 4*d1E3*d1E + 3*d1E2**2 - 12*d1E2*d1E**2 + 6*d1E**4))/V**2
+    dU4 = (err_d4E + 1/T*(4*d3E*d1E*(err_d3E/np.abs(d3E) + err_d1E/np.abs(d1E)) - 3*d2E**2*(2*err_d2E/np.abs(d2E)) - 4*err_d1E_d3E) \
+                + 1/T**2*(6*err_d1E2_d2E - 12*d1E_d2E*d1E*(err_d1E/np.abs(d1E) + err_d1E_d2E/np.abs(d1E_d2E)) \
+                    - 6*d1E2*d2E*(err_d1E2/np.abs(d1E2) + err_d2E/np.abs(d2E)) \
+                    + 12*d1E**2*d2E*(2*err_d1E/np.abs(d1E) + err_d2E/np.abs(d2E)))
+                + 1/T**3*(-err_d1E4 + 4*d1E3*d1E*(err_d1E3/np.abs(d1E3) + err_d1E/np.abs(d1E)) + 3*d1E2**2*(2*err_d1E2/np.abs(d1E2)) \
+                         - 12*d1E2*d1E**2*(err_d1E2/np.abs(d1E2) + 2*err_d1E/np.abs(d1E)) + 6*d1E**4*(4*err_d1E/np.abs(d1E))))/V**2
+    return N, T, U2, dU2, U4, dU4
 
 def get_L0(L, T, U2, Lmin = 0.5, Lmax = 3., num_Ls=100):
     U2L = np.zeros_like(U2)
@@ -121,11 +103,11 @@ def plot_stiffness_curve(L, T, U2, L0, T_KT):
     plt.ylabel(r'$\Upsilon(L,T)/(1+(2\log(L/L_0))^{-1})$', fontsize=15)
     plt.show()
 
-def plot_raw_data(L, T, U2, U4):
+def plot_raw_data(L, T, U2, dU2, U4, dU4):
     fig, axs = plt.subplots(nrows=2, ncols=1, sharex=True)
     for n,Ln in enumerate(L):
-        axs[0].plot(T, U2[n], marker='o', label=f'L = {Ln}')
-        axs[1].plot(T, U4[n], marker='o', label=f'L = {Ln}')
+        axs[0].errorbar(T, U2[n], dU2[n], marker='o', label=f'L = {Ln}')
+        axs[1].errorbar(T, U4[n], dU4[n], marker='o', label=f'L = {Ln}')
 
     axs[0].legend()
     axs[0].set_ylabel(r'$\Upsilon_2$', fontsize=15)
@@ -143,27 +125,31 @@ if __name__ == "__main__":
         os.chdir(sys.argv[1])
 
     fs = [f for f in os.listdir() if f[:9] == "stiffness"]
-    _, T, _, _ = load_stiffness_data(fs[0])
+    _, T, _, _, _, _ = load_stiffness_data(fs[0])
 
     N = len(fs)
     res = len(T)
 
     T = np.zeros(res)
     U2 = np.zeros((N, res))
+    dU2 = np.zeros((N, res))
     U4 = np.zeros((N, res))
+    dU4 = np.zeros((N, res))
     L = np.zeros(N, dtype=int)
 
     for n, f in enumerate(fs):
         if f[:9] == 'stiffness':
             i = f.index('.')
-            L[n], T, U2[n,:], U4[n,:] = load_stiffness_data(f)
+            L[n], T, U2[n,:], dU2[n,:], U4[n,:], dU4[n,:] = load_stiffness_data(f)
 
     inds = np.argsort(L)
     U2 = U2[inds]
+    dU2 = dU2[inds]
     U4 = U4[inds]
+    dU4 = dU4[inds]
     L = L[inds]
 
-    plot_raw_data(L, T, U2, U4)
+    plot_raw_data(L, T, U2, dU2, U4, dU4)
 
 
     L0, T_KT = get_L0(L, T, U2, 0.1, 2., 10000)

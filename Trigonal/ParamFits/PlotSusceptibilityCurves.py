@@ -34,12 +34,12 @@ if __name__ == "__main__":
                 ax2 = axs[2]
 
             plot_susceptibility_curve(T, X, dX, ax0, color='k', linestyle='-')
-            ax0.set_ylabel(r'$\chi$(T)', fontsize=16)
+            ax0.set_ylabel(r'$\chi$(T) ($\mu_B/T$)', fontsize=16)
             plot_energy_curve(T, E, dE, ax1, color='k', linestyle='-')
             ax1.set_ylabel('u(T)/J', fontsize=16)
             plot_heat_capacity(T, dE, 0, ax2, 'k-')
             ax2.set_ylabel('c(T)/$k_B$', fontsize=16)
-            ax2.set_xlabel('T/J', fontsize=16)
+            ax2.set_xlabel('T (meV)', fontsize=16)
 
         else:
             T, X1, dX1, E1, dE1 = load_susceptibility_data("SusceptibilityCurve1.txt")
@@ -66,7 +66,7 @@ if __name__ == "__main__":
             plot_energy_curve(T, E3, dE3, ax2, color='b', label=r'$B \parallel c$')
 
             ax0.set_title(label + " = " + str(vals[n]))
-            ax2.set_xlabel(r"$T/J$", fontsize=20)
+            ax2.set_xlabel(r"$T$ (meV)", fontsize=20)
 
         os.chdir('..')
 
@@ -80,9 +80,9 @@ if __name__ == "__main__":
         ax2 = axs[2]
 
     ax2.legend()
-    ax0.set_ylabel(r'$\chi(T)$', fontsize=20)
-    ax1.set_ylabel(r'$c(T)$', fontsize=20)
-    ax2.set_ylabel(r'$u(T)$', fontsize=20)
+    ax0.set_ylabel(r'$\chi(T)$ ($\mu_B/T$)', fontsize=20)
+    ax1.set_ylabel(r'$c(T)/k_B$', fontsize=20)
+    ax2.set_ylabel(r'$u(T)$ (meV)', fontsize=20)
 
     plt.subplots_adjust(hspace=0, wspace=0)
     plt.show()
