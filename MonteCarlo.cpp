@@ -22,25 +22,25 @@ class MCModel {
     // as well as a mutation data structure. Specifics must be supplied by child classes.
     public:
         // Need to implement:
-        float T;
-        virtual const float energy()=0;
-        virtual const float energy_change()=0;
+        double T;
+        virtual const double energy()=0;
+        virtual double energy_change()=0;
         virtual void generate_mutation()=0;
         virtual void accept_mutation()=0;
         virtual void reject_mutation()=0;
         virtual MCModel* clone()=0;
 };
 
-float const_T(int n, int n_max, float Ti, float Tf) {
+double const_T(int n, int n_max, double Ti, double Tf) {
     return 0.5*(Tf + Ti);
 }
 
-float trig_T(int n, int n_max, float Ti, float Tf) {
+double trig_T(int n, int n_max, double Ti, double Tf) {
     return Tf + 0.5*(Ti - Tf)*(1 - cos(n*PI/n_max));
 }
 
-float linear_T(int n, int n_max, float Ti, float Tf) {
-    return Ti + (Tf - Ti)*(n_max - n)/float(n_max);
+double linear_T(int n, int n_max, double Ti, double Tf) {
+    return Ti + (Tf - Ti)*(n_max - n)/double(n_max);
 }
 
 template<class MCModel>
@@ -54,7 +54,7 @@ class MonteCarlo {
         std::minstd_rand r;
         int accepted;
         unsigned long long nsteps;
-        float energy;
+        double energy;
 
         MonteCarlo(MCModel *model) {
             this->model = model;
@@ -64,21 +64,21 @@ class MonteCarlo {
             this->r.seed(rand());
         }
 
-        void steps(unsigned long long nsteps, float T) {
+        void steps(unsigned long long nsteps, double T) {
             // Performs MC simulation
             // nsteps: number of MC steps to perform
             // T: temperature
 
-            float rf;
-            float dE;
+            double rf;
+            double dE;
 
             model->T = T;
 
             for (unsigned long long i = 0; i < nsteps; i++) {
                 model->generate_mutation();
                 dE = model->energy_change();
-                
-                rf = float(r())/float(RAND_MAX);
+
+                rf = double(r())/double(RAND_MAX);
                 if (rf < std::exp(-dE/T)) {
                     accepted++;
 
@@ -97,13 +97,13 @@ class MonteCarlo {
 // run_MC with everything
 template <class MCModel, class A>
 std::vector<A> run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, std::string cooling,
-                                                                    float Ti,
-                                                                    float Tf,
+                                                                    double Ti,
+                                                                    double Tf,
                                                                     int num_updates, 
                                                                     std::function<A(MCModel*)> f) {
 
     // Establish cooling schedule
-    float (*update_T)(int n, int n_max, float Ti, float Tf);
+    double (*update_T)(int n, int n_max, double Ti, double Tf);
     if (cooling == "auto") {
         Ti = Tf;
         update_T = *const_T;
@@ -123,7 +123,7 @@ std::vector<A> run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, std::st
     std::vector<A> log(num_updates);
     int update_freq = nsteps/num_updates;
 
-    float T;
+    double T;
     for (int i = 0; i < num_updates; i++) {
         T = update_T(i, num_updates, Ti, Tf);
         m->steps(update_freq, T); 
@@ -137,19 +137,19 @@ std::vector<A> run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, std::st
 
 // Basic run_MC
 template <class MCModel>
-void run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, float T) {
+void run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, double T) {
     m->steps(nsteps, T);
 }
 
 // run_MC with cooling schedule
 template <class MCModel>
-void run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, std::string cooling, float Ti, float Tf, int num_updates = 100) {
+void run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, std::string cooling, double Ti, double Tf, int num_updates = 100) {
     run_MC(m, nsteps, cooling, Ti, Tf, num_updates, std::function<int(MCModel*)>([](MCModel* g) { return 0; }));
 }
 
 // run_MC with logging function
 template <class MCModel, class A>
-std::vector<A> run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, float T, std::function<A(MCModel*)> f, int num_logitems) {
+std::vector<A> run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, double T, std::function<A(MCModel*)> f, int num_logitems) {
     return run_MC(m, nsteps, "const", T, T, num_logitems, f);
 }
 

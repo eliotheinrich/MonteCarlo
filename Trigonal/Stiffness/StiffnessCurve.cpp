@@ -4,10 +4,32 @@
 #include <iostream>
 #include <math.h>
 
-#define BOLTZMANN_CONSTANT 0.08617
+class TrigonalModelS : public TrigonalModel {
+    public:
+        TrigonalModelS(int N, int L, float J1, float J2, float K1, float K2, float K3,
+                                    Eigen::Vector3d B) : TrigonalModel(N, L, J1, J2, K1, K2, K3, B) {}
 
-std::vector<double> twisting_sampler(TrigonalModel *model) {
-    return model->twist_stiffness();
+        TrigonalModelS* clone() {
+            TrigonalModelS* new_model = new TrigonalModelS(N, L, J1, J2, K1, K2, K3, B);
+            return new_model;
+        }
+
+
+        std::vector<double> tracking_func(int i) {
+            auto twist = twist_derivatives(i);
+            for (int j = 0; j < twist.size(); j++) {
+                twist[j] *= 2.;
+            }
+            return twist;
+        }
+
+        std::vector<double> init_func() {
+            return twist_derivatives();
+        }
+};
+
+std::vector<double> twisting_sampler(TrigonalModelS *model) {
+    return SpinModel::twist_terms(model->q);
 }
 
 int main(int argc, char* argv[]) {
@@ -27,27 +49,51 @@ int main(int argc, char* argv[]) {
     float K1 = std::stof(argv[7]);
     float K2 = std::stof(argv[8]);
     float K3 = std::stof(argv[9]);
-    Eigen::Vector3f B; B << std::stof(argv[10]), std::stof(argv[11]), std::stof(argv[12]);
+    Eigen::Vector3d B; B << std::stof(argv[10]), std::stof(argv[11]), std::stof(argv[12]);
 
+#ifdef CLUSTER_UPDATE
+    const int MCStep = 1;
+#else
     const int MCStep = N*N*L;
+#endif
 
-    TrigonalModel *model = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B);
-    model->cluster = false;
+
+    TrigonalModelS *model;
+    /*
+    MonteCarlo<TrigonalModel> *m1;
+    for (int i = 0; i < 5; i++) {
+        model = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B);
+        m1 = new MonteCarlo<TrigonalModel>(model);
+        std::cout << "Pre: " << m1->model->energy() << std::endl;
+        m1->steps(MCStep*10000, 0.5);
+        std::cout << "Post: " << m1->model->energy() << std::endl;
+    }*/
+
+    model = new TrigonalModelS(N, L, J1, J2, K1, K2, K3, B);
+    /*
+    MonteCarlo<TrigonalModel> *m2 = new MonteCarlo<TrigonalModel>(model->clone());
+    std::cout << "Post: " << m1->model->energy() << std::endl;
+    std::cout << "Pre: " << m2->model->energy() << std::endl;
+    m2->steps(MCStep*10000, 0.5);
+    std::cout << "Post: " << m2->model->energy() << std::endl;
+    */
+
 
     const float Tmax = 2.;
     const float Tmin = 0.1;
     unsigned int resolution = std::stoi(argv[13]);
 
-    std::vector<float> T(resolution);
+    std::vector<double> T(resolution);
 
     for (int i = 0; i < resolution; i++) {
-        T[i] = float(i)/resolution*Tmax + float(resolution - i)/resolution*Tmin;
+        T[i] = double(i)/resolution*Tmax + double(resolution - i)/resolution*Tmin;
     }
 
     unsigned long long steps_per_run = std::stoi(argv[14])*MCStep;
 
     unsigned int num_samples = std::stoi(argv[15]);
     unsigned long long steps_per_sample = std::stoi(argv[16])*MCStep;
+    steps_per_sample = N*N*L*10;
 
     int num_runs = std::stoi(argv[17]);
 
@@ -57,10 +103,9 @@ int main(int argc, char* argv[]) {
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    auto data = sample_pt(twisting_sampler, model, &T, steps_per_run, num_samples, steps_per_sample, num_threads);
-//    auto stats = summary_statistics(&data);
-    std::string header = std::to_string(num_samples) + "\t" + std::to_string(N) + "\t" + std::to_string(L);
-    write_samples(&data, &T, filename, header);
+    auto data = sample_r(twisting_sampler, model, T, steps_per_run, num_samples, steps_per_sample, num_threads);
+    std::string header = std::to_string(N) + "\t" + std::to_string(L);
+    write_data(&data, &T, filename, header);
 
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);

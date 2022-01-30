@@ -22,7 +22,7 @@ void exchange(std::vector<MonteCarlo<ModelType>*> *models, std::vector<float> *T
 template <class ModelType, class dtype>
 std::vector<std::vector<std::vector<dtype>>> sample_r(std::vector<dtype> sampling_func(ModelType*), 
                                                       ModelType *model, 
-                                                      std::vector<float> &T, 
+                                                      std::vector<double> &T, 
                                                       unsigned long long steps_per_run, 
                                                       unsigned long long num_samples, 
                                                       unsigned long long steps_per_sample,
@@ -46,9 +46,9 @@ std::vector<std::vector<std::vector<dtype>>> sample_r(std::vector<dtype> samplin
 
     std::vector<std::future<void>> results(resolution);
 
-    auto do_steps = [steps_per_run](int id, MonteCarlo<ModelType> *m, float T) {
-        run_MC(m, steps_per_run, "trig", 3*T, T);
-        //m->steps(steps_per_run, T);
+    auto do_steps = [steps_per_run](int id, MonteCarlo<ModelType> *m, double T) {
+        //run_MC(m, steps_per_run, "trig", 3*T, T);
+        m->steps(steps_per_run, T);
     };
 
     // Do initial steps
@@ -62,8 +62,9 @@ std::vector<std::vector<std::vector<dtype>>> sample_r(std::vector<dtype> samplin
     }
 
     auto take_samples = [num_samples, steps_per_sample, dtype_size, sampling_func](int id, int i,
-                                                                       MonteCarlo<ModelType> *m, float T, 
+                                                                       MonteCarlo<ModelType> *m, double T, 
                                                                        std::vector<std::vector<dtype>> *arr_i) {
+        m->model->start_tracking();
         for (int n = 1; n < num_samples+1; n++) {
             for (int j = 0; j < dtype_size; j++) {
                 auto sample = sampling_func(m->model);
@@ -184,7 +185,7 @@ std::vector<std::vector<std::vector<dtype>>> summary_statistics(std::vector<std:
 }
 
 template <class dtype>
-void write_data(std::vector<std::vector<std::vector<dtype>>> *data, std::vector<float> *T, std::string filename, std::string header = "") {
+void write_data(std::vector<std::vector<std::vector<dtype>>> *data, std::vector<double> *T, std::string filename, std::string header = "") {
     int resolution = (*data).size();
     int dtype_size = (*data)[0].size();
 
