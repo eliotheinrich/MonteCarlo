@@ -32,7 +32,7 @@ class GraphModel : virtual public MCModel {
         GraphModel(int N) {
             this->N = N;
 
-            this->edges = std::vector<int>(std::vector<int>(0, N), N);
+            this->edges = std::vector<std::vector<int>>(N, std::vector<int>(N, 0));
 			this->vals = std::vector<int>(N);
         }
 
@@ -58,24 +58,24 @@ class GraphModel : virtual public MCModel {
         }
 
         void reject_mutation() {
-			toggle_edge(i, j);
+			toggle_edge(mut.i, mut.j);
         }
 
-        virtual const float onsite_energy(int i)=0;
+        virtual const double onsite_energy(int i)=0;
 
-        virtual const float bond_energy(int i)=0;
+        virtual const double bond_energy(int i)=0;
 
-        const float energy() {
+        const double energy() {
             float E = 0;
 
-            for (int i = 0; i < V; i++) {
+            for (int i = 0; i < N; i++) {
                 E += onsite_energy(i);
                 E += bond_energy(i);
             }
             return E;
         }
 
-        const float energy_change() {
+        double energy_change() {
             float E1 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
 			toggle_edge(mut.i, mut.j);
             float E2 = onsite_energy(mut.i) + 2*bond_energy(mut.i);

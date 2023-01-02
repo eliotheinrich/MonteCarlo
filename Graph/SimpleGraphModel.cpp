@@ -2,13 +2,13 @@
 #include <vector>
 #include <string>
 #include <stdlib.h>
-#include <Eigen/Dense>
 #include "../GraphModel.cpp"
 #include "../Utility.cpp"
 
 class SimpleGraphModel : public GraphModel {
     public:
         int N;
+        float J;
 
         SimpleGraphModel(int N, float J) : GraphModel(N) {
             this->N = N;
@@ -16,19 +16,20 @@ class SimpleGraphModel : public GraphModel {
         }
 
         SimpleGraphModel *clone() {
-            SquareIsingModel *new_model = new SimpleGraphModel(N, J);
+            SimpleGraphModel *new_model = new SimpleGraphModel(N, J);
+            return new_model;
         }
 
-        const float onsite_energy(int i) {
+        const double onsite_energy(int i) {
             float E = 0;
 
             return E;
         }
 
-        const float bond_energy(int i) {
+        const double bond_energy(int i) {
             float E = 0;
             E += deg(i);
-            return J*E;
+            return -J*E;
         }
 
 };

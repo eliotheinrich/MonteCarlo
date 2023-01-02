@@ -35,12 +35,11 @@ class GraphModel : virtual public MCModel {
         void generate_mutation();
         void accept_mutation();
         void reject_mutation();
+        const double energy_change();
 
-        virtual const float onsite_energy(int i)=0;
-        virtual const float bond_energy(int i)=0;
-        const float energy();
-
-        const float energy_change();
+        virtual const double onsite_energy(int i)=0;
+        virtual const double bond_energy(int i)=0;
+        const double energy();
 
 		void toggle_edge(int i, int j);
 		int deg(int i);

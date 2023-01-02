@@ -35,7 +35,7 @@ std::vector<std::vector<std::vector<dtype>>> sample_r(std::vector<dtype> samplin
 
     for (int i = 0; i < resolution; i++) {
         models[i] = new MonteCarlo<ModelType>(model->clone());
-        models[i]->model->randomize_spins();
+        models[i]->model->init();
     }
 
     std::vector<std::vector<std::vector<dtype>>> arr = std::vector<std::vector<std::vector<dtype>>>(resolution, 
@@ -64,7 +64,6 @@ std::vector<std::vector<std::vector<dtype>>> sample_r(std::vector<dtype> samplin
     auto take_samples = [num_samples, steps_per_sample, dtype_size, sampling_func](int id, int i,
                                                                        MonteCarlo<ModelType> *m, double T, 
                                                                        std::vector<std::vector<dtype>> *arr_i) {
-        m->model->start_tracking();
         for (int n = 1; n < num_samples+1; n++) {
             for (int j = 0; j < dtype_size; j++) {
                 auto sample = sampling_func(m->model);
@@ -82,70 +81,6 @@ std::vector<std::vector<std::vector<dtype>>> sample_r(std::vector<dtype> samplin
 
     for (int i = 0; i < resolution; i++) {
         results[i] = threads.push(take_samples, i, models[i], T[i], &arr[i]);
-    }
-
-    // Join threads
-    for (int i = 0; i < resolution; i++) {
-        results[i].get();
-    }
-
-    return arr;
-}
-
-template <class ModelType, class A>
-std::vector<std::vector<A>> sample_r_old(A sampling_func(ModelType*), ModelType *model, std::vector<float> *T, 
-                                                        unsigned long long num_runs,
-                                                        unsigned long long steps_per_run, 
-                                                        unsigned long long num_samples, 
-                                                        unsigned long long steps_per_sample,
-                                                        int num_threads) {
-
-    int resolution = T->size();
-
-    std::vector<MonteCarlo<ModelType>*> models(resolution);
-
-    for (int i = 0; i < resolution; i++) {
-        models[i] = new MonteCarlo<ModelType>(model->clone());
-        models[i]->model->randomize_spins();
-    }
-
-    std::vector<std::vector<A>> arr = std::vector<std::vector<A>>(resolution, std::vector<A>(num_runs*num_samples));
-
-    ctpl::thread_pool threads(num_threads);
-
-    std::vector<std::future<void>> results(resolution);
-
-    auto do_steps = [steps_per_run](int id, MonteCarlo<ModelType> *m, float T) {
-        m->steps(steps_per_run, T);
-    };
-
-    // Do initial steps
-    for (int i = 0; i < resolution; i++) {
-        results[i] = threads.push(do_steps, models[i], (*T)[i]);
-    }
-
-    // Join threads
-    for (int i = 0; i < resolution; i++) {
-        results[i].get();
-    }
-
-    auto take_samples = [num_samples, steps_per_sample, num_runs, steps_per_run, sampling_func](int id, int i,
-                                                                                    MonteCarlo<ModelType> *m, float T, 
-                                                                                    std::vector<A> *arr_i) {
-        for (int n = 0; n < num_runs; n++) {
-            m->model->randomize_spins();
-            m->steps(steps_per_run, T);
-            for (int j = 0; j < num_samples; j++) {
-                A sample = sampling_func(m->model);
-                (*arr_i)[n*num_samples + j] = sample;
-                m->steps(steps_per_sample, T);
-            }
-        }
-    };
-
-
-    for (int i = 0; i < resolution; i++) {
-        results[i] = threads.push(take_samples, i, models[i], (*T)[i], &arr[i]);
     }
 
     // Join threads

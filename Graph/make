@@ -1,6 +1,4 @@
-g++ -O3 -std=c++11 ConnectivityCurve.cpp -o output
+g++ -O3 -std=c++11 ConnectivityCurve.cpp -o output -I ~/lib/CTPL -lpthread
 
 ./output con_curve.txt
 rm output
-
-python AnalyzeConnectivity.py con_curve.txt

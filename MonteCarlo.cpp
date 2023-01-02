@@ -101,7 +101,6 @@ std::vector<A> run_MC(MonteCarlo<MCModel> *m, unsigned long long nsteps, std::st
                                                                     double Tf,
                                                                     int num_updates, 
                                                                     std::function<A(MCModel*)> f) {
-
     // Establish cooling schedule
     double (*update_T)(int n, int n_max, double Ti, double Tf);
     if (cooling == "auto") {
