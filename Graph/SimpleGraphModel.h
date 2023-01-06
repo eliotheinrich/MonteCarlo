@@ -1,8 +1,11 @@
+#ifndef SIMPLEGRAPH_H
+#define SIMPLEGRAPH_H
+
 #include <iostream>
 #include <vector>
 #include <string>
 #include <stdlib.h>
-#include "../GraphModel.cpp"
+#include "../GraphModel.h"
 #include "../Utility.cpp"
 
 class SimpleGraphModel : public GraphModel {
@@ -17,3 +20,4 @@ class SimpleGraphModel : public GraphModel {
         const float bond_energy(int i);
 };
 
+#endif

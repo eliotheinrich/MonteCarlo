@@ -10,6 +10,7 @@
 #include <cmath>
 #include <map>
 #include "Utility.cpp"
+#include "DataFrame.h"
 
 #define PI 3.14159265
 #define BOLTZMANN_CONSTANT 0.08617
@@ -30,27 +31,13 @@ class MCModel {
         unsigned long long nsteps;
 
         virtual double energy() const = 0;
-        virtual double energy_change() const = 0;
+        virtual double energy_change() = 0;
         virtual void generate_mutation() = 0;
         virtual void accept_mutation() = 0;
         virtual void reject_mutation() = 0;
         virtual MCModel* clone() = 0;
         virtual std::map<std::string, double> get_double_params() const;
         virtual std::map<std::string, int> get_int_params() const;
-};
-
-class DataSampler {
-    public:
-        virtual std::vector<double> collect_data(const MCModel*) { return std::vector<double>(0); }
-};
-
-class DataFrame {
-    public:
-        std::map<std::string, std::vector<std::pair<double, double>>> data;
-
-        std::vector<std::pair<double, double>>& operator[](std::string s);
-        void emplace(std::string s, std::vector<std::pair<double, double>> p);
-        int size();
 };
 
 class MonteCarlo {
@@ -66,35 +53,20 @@ class MonteCarlo {
         // Random number generators
         std::vector<std::minstd_rand*> random_generators;
 
-        std::vector<DataFrame*> data;
-
-    public:
-        
+    public: 
         MonteCarlo(MCModel *model, int num_models);
         MonteCarlo(std::vector<MCModel*> models);
 
-        void step_all_models(unsigned long long num_steps) {
+        void add_model(MCModel *model);
 
-        } 
-        static void steps(MCModel* model, unsigned long long num_steps, std::minstd_rand* r);
-        static void cooling_steps(MCModel* model, 
-                                  unsigned long long num_steps, 
-                                  int num_updates, 
-                                  double Ti, 
-                                  double Tf,
-                                  std::minstd_rand* r, 
-                                  cooling_type cs);
+        static void steps(MCModel *model, unsigned long long num_steps, std::minstd_rand* r);
 
-        static void collect_data(MCModel* model, std::map<std::string, DataSampler*> samplers, DataFrame* data);
-        void sample(std::map<std::string, DataSampler*> samplers, 
-                    int num_cooling_steps,
-                    int steps_per_sample, 
-                    int num_samples,
-                    int num_threads,
-                    double Ti,
-                    double Tf);
-
-        bool write_data(std::string filename);
+        template<class dtype> 
+        DataFrame generate_samples(std::vector<dtype> sampling_funcs(MCModel*), 
+                                   unsigned long long equilibration_steps,
+                                   unsigned long long num_samples,
+                                   unsigned long long steps_per_sample,
+                                   int num_threads);
 };
 
 #endif

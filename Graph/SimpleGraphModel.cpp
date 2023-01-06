@@ -1,35 +1,27 @@
-#include <iostream>
-#include <vector>
-#include <string>
-#include <stdlib.h>
-#include <Eigen/Dense>
-#include "../GraphModel.cpp"
-#include "../Utility.cpp"
+#ifndef SIMPLEGRAPH_
+#define SIMPLEGRAPH_
 
-class SimpleGraphModel : public GraphModel {
-    public:
-        int N;
+#include "SimpleGraphModel.h"
 
-        SimpleGraphModel(int N, float J) : GraphModel(N) {
-            this->N = N;
-            this->J = J;
-        }
+SimpleGraphModel::SimpleGraphModel(int N, float J) : GraphModel(N) {
+    this->N = N;
+    this->J = J;
+}
 
-        SimpleGraphModel *clone() {
-            SquareIsingModel *new_model = new SimpleGraphModel(N, J);
-        }
+SimpleGraphModel* SimpleGraphModel::clone() {
+    SquareIsingModel *new_model = new SimpleGraphModel(N, J);
+}
 
-        const float onsite_energy(int i) {
-            float E = 0;
+const float SimpleGraphModel::onsite_energy(int i) {
+    float E = 0;
 
-            return E;
-        }
+    return E;
+}
 
-        const float bond_energy(int i) {
-            float E = 0;
-            E += deg(i);
-            return J*E;
-        }
+const float SimpleGraphModel::bond_energy(int i) {
+    float E = 0;
+    E += deg(i);
+    return J*E;
+}
 
-};
-
+#endif

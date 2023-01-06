@@ -108,7 +108,7 @@ class SpinModel : virtual public MCModel {
         virtual double bond_energy(int i) const;
 
         double energy() const;
-        double energy_change() const;
+        double energy_change();
 
         // Saves current spin configuration
         void save_spins(std::string filename);

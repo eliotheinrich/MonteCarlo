@@ -32,7 +32,7 @@ class TrigonalModel : public SpinModel {
     TrigonalModel(int N, int L, float J1, float J2, float K1, float K2, float K3,
                                 Eigen::Vector3d B);
 
-    MCModel* clone();
+    TrigonalModel* clone();
 
     void over_relaxation_mutation();
 

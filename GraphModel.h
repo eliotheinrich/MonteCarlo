@@ -1,12 +1,12 @@
-#ifndef GRAPHMC_
-#define GRAPHMC_
+#ifndef GRAPHMC_H
+#define GRAPHMC_H
 
 #include <iostream>
 #include <vector>
 #include <stdlib.h>
 #include <math.h>
 #include <random>
-#include "MonteCarlo.cpp"
+#include "MonteCarlo.h"
 #include "Utility.cpp"
 
 class GraphModel : virtual public MCModel {
