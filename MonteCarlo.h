@@ -5,7 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <ctpl.h>
+#include "ctpl.h"
 #include <thread>
 #include <cmath>
 #include <map>
@@ -61,12 +61,12 @@ class MonteCarlo {
 
         static void steps(MCModel *model, unsigned long long num_steps, std::minstd_rand* r);
 
-        template<class dtype> 
-        DataFrame generate_samples(std::vector<dtype> sampling_funcs(MCModel*), 
+        DataFrame generate_samples(std::map<std::string, double> sampling_func(MCModel*), 
                                    unsigned long long equilibration_steps,
                                    unsigned long long num_samples,
                                    unsigned long long steps_per_sample,
-                                   int num_threads);
+                                   int num_threads,
+                                   bool average_samples);
 };
 
 #endif

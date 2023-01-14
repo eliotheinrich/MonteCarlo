@@ -1,16 +1,7 @@
-#ifndef MONTECARLO
-#define MONTECARLO
+#ifndef MONTECARLO_
+#define MONTECARLO_
 
-#include <unistd.h>
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <ctpl.h>
-#include <thread>
-#include <cmath>
-#include "Utility.cpp"
 #include "MonteCarlo.h"
-#include "DataFrame.h"
 
 #define PI 3.14159265
 #define BOLTZMANN_CONSTANT 0.08617
@@ -67,24 +58,33 @@ void MonteCarlo::steps(MCModel *model, unsigned long long nsteps, std::minstd_ra
     }
 }
 
-template<class dtype> 
-DataFrame generate_samples(std::map<std::string, dtype> sampling_funcs(MCModel*), 
-                            unsigned long long equilibration_steps,
-                            unsigned long long num_samples,
-                            unsigned long long steps_per_sample,
-                            int num_threads) {
+std::map<std::string, Sample> to_sample(std::map<std::string, double> *s) {
+    std::map<std::string, Sample> new_s;
+    for (std::map<std::string, double>::iterator it = s->begin(); it != s->end(); ++it) {
+        new_s.emplace(it->first, Sample(it->second));
+    }
+    return new_s;
+};
+
+DataFrame MonteCarlo::generate_samples(std::map<std::string, double> sampling_func(MCModel*), 
+                                       unsigned long long equilibration_steps,
+                                       unsigned long long num_samples,
+                                       unsigned long long steps_per_sample,
+                                       int num_threads,
+                                       bool average_samples=true) {
+
     ctpl::thread_pool threads(num_threads);
 
-    std::vector<std::future<void>> results(num_models);
+    std::vector<std::future<void>> results(this->num_models);
 
     // TODO annealing
-    auto do_steps = [equilibration_steps](int id, MCModel *m) {
-        MonteCarlo::steps(equilibration_steps);
+    auto do_steps = [equilibration_steps](int id, MCModel *model, std::minstd_rand *rng) {
+        MonteCarlo::steps(model, equilibration_steps, rng);
     };
 
     // Do initial steps
     for (int i = 0; i < num_models; i++) {
-        results[i] = threads.push(do_steps, models[i]);
+        results[i] = threads.push(do_steps, models[i], random_generators[i]);
     }
 
     // Join threads
@@ -95,28 +95,54 @@ DataFrame generate_samples(std::map<std::string, dtype> sampling_funcs(MCModel*)
     std::vector<DataSlide> slides = std::vector<DataSlide>(0);
 
 
-    auto take_samples = [num_samples, steps_per_sample, dtype_size, sampling_func](int id, MCModel *model, DataSlide *slide) {
+    auto take_samples = [num_samples, steps_per_sample, sampling_func, average_samples](int id, MCModel *model, std::minstd_rand *rng, DataSlide *slide) {
+
         // Save params
-        std::map<std::string, dtype> sample = sampling_func(model);
-        // Initialize all keys into slide
-        for (int n = 1; n < num_samples; n++) {
-            sample = sampling_func(m->model);
-            // Take samples
-            MonteCarlo::steps(model, steps_per_sample);
+        std::map<std::string, int> int_params = model->get_int_params();
+        for (std::map<std::string, int>::iterator it = int_params.begin(); it != int_params.end(); ++it) {
+            slide->add_int(it->first, it->second);
+        }
+        std::map<std::string, double> double_params = model->get_double_params();
+        for (std::map<std::string, double>::iterator it = double_params.begin(); it != double_params.end(); ++it) {
+            slide->add_double(it->first, it->second);
         }
 
+        // Initialize all keys from sampling funcs
+        std::map<std::string, double> raw_samples = sampling_func(model);
+        for (std::map<std::string, double>::iterator it = raw_samples.begin(); it != raw_samples.end(); ++it) {
+            slide->add_data(it->first); 
+        }
+
+        std::map<std::string, Sample> samples = to_sample(&raw_samples);
+
+        for (int n = 0; n < num_samples; n++) {
+            // Take samples
+            MonteCarlo::steps(model, steps_per_sample, rng);
+
+            raw_samples = sampling_func(model);
+            std::map<std::string, Sample> new_samples = to_sample(&raw_samples);
+            if (average_samples) {
+                for (std::map<std::string, Sample>::iterator it = new_samples.begin(); it != new_samples.end(); ++it) {
+                    samples[it->first] = samples[it->first].combine(&new_samples[it->first]);
+                }
+            } else {
+                for (std::map<std::string, Sample>::iterator it = new_samples.begin(); it != new_samples.end(); ++it) {
+                    slide->push_data(it->first, it->second);
+                }
+            }
+        }
     };
 
-    for (int i = 0; i < resolution; i++) {
-        results[i] = threads.push(take_samples, i, models[i], &slides[i]);
+    for (int i = 0; i < num_models; i++) {
+        results[i] = threads.push(take_samples, models[i], random_generators[i], &slides[i]);
     }
 
     // Join threads
-    for (int i = 0; i < resolution; i++) {
+    for (int i = 0; i < num_models; i++) {
         results[i].get();
     }
 
-    return arr;
+    return DataFrame(slides);
 
 }
 
