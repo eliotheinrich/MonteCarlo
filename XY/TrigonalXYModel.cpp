@@ -1,6 +1,3 @@
-#ifndef TRIGONALXY_
-#define TRIGONALXY_
-
 #include "TrigonalXYModel.h"
 
 
@@ -107,6 +104,3 @@ void TrigonalXYModel::generate_mutation() {
     }
 #endif
 }
-
-
-#endif

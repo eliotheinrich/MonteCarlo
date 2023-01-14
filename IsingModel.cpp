@@ -1,6 +1,3 @@
-#ifndef ISINGMC_
-#define ISINGMC_
-
 #include "IsingModel.h"
 
 IsingModel::IsingModel(int N1, int N2, int N3) {
@@ -92,5 +89,3 @@ void IsingModel::save_spins(std::string filename) {
     }
     output_file.close();
 }        
-
-#endif

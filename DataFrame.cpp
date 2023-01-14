@@ -1,5 +1,3 @@
-#ifndef DATAFRAME
-#define DATAFRAME
 #include "DataFrame.h"
 #include <fstream>
 #include <iostream>
@@ -202,6 +200,3 @@ void DataFrame::save(std::string filename) {
     output_file << s;
     output_file.close();
 }
-
-
-#endif

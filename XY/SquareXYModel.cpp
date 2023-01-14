@@ -1,6 +1,3 @@
-#ifndef SQUAREXY_
-#define SQUAREXY_
-
 #include "SquareXYModel.h"
 
 SquareXYModel::SquareXYModel(int N, int L, float J, float B, float Bp) : XYModel(1, N, N, L) {
@@ -178,5 +175,3 @@ void SquareXYModel::generate_mutation() {
     }
 #endif
 }
-
-#endif

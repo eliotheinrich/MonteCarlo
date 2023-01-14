@@ -1,6 +1,3 @@
-#ifndef XYMC_
-#define XYMC_
-
 #include "XYModel.h"
     
 XYModel::XYModel(int sl, int N1, int N2 = -1, int N3 = -1) {
@@ -287,5 +284,3 @@ void XYModel::save_spins(std::string filename) {
     }
     output_file.close();
 }
-
-#endif

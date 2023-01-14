@@ -1,6 +1,3 @@
-#ifndef SQUAREISING_
-#define SQUAREISING_
-
 #include "SquareIsingModel.h"
 
 SquareIsingModel::SquareIsingModel(int N, int L, float J, float B) : IsingModel(N, N, L) {
@@ -42,5 +39,3 @@ double SquareIsingModel::bond_energy(int i) const {
 
     return 0.5*E;
 }
-
-#endif

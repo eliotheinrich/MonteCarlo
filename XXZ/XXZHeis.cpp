@@ -1,6 +1,3 @@
-#ifndef XXZ_
-#define XXZ_
-
 #include "XXZHeis.h"
 
 
@@ -72,5 +69,3 @@ double XXZHeis::onsite_func(const Eigen::Vector3d &S) const {
     // Onsite interactions
     return 0.;
 }
-
-#endif

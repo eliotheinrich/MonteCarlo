@@ -1,6 +1,3 @@
-#ifndef TRIGONALMODEL_
-#define TRIGONALMODEL_
-
 #include "TrigonalModel.h"
 
 TrigonalModel::TrigonalModel(int N, int L, float J1, float J2, float K1, float K2, float K3,
@@ -180,5 +177,3 @@ void TrigonalModel::dynamic_step(float dt) {
         spins[i] = cos(dT)*spins[i] + sin(dT)*H[i].cross(spins[i])/Hm + (1 - cos(dT))*H[i].dot(spins[i])*H[i]/pow(Hm, 2);
     }
 }
-
-#endif

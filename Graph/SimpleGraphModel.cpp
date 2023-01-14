@@ -1,6 +1,3 @@
-#ifndef SIMPLEGRAPH_
-#define SIMPLEGRAPH_
-
 #include "SimpleGraphModel.h"
 
 SimpleGraphModel::SimpleGraphModel(int N, float J) : GraphModel(N) {
@@ -23,5 +20,3 @@ const float SimpleGraphModel::bond_energy(int i) {
     E += deg(i);
     return J*E;
 }
-
-#endif

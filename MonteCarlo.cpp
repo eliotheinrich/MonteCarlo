@@ -1,6 +1,3 @@
-#ifndef MONTECARLO_
-#define MONTECARLO_
-
 #include "MonteCarlo.h"
 
 #define PI 3.14159265
@@ -145,5 +142,3 @@ DataFrame MonteCarlo::generate_samples(std::map<std::string, double> sampling_fu
     return DataFrame(slides);
 
 }
-
-#endif

@@ -1,5 +1,3 @@
-#ifndef GRAPHMC_
-#define GRAPHMC_
 #include "GraphModel.h"
 
 GraphModel::GraphModel(int N) {
@@ -72,5 +70,3 @@ float GraphModel::get_connectivity() {
 	}
 	return c/N;
 }
-
-#endif

@@ -1,6 +1,3 @@
-#ifndef SPINMC_
-#define SPINMC_
-
 #include "SpinModel.h"
 
 SpinModel::SpinModel(int sl, int N1, int N2 = -1, int N3 = -1) {
@@ -441,5 +438,3 @@ void SpinModel::save_spins(std::string filename) {
     }
     output_file.close();
 }
-
-#endif
