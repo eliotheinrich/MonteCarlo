@@ -1,6 +1,0 @@
-g++ -O3 -std=c++11 ConnectivityCurve.cpp -o output
-
-./output con_curve.txt
-rm output
-
-python AnalyzeConnectivity.py con_curve.txt

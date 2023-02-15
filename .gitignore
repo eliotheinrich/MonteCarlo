@@ -8,4 +8,9 @@ __pycache__
 *.sl
 *.gif
 *.swp
+*.json
+*.ipynb
+CMakeFiles
+build
+CTPL
 

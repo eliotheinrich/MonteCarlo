@@ -1,7 +1,0 @@
-rm data/*
-
-g++ -std=c++11 -O3 GenerateConfigs.cpp -o output
-./output
-rm output
-
-python AnimateConfigs.py
