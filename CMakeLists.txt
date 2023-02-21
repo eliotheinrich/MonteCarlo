@@ -10,7 +10,6 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 add_library(montecarlo
-	src/ctpl.h
 	src/MonteCarlo.h 
 	src/Utility.cpp src/Utility.h
 	src/DataFrame.cpp src/DataFrame.h
@@ -24,17 +23,12 @@ add_subdirectory(src/Heisenberg)
 add_subdirectory(src/XY)
 add_subdirectory(src/Graph)
 
-add_executable(test src/test.cpp)
-target_include_directories(test PRIVATE src src/Ising)
-
 # Including boost packages
 find_package(Boost 1.40 COMPONENTS program_options REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
-target_link_libraries(test LINK_PUBLIC 
-	montecarlo
-	ising
-	${Boost_LIBRARIES}
-)
+
+# Including CTPL
+include_directories($ENV{CTPL_DIR})
 
 # Including Eigen
 include_directories($ENV{EIGEN_DIR})
