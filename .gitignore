@@ -2,7 +2,6 @@
 .idea
 .vscode
 *.pyc
-*.txt
 __pycache__
 *.out
 *.sl
