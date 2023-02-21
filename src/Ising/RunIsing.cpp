@@ -18,14 +18,14 @@ int main() {
 	double Tmax = 5.0;
 
 	for (int i = 0; i < num_models; i++) {
-		models.push_back(new SquareIsingModel(20, 1, 1., 0.));
+		models.push_back(new SquareIsingModel(10, 1, 1., 0.));
 		models[i]->T = Tmin*i/double(num_models) + Tmax*(num_models - i)/double(num_models);
 	}
 
 	MonteCarlo<SquareIsingModel> mc(models);
 
-	auto df = mc.generate_samples(sampler, 100000, 10000, 400, 1, true);
-	df.save("/data/heinriea/MonteCarlo/data.json");
+	auto df = mc.generate_samples(sampler, 10000, 1000, 400, 1, true);
+	df.save("data.json");
 
 
 }

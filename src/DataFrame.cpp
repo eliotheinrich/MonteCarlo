@@ -217,7 +217,7 @@ void DataFrame::save(std::string filename) {
     buffer.clear();
     int num_slides = this->slides.size();
     for (int i = 0; i < num_slides; i++) {
-        buffer.push_back("\t\t{\"data\": {\n" + this->slides[i].to_string() + "}\n\t\t}");
+        buffer.push_back("\t\t{\n" + this->slides[i].to_string() + "\n\t\t}");
     }
 
     s += join(buffer, ",\n");
