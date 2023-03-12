@@ -1,11 +1,7 @@
 add_library(ising
-	IsingModel.cpp IsingModel.h
-	SquareIsingModel.cpp SquareIsingModel.h
+	IsingModel.cpp
+	SquareIsingModel.cpp
 )
 target_link_libraries(ising montecarlo)
-target_include_directories(ising PRIVATE ${CMAKE_SOURCE_DIR}/src $ENV{EIGEN_DIR})
-
-add_executable(run_ising RunIsing.cpp)
-target_link_libraries(run_ising LINK_PUBLIC ising montecarlo)
-target_include_directories(run_ising PRIVATE ${CMAKE_SOURCE_DIR}/src $ENV{EIGEN_DIR})
+target_include_directories(ising PUBLIC ${CMAKE_SOURCE_DIR}/src ${EIGEN_DIR} ${DF_DEPENDENCIES})
 

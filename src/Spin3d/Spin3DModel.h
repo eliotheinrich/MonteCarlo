@@ -1,25 +1,33 @@
-#ifndef SPINMC_H
-#define SPINMC_H
+#ifndef SPIN3D_MC_H
+#define SPIN3D_MC_H
 
-#include <iostream>
 #include <vector>
 #include <unordered_set>
-#include <stack>
-#include <stdlib.h>
 #include <math.h>
 #include <random>
-#include <fstream>
 #include <Eigen/Dense>
 #include "MonteCarlo.h"
-#include "SpinModel.h"
-#include "Utility.h"
 
-class SpinModel : virtual public MCModel {
+class GaussianDist {
+    private:
+        std::minstd_rand rd;
+        std::default_random_engine gen;
+        std::normal_distribution<> dist;
+
+    public:
+
+        GaussianDist(float mean, float std);
+
+        float sample();
+
+};
+
+class Spin3DModel : virtual public MCModel {
     // Generic 3D Heisenberg model
     private:
         // A mutation consists of a change in spin dS on site (n1,n2,n3,s)
         // dS must conserve the norm of S[n1,n2,n3,s]
-        struct SpinMutation {
+        struct Spin3DMutation {
             int i;
             Eigen::Vector3d dS;
         };
@@ -58,21 +66,22 @@ class SpinModel : virtual public MCModel {
         bool tracking;
         std::vector<double> q;
 
-        std::minstd_rand r;
-
         // Mutation being considered is stored as an attribute of the model
-        SpinMutation mut;
+        Spin3DMutation mut;
 
         // Internal normally distributed random number generator
         GaussianDist *dist;
 
-        SpinModel();
+        Spin3DModel() {}
 
-        SpinModel(int sl, int N1, int N2, int N3);
+        void init_params(int sl, int N1, int N2, int N3);
+        virtual void init();
 
+        // -- Currently unused -- //
         virtual std::vector<double> tracking_func(int i);
         virtual std::vector<double> init_func();
         void start_tracking();
+        // ---------------------- //
 
         void set_spin(int i, Eigen::Vector3d S);
         void randomize_spins();
@@ -98,37 +107,36 @@ class SpinModel : virtual public MCModel {
                       std::function<double(Eigen::Vector3d, Eigen::Vector3d)> bondfunc);
 
         static std::vector<double> twist_terms(std::vector<double> dE);
-        std::vector<double> twist_derivatives(int i);
-        const std::vector<double> twist_derivatives();
+        std::vector<double> twist_derivatives(int i) const;
+        std::vector<double> twist_derivatives() const;
 
         Eigen::Vector3d get_magnetization() const;
 
-        const std::vector<double> correlation_function(int i, int a, int b);
-        const std::vector<double> full_correlation_function(int i);
-        const double skyrmion_density(int i);
+        std::vector<double> correlation_function(int i, int a, int b) const;
+        std::vector<double> full_correlation_function(int i) const;
+        double skyrmion_density(int i) const;
 
-        const std::vector<double> skyrmion_correlation_function(int i);
+        std::vector<double> skyrmion_correlation_function(int i) const;
 
         void cluster_update();
-        void generate_mutation();
         void metropolis_mutation();
 
-        void accept_mutation();
-        void reject_mutation();
+        virtual double energy() const;
+        virtual double energy_change();
+        virtual void generate_mutation();
+        virtual void accept_mutation();
+        virtual void reject_mutation();
 
         virtual double onsite_func(const Eigen::Vector3d& S) const = 0;
         virtual double onsite_energy(int i) const;
         virtual double bond_energy(int i) const;
 
-        double energy() const;
-        double energy_change();
 
         // Saves current spin configuration
         void save_spins(std::string filename);
         bool load_spins(std::string filename);
 
-        virtual std::map<std::string, double> get_double_params() const;
-        virtual std::map<std::string, int> get_int_params() const;
+        virtual std::map<std::string, Sample> take_samples() const;
 };
 
 #endif

@@ -1,13 +1,18 @@
 #include "XXZHeis.h"
+#include <functional>
+#include <string>
 
 
-XXZHeis::XXZHeis(int N, int L, float J, float K) : SpinModel(1, N, N, L) {
-    this->N = N;
-    this->L = L;
-    this->J = J;
-    this->K = K;
+XXZHeis::XXZHeis(Params &params) {
+    this->N = params.geti("system_size");
+    this->L = params.geti("layers", DEFAULT_LAYERS);
+    Spin3DModel::init_params(1, N, N, L);
 
+    this->J = params.getf("J");
+    this->K = params.getf("K");
 
+    float K = this->K;
+    float J = this->J;
     std::function<float(Eigen::Vector3d, Eigen::Vector3d)> bondfunc = [J, K](Eigen::Vector3d S1, Eigen::Vector3d S2) {
         return -J*S1.dot(S2) + K*S1[2]*S2[2];
     };
@@ -22,15 +27,7 @@ XXZHeis::XXZHeis(int N, int L, float J, float K) : SpinModel(1, N, N, L) {
     this->add_bond(0,-1,0,0, -v2, bondfunc);
 }
 
-XXZHeis* XXZHeis::clone() {
-    XXZHeis* new_model = new XXZHeis(N, L, J, K);
-    for (int i = 0; i < V; i++) {
-        new_model->spins[i] = this->spins[i];
-    }
-    return new_model;
-}
-
-inline std::vector<double> XXZHeis::vorticity() {
+inline std::vector<double> XXZHeis::vorticity() const {
     float v1 = 0;
     float v2 = 0;
 

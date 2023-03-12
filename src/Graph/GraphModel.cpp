@@ -1,13 +1,13 @@
 #include "GraphModel.h"
 
-GraphModel::GraphModel(int N) {
+void GraphModel::init_params(int N) {
 	this->N = N;
-
-	this->edges = std::vector<std::vector<int>>(N, std::vector<int>(0));
-	this->vals = std::vector<int>(N);
 }
 
 void GraphModel::init() {
+	this->edges = std::vector<std::vector<int>>(N, std::vector<int>(0));
+	this->vals = std::vector<int>(N);
+
 	for (int i = 0; i < N; i++) {
 		vals[i] = 0;
 		for (int j = 0; j < N; j++) {
@@ -17,10 +17,10 @@ void GraphModel::init() {
 }
 
 void GraphModel::generate_mutation() {
-	mut.i = std::rand() % N;
-	mut.j = std::rand() % N;
+	mut.i = rand() % N;
+	mut.j = rand() % N;
 	while (mut.j == mut.i) {
-		mut.j = std::rand() % N;
+		mut.j = rand() % N;
 	}
 }
 
@@ -32,8 +32,8 @@ void GraphModel::reject_mutation() {
 	toggle_edge(mut.i, mut.j);
 }
 
-const float GraphModel::energy() {
-	float E = 0;
+double GraphModel::energy() const {
+	double E = 0;
 
 	for (int i = 0; i < N; i++) {
 		E += onsite_energy(i);
@@ -42,10 +42,10 @@ const float GraphModel::energy() {
 	return E;
 }
 
-const float GraphModel::energy_change() {
-	float E1 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
+double GraphModel::energy_change() {
+	double E1 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
 	toggle_edge(mut.i, mut.j);
-	float E2 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
+	double E2 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
 
 	return E2 - E1;
 }
@@ -55,7 +55,7 @@ void GraphModel::toggle_edge(int i, int j) {
 	edges[j][i] = 1 - edges[j][i];
 }
 
-int GraphModel::deg(int i) {
+int GraphModel::deg(int i) const {
 	int d = 0;
 	for (int j = 0; j < N; j++) {
 		d += edges[i][j];
@@ -63,10 +63,16 @@ int GraphModel::deg(int i) {
 	return d;
 }
 
-float GraphModel::get_connectivity() {
-	float c = 0.;
+double GraphModel::get_connectivity() const {
+	double c = 0.;
 	for (int i = 0; i < N; i++) {
 		c += deg(i);
 	}
 	return c/N;
+}
+
+std::map<std::string, Sample> GraphModel::take_samples() const {
+	std::map<std::string, Sample> samples;
+	samples.emplace("connectivity", get_connectivity());
+	return samples;
 }

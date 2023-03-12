@@ -1,30 +1,24 @@
-#ifndef XYMC_H
-#define XYMC_H
+#ifndef SPIN2D_MC_H
+#define SPIN2D_MC_H
 
-#include <iostream>
 #include <functional>
 #include <vector>
 #include <unordered_set>
-#include <stdlib.h>
-#include <math.h>
 #include <stack>
-#include <random>
 #include <Eigen/Dense>
-#include <fstream>
 #include "MonteCarlo.h"
-#include "Utility.h"
-    
-class XYModel : virtual public MCModel {
-    // Generic 3D XY model
+
+class Spin2DModel : virtual public MCModel {
+    // Generic 2d spin model in up to 3d lattice
     private:
         // A mutation consists of a change in spin dS on site (n1,n2,n3,s)
         // dS must conserve the norm of S[n1,n2,n3,s]
-        struct XYMutation {
+        struct Spin2DMutation {
             int i;
             Eigen::Vector2d dS;
         };
 
-        struct XYBond {
+        struct Spin2DBond {
             int d1;
             int d2;
             int d3;
@@ -46,7 +40,7 @@ class XYModel : virtual public MCModel {
         float sigma;
         std::vector<Eigen::Vector2d> spins;
         std::vector<std::vector<int>> neighbors;
-        std::vector<XYBond> bonds;
+        std::vector<Spin2DBond> bonds;
 
         static constexpr double alpha = 0.01;
         std::vector<Eigen::Matrix2d> R1s;
@@ -57,20 +51,20 @@ class XYModel : virtual public MCModel {
         std::unordered_set<int> s;
         Eigen::Matrix2d s0;
 
-        std::minstd_rand r;
-
         // Mutation being considered is stored as an attribute of the model
-        XYMutation mut;
+        Spin2DMutation mut;
 
-        XYModel() {}
+        Spin2DModel() {}
 
-        XYModel(int sl, int N1, int N2, int N3);
+        void init_params(int sl, int N1, int N2, int N3);
 
-        inline const int flat_idx(int n1, int n2, int n3, int s) {
+        virtual void init();
+
+        inline int flat_idx(int n1, int n2, int n3, int s) const {
             return n1 + N1*(n2 + N2*(n3 + N3*s));
         }
 
-        inline const Eigen::Vector4i tensor_idx(int i) {
+        inline Eigen::Vector4i tensor_idx(int i) const {
             int n1 = i % N1;
             i = i / N1;
             int n2 = i % N2;
@@ -86,24 +80,26 @@ class XYModel : virtual public MCModel {
 
         void add_bond(int d1, int d2, int d3, int ds, Eigen::Vector3d v, std::function<float(Eigen::Vector2d, Eigen::Vector2d)> bondfunc);
 
-        std::vector<double> twist_stiffness();
+        std::vector<double> twist_stiffness() const;
 
-        Eigen::Vector2d get_magnetization();
+        Eigen::Vector2d get_magnetization() const;
         
         virtual double onsite_energy(int i) const;
         virtual double bond_energy(int i) const;
-        virtual double energy() const;
 
-        void generate_mutation();
         void metropolis_mutation();
         void cluster_update();
 
-        void accept_mutation();
-        void reject_mutation();
+        virtual void generate_mutation();
+        virtual void accept_mutation();
+        virtual void reject_mutation();
+
+        virtual double energy() const;
         virtual double energy_change();
 
         virtual double onsite_func(const Eigen::Vector2d& S) const = 0;
-
+        
+        virtual std::map<std::string, Sample> take_samples() const;
 
         void save_spins(std::string filename);
 };

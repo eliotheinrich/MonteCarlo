@@ -2,12 +2,18 @@
 #define SQUARECLOCK_
 
 #include "SquareClockModel.h"
+#include <iostream>
+#include <functional>
+#include <vector>
+#include <string>
 
 template <int q>
-SquareClockModel<q>::SquareClockModel(int N, int L, float J) : ClockModel<q>(N, N, L) {
-    this->N = N;
-    this->L = L;
-    this->J = J;
+SquareClockModel<q>::SquareClockModel(Params &params) {
+    this->N = params.geti("system_size");
+    this->L = params.geti("layers", DEFAULT_LAYERS);
+    ClockModel<q>::init_params(N, N, L);
+
+    this->J = params.getf("J");
 
     for (int i = 0; i < q; i++) {
         for (int j = 0; j < q; j++) {
@@ -15,7 +21,7 @@ SquareClockModel<q>::SquareClockModel(int N, int L, float J) : ClockModel<q>(N, 
         }
     }
 
-    std::function<float(int, int)> bondfunc = [J, this](int p1, int p2) {
+    std::function<float(int, int)> bondfunc = [this](int p1, int p2) {
         return this->bond_table[p1][p2];
     };
 
@@ -27,15 +33,6 @@ SquareClockModel<q>::SquareClockModel(int N, int L, float J) : ClockModel<q>(N, 
     this->add_bond(-1,0,0, -v1, bondfunc);
     this->add_bond(0,1,0,   v2, bondfunc);
     this->add_bond(0,-1,0, -v2, bondfunc);
-}
-
-template <int q>
-SquareClockModel<q>* SquareClockModel<q>::clone() {
-    SquareClockModel<q>* new_model = new SquareClockModel<q>(N, L, J);
-    for (int i = 0; i < this->V; i++) {
-        new_model->spins[i]  = this->spins[i];
-    }
-    return new_model;
 }
 
 template <int q>

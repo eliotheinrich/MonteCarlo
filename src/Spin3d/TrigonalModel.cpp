@@ -1,36 +1,25 @@
 #include "TrigonalModel.h"
 
-TrigonalModel::TrigonalModel(int N, int L, float J1, float J2, float K1, float K2, float K3,
-                            Eigen::Vector3d B) : SpinModel(1, N, N, L) {
+TrigonalModel::TrigonalModel(Params &params) {
+    this->N = params.geti("system_size");
+    this->L = params.geti("layers", DEFAULT_LAYERS);
+    Spin3DModel::init_params(1, N, N, L);
 
-    this->N = N;
-    this->L = L;
-    this->J1 = J1;
-    this->J2 = J2;
-    this->K1 = K1;
-    this->K2 = K2;
-    this->K3 = K3;
+    this->J1 = params.getf("J1");
+    this->J2 = params.getf("J2");
+    this->K1 = params.getf("K1");
+    this->K2 = params.getf("K2");
+    this->K3 = params.getf("K3");
+    Eigen::Vector3d B; B << params.getf("Bx"), params.getf("By"), params.getf("Bz");
     this->B = B;
 
-
-    if (false) {
-        std::cout << "J1 = " << J1 << std::endl;
-        std::cout << "J2 = " << J2 << std::endl;
-        std::cout << "K1 = " << K1 << std::endl;
-        std::cout << "K2 = " << K2 << std::endl;
-        std::cout << "K3 = " << K3 << std::endl;
-
-        std::cout << "Bx = " << B[0] << std::endl;
-        std::cout << "By = " << B[1] << std::endl;
-        std::cout << "Bz = " << B[2] << std::endl;
-    }
-
-    this->R << sqrt(3)/2., -0.5, 0.,
-                0.5, sqrt(3)/2., 0.,
+    this->R << std::sqrt(3)/2., -0.5, 0.,
+                0.5, std::sqrt(3)/2., 0.,
                 0., 0., 1.;
     this->mut_mode = 0;
     this->mut_counter = 0; 
 
+    float J1 = this->J1;
     std::function<float(const Eigen::Vector3d &, const Eigen::Vector3d &)> bondfunc = 
     [J1](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) {
         return -J1*S1.dot(S2);
@@ -46,6 +35,7 @@ TrigonalModel::TrigonalModel(int N, int L, float J1, float J2, float K1, float K
     this->add_bond(1,-1,0,0, v3, bondfunc);
     this->add_bond(-1,1,0,0, -v3, bondfunc);
 
+    float J2 = this->J2;
     std::function<float(const Eigen::Vector3d &, const Eigen::Vector3d &)> bondfunc_inter = 
     [J2](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) {
         return J2*S1.dot(S2);
@@ -56,23 +46,16 @@ TrigonalModel::TrigonalModel(int N, int L, float J1, float J2, float K1, float K
         this->add_bond(0,0,1,0, v4, bondfunc_inter);
         this->add_bond(0,0,-1,0, -v4, bondfunc_inter);
     }
+
 }
 
-TrigonalModel* TrigonalModel::clone() {
-    TrigonalModel* new_model = new TrigonalModel(N, L, J1, J2, K1, K2, K3, B);
-    for (int i = 0; i < V; i++) {
-        new_model->spins[i] = this->spins[i];
-    }
-    return new_model;
-}
-
-const Eigen::Vector3d TrigonalModel::molecular_field(int i) {
+Eigen::Vector3d TrigonalModel::molecular_field(int i) const {
     float x = spins[i][0];
     float y = spins[i][1];
     float z = spins[i][2];
-    Eigen::Vector3d H; H << K3*(6*pow(x, 5) - 60*pow(x, 3)*pow(y, 2) + 30*x*pow(y, 4)),
-                            K3*(-6*pow(y, 5) + 60*pow(x, 2)*pow(y, 3) - 30*pow(x, 4)*y),
-                            K1*pow(spins[i][2], 2);
+    Eigen::Vector3d H; H << K3*(6*std::pow(x, 5) - 60*std::pow(x, 3)*std::pow(y, 2) + 30*x*std::pow(y, 4)),
+                            K3*(-6*std::pow(y, 5) + 60*std::pow(x, 2)*std::pow(y, 3) - 30*std::pow(x, 4)*y),
+                            K1*std::pow(spins[i][2], 2);
     H += B;
 
     int j;
@@ -92,7 +75,7 @@ void TrigonalModel::generate_mutation() {
 #ifdef CLUSTER_UPDATE
     cluster_update(); 
 #else
-    mut.i = r() % V;
+    mut.i = rand() % V;
     mut_counter++;
 
     if (mut_counter == V) {
@@ -144,7 +127,7 @@ double TrigonalModel::onsite_func(const Eigen::Vector3d &S) const {
     else { theta = std::acos(S[2]); }
 
     E += K1*S[2]*S[2];
-    //E += K2*pow(S[0]*S[0]+S[1]*S[1],2);
+    E += K2*std::pow(S[0]*S[0]+S[1]*S[1],2);
     E += K3*std::cos(6*phi)*std::pow(sin(theta), 6); // Sixfold magnetocrystalline field
 
     return E;
@@ -152,9 +135,9 @@ double TrigonalModel::onsite_func(const Eigen::Vector3d &S) const {
 
 void TrigonalModel::rotate_spin(int i, Eigen::Vector3d v, float p) {
     float vx = v[0]/v.norm(); float vy = v[1]/v.norm(); float vz = v[2]/v.norm();
-    Eigen::Matrix3d R; R << cos(p) + vx*vx*(1 - cos(p)), vx*vy*(1 - cos(p)) - vz*sin(p), vx*vz*(1 - cos(p)) + vy*sin(p),
-                            vy*vx*(1 - cos(p)) + vz*sin(p), cos(p) + vy*vy*(1 - cos(p)), vy*vz*(1 - cos(p)) - vx*sin(p),
-                            vz*vx*(1 - cos(p)) - vy*sin(p), vz*vy*(1 - cos(p)) + vx*sin(p), cos(p) + vz*vz*(1 - cos(p));
+    Eigen::Matrix3d R; R << std::cos(p) + vx*vx*(1 - std::cos(p)), vx*vy*(1 - std::cos(p)) - vz*std::sin(p), vx*vz*(1 - std::cos(p)) + vy*std::sin(p),
+                            vy*vx*(1 - std::cos(p)) + vz*std::sin(p), std::cos(p) + vy*vy*(1 - std::cos(p)), vy*vz*(1 - std::cos(p)) - vx*std::sin(p),
+                            vz*vx*(1 - std::cos(p)) - vy*std::sin(p), vz*vy*(1 - std::cos(p)) + vx*std::sin(p), std::cos(p) + vz*vz*(1 - std::cos(p));
     spins[i] = R*spins[i];
 }
 
@@ -176,4 +159,34 @@ void TrigonalModel::dynamic_step(float dt) {
         dT = Hm*dt;
         spins[i] = cos(dT)*spins[i] + sin(dT)*H[i].cross(spins[i])/Hm + (1 - cos(dT))*H[i].dot(spins[i])*H[i]/pow(Hm, 2);
     }
+}
+
+Eigen::Vector3d TrigonalModel::rel_pos(uint i) const {
+    Eigen::Vector4i idx = tensor_idx(i);
+    uint n1 = idx[0]; uint n2 = idx[1]; uint n3 = idx[2];
+
+    Eigen::Vector3d pos; pos << 0.5*(n1 + n2), std::sqrt(3)/2.*(n1 - n2), n3;
+    return pos;
+}
+
+double TrigonalModel::intensity(Eigen::Vector3d Q) const {
+    Eigen::Vector3cd structure_factor; structure_factor << 0., 0., 0.;
+    for (uint i = 0; i < V; i++) {
+        structure_factor += spins[i]*std::exp(std::complex<double>(0., 1.)*Q.dot(rel_pos(i)));
+    }
+    return std::pow(std::abs(structure_factor.norm()), 2)/(V*V);
+}
+
+
+std::map<std::string, Sample> TrigonalModel::take_samples() const {
+    std::map<std::string, Sample> samples = Spin3DModel::take_samples();
+    std::vector<double> tterms = twist_derivatives();
+    samples.emplace("d1E", tterms[0]);
+    samples.emplace("d2E", tterms[1]);
+    samples.emplace("d3E", tterms[2]);
+    samples.emplace("d4E", tterms[3]);
+    
+    Eigen::Vector3d gamma; gamma << 0., 0., 0.;
+    samples.emplace("intensity_gamma", intensity(gamma));
+    return samples;
 }

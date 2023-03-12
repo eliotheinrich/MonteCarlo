@@ -1,14 +1,22 @@
 #include "SquareXYModel.h"
+#include <iostream>
+#include <complex>
+#include <functional>
+#include <string>
 
-SquareXYModel::SquareXYModel(int N, int L, float J, float B, float Bp) : XYModel(1, N, N, L) {
-    this->N = N;
-    this->L = L;
-    this->J = J;
-    this->B = B;
-    this->Bp = Bp;
-    this->Bx = B*cos(Bp);
-    this->By = B*sin(Bp);
+SquareXYModel::SquareXYModel(Params &params) {
+    this->N = params.geti("system_size");
+    this->L = params.geti("layers", DEFAULT_LAYERS);
 
+    Spin2DModel::init_params(1, N, N, L);
+
+    this->J = params.getf("J");
+    this->B = params.getf("B");
+    this->Bp = params.getf("Bp");
+    this->Bx = this->B*cos(this->Bp);
+    this->By = this->B*sin(this->Bp);
+
+    float J = this->J;
     std::function<float(Eigen::Vector2d, Eigen::Vector2d)> bondfunc = 
     [J](Eigen::Vector2d S1, Eigen::Vector2d S2) {
         return -J*S1.dot(S2);
@@ -26,15 +34,7 @@ SquareXYModel::SquareXYModel(int N, int L, float J, float B, float Bp) : XYModel
     this->add_bond(0,-1,0,0, -v2, bondfunc);
 }
 
-SquareXYModel* SquareXYModel::clone() {
-    SquareXYModel* new_model = new SquareXYModel(N, L, J, B, Bp);
-    for (int i = 0; i < V; i++) {
-        new_model->spins[i]  = spins[i];
-    }
-    return new_model;
-}
-
-inline std::vector<double> SquareXYModel::vorticity() {
+inline std::vector<double> SquareXYModel::vorticity() const {
     float v1 = 0;
     float v2 = 0;
 
@@ -70,11 +70,11 @@ inline std::vector<double> SquareXYModel::vorticity() {
     return std::vector<double>{v1/(2*PI*N*N*L), v2/(2*PI*N*N*L)};
 }
 
-float SquareXYModel::p(int i) {
+float SquareXYModel::p(int i) const {
     return std::atan2(spins[i][1], spins[i][0]);
 }
 
-float SquareXYModel::e1() {
+float SquareXYModel::e1() const {
     float s = 0;
     for (int i = 0; i < V; i++) {
         s += std::cos(p(i) - p(neighbors[i][0]));
@@ -82,7 +82,7 @@ float SquareXYModel::e1() {
     return s/V;
 }
 
-float SquareXYModel::e2() {
+float SquareXYModel::e2() const {
     float s = 0;
     for (int i = 0; i < V; i++) {
         s += std::sin(p(i) - p(neighbors[i][0]));
@@ -90,11 +90,11 @@ float SquareXYModel::e2() {
     return s/V;
 }
 
-float SquareXYModel::U2() {
-    return e1() - V/T*pow(e2(), 2);
+float SquareXYModel::U2() const {
+    return e1() - V/temperature*std::pow(e2(), 2);
 }
 
-std::vector<double> SquareXYModel::twist_stiffness() {
+std::vector<double> SquareXYModel::twist_stiffness() const {
     // Returns the first and second derivative in response to a phase twist
     double E0 = 0.;
     double E1 = 0.;
@@ -159,7 +159,7 @@ void SquareXYModel::generate_mutation() {
 #ifdef CLUSTER_UPDATE
     cluster_update(); 
 #else
-    mut.i = r() % V;
+    mut.i = rand() % V;
 
     if (mut.i == 0) {
         mut_mode++;

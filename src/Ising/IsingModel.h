@@ -1,16 +1,9 @@
 #ifndef ISINGMC_H
 #define ISINGMC_H
 
-#include <iostream>
 #include <vector>
-#include <stdlib.h>
-#include <math.h>
-#include <random>
 #include <Eigen/Dense>
-#include <fstream>
-#include <sstream>
 #include "MonteCarlo.h"
-#include "Utility.h"
 
 class IsingModel : virtual public MCModel {
     // Generic 3D Ising model
@@ -35,7 +28,9 @@ class IsingModel : virtual public MCModel {
 
         IsingModel() {}
 
-        IsingModel(int N1, int N2, int N3);
+        void init_params(int N1, int N2, int N3);
+
+        virtual void init();
 
         inline int flat_idx(int n1, int n2, int n3) const {
             return n1 + N1*(n2 + N2*n3);
@@ -54,14 +49,17 @@ class IsingModel : virtual public MCModel {
         void randomize_spins();
 
         double get_magnetization() const;
-        virtual double energy() const;
         virtual double onsite_energy(int i) const = 0;
         virtual double bond_energy(int i) const = 0;
 
         virtual void generate_mutation();
-        virtual double energy_change();
         virtual void accept_mutation();
         virtual void reject_mutation();
+        
+        virtual double energy() const;
+        virtual double energy_change();
+
+        virtual std::map<std::string, Sample> take_samples() const;
 
         void save_spins(std::string filename);
 };

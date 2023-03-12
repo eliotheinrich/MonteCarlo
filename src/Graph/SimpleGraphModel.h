@@ -1,23 +1,21 @@
 #ifndef SIMPLEGRAPH_H
 #define SIMPLEGRAPH_H
 
-#include <iostream>
-#include <vector>
-#include <string>
-#include <stdlib.h>
-#include "../GraphModel.h"
-#include "../Utility.cpp"
+#include "GraphModel.h"
 
 class SimpleGraphModel : public GraphModel {
-    public:
+    private:
         int N;
+        float J;
+        
+    public:
+        SimpleGraphModel(Params &params);
 
-        SimpleGraphModel(int N, float J);
+        virtual MCModel* clone(Params &params) { return new SimpleGraphModel(params); }
 
-        SimpleGraphModel *clone();
+        virtual double onsite_energy(int i) const;
+        virtual double bond_energy(int i) const;
 
-        const float onsite_energy(int i);
-        const float bond_energy(int i);
 };
 
 #endif

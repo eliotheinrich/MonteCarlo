@@ -1,13 +1,8 @@
-#ifndef GRAPHMC_H
-#define GRAPHMC_H
+#ifndef GRAPH_MC_H
+#define GRAPH_MC_H
 
-#include <iostream>
 #include <vector>
-#include <stdlib.h>
-#include <math.h>
-#include <random>
 #include "MonteCarlo.h"
-#include "Utility.cpp"
 
 class GraphModel : virtual public MCModel {
 	// Generic graph model
@@ -21,31 +16,33 @@ class GraphModel : virtual public MCModel {
     public:
         int N;
 
-        float acceptance;
+        double acceptance;
 		std::vector<std::vector<int>> edges;
 		std::vector<int> vals;
 
         // Mutation being considered is stored as an attribute of the model
         GraphMutation mut;
 
-		GraphModel();
-        GraphModel(int N);
-		void init();
+		GraphModel() {}
 
-        void generate_mutation();
-        void accept_mutation();
-        void reject_mutation();
+        void init_params(int N);
+		virtual void init();
 
-        virtual const float onsite_energy(int i)=0;
-        virtual const float bond_energy(int i)=0;
-        const float energy();
+        virtual void generate_mutation();
+        virtual void accept_mutation();
+        virtual void reject_mutation();
 
-        const float energy_change();
+        virtual double onsite_energy(int i) const=0;
+        virtual double bond_energy(int i) const=0;
+
+        virtual double energy() const;
+        virtual double energy_change();
 
 		void toggle_edge(int i, int j);
-		int deg(int i);
+		int deg(int i) const;
 
-		float get_connectivity();
+		double get_connectivity() const;
+        virtual std::map<std::string, Sample> take_samples() const;
 };
 
 #endif

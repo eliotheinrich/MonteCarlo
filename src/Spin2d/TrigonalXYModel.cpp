@@ -1,12 +1,18 @@
 #include "TrigonalXYModel.h"
+#include <iostream>
+#include <functional>
+#include <string>
 
 
-TrigonalXYModel::TrigonalXYModel(int N, int L, float J, float A) : XYModel(1, N, N, L) {
-    this->N = N;
-    this->L = L;
-    this->J = J;
-    this->A = A;
+TrigonalXYModel::TrigonalXYModel(Params &params) {
+    this->N = params.geti("system_size");
+    this->L = params.geti("layers", DEFAULT_LAYERS);
+    this->J = params.getf("J");
+    this->A = params.getf("A");
 
+    Spin2DModel::init_params(1, N, N, L);
+
+    float J = this->J;
     std::function<float(Eigen::Vector2d, Eigen::Vector2d)> dotfunc = 
     [J](Eigen::Vector2d S1, Eigen::Vector2d S2) {
         return -J*S1.dot(S2);
@@ -24,16 +30,7 @@ TrigonalXYModel::TrigonalXYModel(int N, int L, float J, float A) : XYModel(1, N,
     this->mut_mode = 0;
 }
 
-
-TrigonalXYModel* TrigonalXYModel::clone() {
-    TrigonalXYModel* new_model = new TrigonalXYModel(N, L, J, A);
-    for (int i = 0; i < V; i++) {
-        new_model->spins[i] = this->spins[i];
-    }
-    return new_model;
-}
-
-inline std::vector<double> TrigonalXYModel::vorticity() {
+inline std::vector<double> TrigonalXYModel::vorticity() const {
     float v1 = 0;
     float v2 = 0;
 
@@ -88,7 +85,7 @@ void TrigonalXYModel::generate_mutation() {
 #ifdef CLUSTER_UPDATE
     cluster_update(); 
 #else
-    mut.i = r() % V;
+    mut.i = rand() % V;
 
     if (mut.i == 0) {
         mut_mode++;

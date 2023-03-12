@@ -1,18 +1,13 @@
 #include "SquareIsingModel.h"
 
-SquareIsingModel::SquareIsingModel(int N, int L, float J, float B) : IsingModel(N, N, L) {
-    this->N = N;
-    this->L = L;
-    this->J = J;
-    this->B = B;
-}
+SquareIsingModel::SquareIsingModel(Params &params) {
+    N = params.geti("system_size");
+    L = params.geti("layers", DEFAULT_LAYERS);
 
-SquareIsingModel* SquareIsingModel::clone() {
-    SquareIsingModel *new_model = new SquareIsingModel(N, L, J, B);
-    for (int i = 0; i < V; i++) {
-        new_model->spins[i] = this->spins[i];
-    }
-    return new_model;
+    IsingModel::init_params(N, N, L);
+
+    J = params.getf("J");
+    B = params.getf("B");
 }
 
 double SquareIsingModel::onsite_energy(int i) const {
@@ -38,19 +33,4 @@ double SquareIsingModel::bond_energy(int i) const {
     E -= J*spins[i]*spins[flat_idx(n1, mod(n2-1, N), n3)];
 
     return 0.5*E;
-}
-
-std::map<std::string, int> SquareIsingModel::get_int_params() const {
-    std::map<std::string, int> data;
-    data.emplace("system_size", this->N);
-    data.emplace("layers", this->L);
-    return data;
-}
-
-std::map<std::string, double> SquareIsingModel::get_double_params() const {
-    std::map<std::string, double> data;
-    data.emplace("T", this->T);
-    data.emplace("J", this->J);
-    data.emplace("B", this->B);
-    return data;
 }

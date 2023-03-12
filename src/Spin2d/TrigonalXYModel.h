@@ -1,17 +1,14 @@
 #ifndef TRIGONALXY_H
 #define TRIGONALXY_H
 
-#include <iostream>
-#include <functional>
 #include <vector>
-#include <string>
-#include <stdlib.h>
 #include <Eigen/Dense>
-#include "../XYModel.h"
-#include "../Utility.cpp"
+#include "Spin2DModel.h"
+    
+#define DEFAULT_LAYERS 1
 
-class TrigonalXYModel : public XYModel {
-    public:
+class TrigonalXYModel : public Spin2DModel {
+    private:
         int N;
         int L;
         float J;
@@ -19,11 +16,13 @@ class TrigonalXYModel : public XYModel {
 
         int mut_mode;
 
-        TrigonalXYModel(int N, int L, float J, float A);
+    public:
 
-        TrigonalXYModel* clone();
+        TrigonalXYModel(Params &params);
 
-        inline std::vector<double> vorticity();
+        virtual MCModel* clone(Params &params) { return new TrigonalXYModel(params); }
+
+        inline std::vector<double> vorticity() const;
 
         virtual double onsite_func(const Eigen::Vector2d &S) const;
 

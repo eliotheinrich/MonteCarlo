@@ -1,6 +1,19 @@
-#include "SpinModel.h"
+#include "Spin3DModel.h"
+#include <stack>
+#include <iostream>
+#include <fstream>
 
-SpinModel::SpinModel(int sl, int N1, int N2 = -1, int N3 = -1) {
+GaussianDist::GaussianDist(float mean, float std) {
+	this->rd.seed(rand());
+	this->gen = std::default_random_engine(rd());
+	this->dist = std::normal_distribution<>(mean, std);
+}
+
+float GaussianDist::sample() {
+	return dist(gen);
+}
+
+void Spin3DModel::init_params(int sl, int N1, int N2=-1, int N3=-1) {
     this->sl = sl;
     this->N1 = N1;
     if (N2 == -1) { this->N2 = N1; } else { this->N2 = N2; }
@@ -8,8 +21,14 @@ SpinModel::SpinModel(int sl, int N1, int N2 = -1, int N3 = -1) {
     this->V = N1*N2*N3*sl;
 
     this->spins = std::vector<Eigen::Vector3d>(V);
+#ifdef CLUSTER_UPDATE
     this->neighbors = std::vector<std::vector<int>>(V+1, std::vector<int>(0));
+#else
+    this->neighbors = std::vector<std::vector<int>>(V, std::vector<int>(0));
+#endif
+}
 
+void Spin3DModel::init() {
 #ifdef CLUSTER_UPDATE
     // Connect every site to the ghost 
     for (int i = 0; i < V; i++) {
@@ -26,17 +45,16 @@ SpinModel::SpinModel(int sl, int N1, int N2 = -1, int N3 = -1) {
     this->sigma = 0.25;
 
     this->dist = new GaussianDist(0., 1.0);
-    this->r.seed(rand());
 
     this->mut.i = 0;
     this->tracking = false;
 }
 
-std::vector<double> SpinModel::tracking_func(int i) {
+std::vector<double> Spin3DModel::tracking_func(int i) {
     return std::vector<double>(0);
 }
 
-std::vector<double> SpinModel::init_func() {
+std::vector<double> Spin3DModel::init_func() {
     std::vector<double> v = tracking_func(0);
     int dtype_size = v.size();
 
@@ -52,12 +70,12 @@ std::vector<double> SpinModel::init_func() {
     return v;
 }
 
-void SpinModel::start_tracking() {
+void Spin3DModel::start_tracking() {
     this->tracking = true;
     this->q = init_func();
 }
 
-inline void SpinModel::set_spin(int i, Eigen::Vector3d S) {
+inline void Spin3DModel::set_spin(int i, Eigen::Vector3d S) {
     if (tracking) {
         std::vector<double> q1 = tracking_func(i);
 
@@ -74,13 +92,13 @@ inline void SpinModel::set_spin(int i, Eigen::Vector3d S) {
     }
 }
 
-void SpinModel::randomize_spins() {
+void Spin3DModel::randomize_spins() {
     for (int i = 0; i < V; i++) {
         spins[i] = Eigen::Vector3d::Random(3).normalized();
     }
 }
 
-void SpinModel::add_bond(int d1, int d2, int d3, int ds, Eigen::Vector3d v, std::function<double(Eigen::Vector3d, Eigen::Vector3d)> bondfunc) {
+void Spin3DModel::add_bond(int d1, int d2, int d3, int ds, Eigen::Vector3d v, std::function<double(Eigen::Vector3d, Eigen::Vector3d)> bondfunc) {
     HeisBond b{d1, d2, d3, ds, v, bondfunc};
     this->bonds.push_back(b);
     int i; int j;
@@ -107,12 +125,12 @@ void SpinModel::add_bond(int d1, int d2, int d3, int ds, Eigen::Vector3d v, std:
     R3s.push_back(R*R*R);
 }
 
-std::vector<double> SpinModel::twist_terms(std::vector<double> dE) {
-    return std::vector<double>{dE[3], dE[2], dE[0], pow(dE[1],2), dE[1], dE[0]*dE[2], pow(dE[0],2)*dE[1], 
-                                dE[0]*dE[1], pow(dE[0],2), pow(dE[0],4), pow(dE[0],3)};
+std::vector<double> Spin3DModel::twist_terms(std::vector<double> dE) {
+    return std::vector<double>{dE[3], dE[2], dE[0], pow(dE[1],2), dE[1], dE[0]*dE[2], std::pow(dE[0],2)*dE[1], 
+                                dE[0]*dE[1], std::pow(dE[0],2), std::pow(dE[0],4), std::pow(dE[0],3)};
 }
 
-std::vector<double> SpinModel::twist_derivatives(int i) {
+std::vector<double> Spin3DModel::twist_derivatives(int i) const {
     double E0 = 0.;
     double E1 = 0.;
     double E2 = 0.;
@@ -149,7 +167,7 @@ std::vector<double> SpinModel::twist_derivatives(int i) {
     return std::vector<double>{d1E, d2E, d3E, d4E};
 }
 
-const std::vector<double> SpinModel::twist_derivatives() {
+std::vector<double> Spin3DModel::twist_derivatives() const {
     std::vector<double> twist = std::vector<double>(4, 0);
     std::vector<double> twist_i = std::vector<double>(4, 0);
 
@@ -163,7 +181,7 @@ const std::vector<double> SpinModel::twist_derivatives() {
     return twist;
 }
 
-Eigen::Vector3d SpinModel::get_magnetization() const {
+Eigen::Vector3d Spin3DModel::get_magnetization() const {
     Eigen::Vector3d M = Eigen::Vector3d::Constant(0);
     for (int i = 0; i < V; i++) {
         M += spins[i];
@@ -176,7 +194,7 @@ Eigen::Vector3d SpinModel::get_magnetization() const {
 #endif
 }
 
-const std::vector<double> SpinModel::correlation_function(int i, int a = 2, int b = 2) {
+std::vector<double> Spin3DModel::correlation_function(int i, int a = 2, int b = 2) const {
     std::vector<double> Cij = std::vector<double>(V); 
 
     int j;
@@ -198,7 +216,7 @@ const std::vector<double> SpinModel::correlation_function(int i, int a = 2, int 
     return Cij;
 }
 
-const std::vector<double> SpinModel::full_correlation_function(int i) {
+std::vector<double> Spin3DModel::full_correlation_function(int i) const {
     std::vector<double> Cij = std::vector<double>(V); 
 
     int j;
@@ -220,7 +238,7 @@ const std::vector<double> SpinModel::full_correlation_function(int i) {
     return Cij;
 }
 
-const double SpinModel::skyrmion_density(int i) {
+double Spin3DModel::skyrmion_density(int i) const {
     int j;
 
     Eigen::Vector3d dSdX; dSdX << 0., 0., 0.;
@@ -241,7 +259,7 @@ const double SpinModel::skyrmion_density(int i) {
     return spins[i].dot(dSdX.cross(dSdY));
 }
 
-const std::vector<double> SpinModel::skyrmion_correlation_function(int i) {
+std::vector<double> Spin3DModel::skyrmion_correlation_function(int i) const {
     std::vector<double> Cij = std::vector<double>(V); 
 
     int j;
@@ -267,11 +285,11 @@ const std::vector<double> SpinModel::skyrmion_correlation_function(int i) {
 }
 
 #ifdef CLUSTER_UPDATE
-void SpinModel::cluster_update() {
+void Spin3DModel::cluster_update() {
     s.clear();
 
     std::stack<int> c;
-    int m = r() % V;
+    int m = rand() % V;
     c.push(m);
 
     Eigen::Vector3d ax; ax << dist->sample(), dist->sample(), dist->sample();
@@ -309,7 +327,7 @@ void SpinModel::cluster_update() {
                         dE = bonds[n].bondfunc(spins[j], s_new) - bonds[n].bondfunc(spins[j], spins[m]);
                     }
 
-                    if ((double) r()/RAND_MAX < 1. - std::exp(-dE/T)) {
+                    if (randf() < 1. - std::exp(-dE/temperature)) {
                         c.push(j);
                     }
                 }
@@ -324,11 +342,11 @@ void SpinModel::cluster_update() {
     }
 }
 
-void SpinModel::generate_mutation() {
+void Spin3DModel::generate_mutation() {
     cluster_update();
 }
 #else
-void SpinModel::metropolis_mutation() {
+void Spin3DModel::metropolis_mutation() {
     if (acceptance > 0.5) {
         sigma = std::min(2., 1.01*sigma);
 
@@ -346,24 +364,24 @@ void SpinModel::metropolis_mutation() {
     this->mut.dS = S2 - spins[mut.i];
 }
 
-void SpinModel::generate_mutation() {
-    mut.i = r() % V;
+void Spin3DModel::generate_mutation() {
+    mut.i = rand() % V;
     metropolis_mutation();
 }
 #endif
 
 
-void SpinModel::accept_mutation() {
+void Spin3DModel::accept_mutation() {
     return;
 }
 
-void SpinModel::reject_mutation() {
+void Spin3DModel::reject_mutation() {
 #ifndef CLUSTER_UPDATE
     set_spin(mut.i, spins[mut.i] - mut.dS);
 #endif
 }
 
-double SpinModel::onsite_energy(int i) const {
+double Spin3DModel::onsite_energy(int i) const {
 #ifdef CLUSTER_UPDATE
     return onsite_func(s0.transpose()*spins[i]);
 #else
@@ -371,7 +389,7 @@ double SpinModel::onsite_energy(int i) const {
 #endif
 }
 
-double SpinModel::bond_energy(int i) const {
+double Spin3DModel::bond_energy(int i) const {
     double E = 0.;
     int j;
     for (int n = 0; n < bonds.size(); n++) {
@@ -382,7 +400,7 @@ double SpinModel::bond_energy(int i) const {
     return E;
 }
 
-double SpinModel::energy() const {
+double Spin3DModel::energy() const {
     double E = 0;
 
     for (int i = 0; i < V; i++) {
@@ -393,7 +411,7 @@ double SpinModel::energy() const {
     return E;
 }
 
-double SpinModel::energy_change() {
+double Spin3DModel::energy_change() {
 #ifdef CLUSTER_UPDATE
     return -1.;
 #else
@@ -406,7 +424,7 @@ double SpinModel::energy_change() {
 }
 
 // Saves current spin configuration
-void SpinModel::save_spins(std::string filename) {
+void Spin3DModel::save_spins(std::string filename) {
     std::ofstream output_file;
     output_file.open(filename);
     output_file << N1 << "\t" << N2 << "\t" << N3 << "\t" << sl << "\n";
@@ -421,4 +439,11 @@ void SpinModel::save_spins(std::string filename) {
         if (i < V-1) { output_file << "\t"; }
     }
     output_file.close();
+}
+
+std::map<std::string, Sample> Spin3DModel::take_samples() const {
+    std::map<std::string, Sample> samples;
+    samples.emplace("energy", energy());
+    samples.emplace("magnetization", get_magnetization().norm());
+    return samples;
 }

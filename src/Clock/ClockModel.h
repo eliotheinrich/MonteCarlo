@@ -1,17 +1,13 @@
 #ifndef CLOCKMC_H
 #define CLOCKMC_H
 
-#include <iostream>
 #include <vector>
 #include <unordered_set>
 #include <stack>
-#include <stdlib.h>
 #include <math.h>
-#include <random>
 #include <Eigen/Dense>
 #include <fstream>
 #include "MonteCarlo.h"
-#include "Utility.h"
 
 template <int q>
 class ClockModel : virtual public MCModel {
@@ -44,23 +40,23 @@ class ClockModel : virtual public MCModel {
 
         std::unordered_set<int> s;
 
-        std::minstd_rand r;
-
         // Mutation being considered is stored as an attribute of the model
         ClockMutation mut;
         int mut_mode;
 
         ClockModel();
-        ClockModel(int N1, int N2, int N3) {
+
+        void init_params(int N1, int N2, int N3) {
             this->N1 = N1;
             this->N2 = N2;
             this->N3 = N3;
             this->V = N1*N2*N3;
+        }
 
+        virtual void init() {
             this->spins = std::vector<int>(V);
             this->neighbors = std::vector<std::vector<int>>(V, std::vector<int>(0));
 
-            this->r.seed(rand());
             this->randomize_spins();
 
             this->mut.i = 0;
@@ -84,7 +80,7 @@ class ClockModel : virtual public MCModel {
         void randomize_spins() {
             for (int i = 0; i < V; i++) {
                 // For each site, initialize spin randomly
-                spins[i] = r() % q;
+                spins[i] = rand() % q;
             }
         }
 
@@ -130,25 +126,25 @@ class ClockModel : virtual public MCModel {
             float M = 0;
             float x = 0; float y = 0;
             for (int i = 0; i < V; i++) {
-                x += cos(2*PI*spins[i]/q);
-                y += sin(2*PI*spins[i]/q);
+                x += std::cos(2*PI*spins[i]/q);
+                y += std::sin(2*PI*spins[i]/q);
             }
             
-            return sqrt(x*x + y*y)/(N1*N2*N3);
+            return std::sqrt(x*x + y*y)/(N1*N2*N3);
         }
 
         void metropolis_mutation() {
-            mut.dq = r() % 3 - 1;
+            mut.dq = rand() % 3 - 1;
         }
 
         void cluster_update() {
             s.clear();
 
             std::stack<int> c;
-            int m = r() % V;
+            int m = rand() % V;
             c.push(m);
 
-            int p = r() % q;
+            int p = rand() % q;
 
             int j; float dE;
             int s_new; 
@@ -166,7 +162,7 @@ class ClockModel : virtual public MCModel {
 
                         if (!s.count(j)) {
                             dE = bonds[n].bondfunc(spins[j], s_new) - bonds[n].bondfunc(spins[j], spins[m]);
-                            if ((float) r()/RAND_MAX < 1. - std::exp(-dE/T)) {
+                            if (randf() < 1. - std::exp(-dE/temperature)) {
                                 c.push(j);
                             }
                         }
@@ -222,6 +218,13 @@ class ClockModel : virtual public MCModel {
                 if (i < V - 1) { output_file << "\t"; }
             }
             output_file.close();
+        }
+
+        virtual std::map<std::string, Sample> take_samples() const {
+            std::map<std::string, Sample> samples;
+            samples.emplace("energy", energy());
+            samples.emplace("magnetization", get_magnetization());
+            return samples;
         }
 };
 

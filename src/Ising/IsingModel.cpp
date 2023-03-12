@@ -1,16 +1,19 @@
 #include "IsingModel.h"
+#include <fstream>
+#include <math.h>
 
-IsingModel::IsingModel(int N1, int N2, int N3) {
+void IsingModel::init_params(int N1, int N2, int N3) {
     this->N1 = N1;
     this->N2 = N2;
     this->N3 = N3;
     this->V = N1*N2*N3;
 
-    this->spins = std::vector<float>(V);
-
-    this->randomize_spins();
-
     this->acceptance = 0.5;
+}
+
+void IsingModel::init() {
+    this->spins = std::vector<float>(V);
+    this->randomize_spins();
 }
 
 void IsingModel::randomize_spins() {
@@ -35,7 +38,7 @@ double IsingModel::get_magnetization() const {
 
 void IsingModel::generate_mutation() {
     // Randomly select a site to mutate
-    mut.i = std::rand() % V;
+    mut.i = rand() % V;
 }
 
 void IsingModel::accept_mutation() {
@@ -62,6 +65,13 @@ double IsingModel::energy_change() {
     float E2 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
 
     return E2 - E1;
+}
+
+std::map<std::string, Sample> IsingModel::take_samples() const {
+    std::map<std::string, Sample> samples;
+    samples.emplace("energy", energy());
+    samples.emplace("magnetization", get_magnetization());
+    return samples;
 }
 
 // Saves current spin configuration

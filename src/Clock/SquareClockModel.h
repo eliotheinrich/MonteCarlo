@@ -1,15 +1,10 @@
 #ifndef SQUARECLOCK_H
 #define SQUARECLOCK_H
 
-#include <iostream>
-#include <functional>
-#include <vector>
-#include <string>
-#include <stdlib.h>
 #include <Eigen/Dense>
-#include <complex>
-#include "../ClockModel.h"
-#include "../Utility.cpp"
+#include "ClockModel.h"
+
+#define DEFAULT_LAYERS 1
 
 template <int q>
 class SquareClockModel : public ClockModel<q> {
@@ -20,9 +15,9 @@ class SquareClockModel : public ClockModel<q> {
 
         float bond_table[q][q];
 
-        SquareClockModel(int N, int L, float J);
+        SquareClockModel(Params &params);
 
-        SquareClockModel<q>* clone();
+        virtual MCModel* clone(Params &params) { return new SquareClockModel<q>(params); };
 
         virtual double onsite_energy(int i) const;
 };

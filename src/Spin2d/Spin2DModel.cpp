@@ -1,6 +1,9 @@
-#include "XYModel.h"
-    
-XYModel::XYModel(int sl, int N1, int N2 = -1, int N3 = -1) {
+#include "Spin2DModel.h"
+#include <math.h>
+#include <iostream>
+#include <fstream>
+
+void Spin2DModel::init_params(int sl, int N1, int N2=-1, int N3=-1) {
     this->sl = sl;
     this->N1 = N1;
     if (N2 == -1) { this->N2 = N1; } else { this->N2 = N2; }
@@ -8,40 +11,42 @@ XYModel::XYModel(int sl, int N1, int N2 = -1, int N3 = -1) {
     this->V = N1*N2*N3*sl;
 
     this->spins = std::vector<Eigen::Vector2d>(V);
-
 #ifdef CLUSTER_UPDATE
     this->neighbors = std::vector<std::vector<int>>(V+1, std::vector<int>(0));
-    this->s0 = Eigen::Matrix2f::Identity();
+#else
+    this->neighbors = std::vector<std::vector<int>>(V, std::vector<int>(0));
+#endif
+
+}
+
+void Spin2DModel::init() {
+#ifdef CLUSTER_UPDATE
+    this->s0 = Eigen::Matrix2d::Identity();
     // Connect every site to the ghost 
     for (int i = 0; i < V; i++) {
         neighbors[V].push_back(i);
         neighbors[i].push_back(V);
     }
-#else
-    this->neighbors = std::vector<std::vector<int>>(V, std::vector<int>(0));
 #endif
 
     this->randomize_spins();
-
-
-    this->r.seed(rand());
 
     this->mut.i = 0;
     this->sigma = 0.25;
 }
 
-void XYModel::randomize_spins() {
+void Spin2DModel::randomize_spins() {
     float p;
     Eigen::Vector2d v;
 
     for (int i = 0; i < V; i++) {
-        p = 2*PI*float(r())/float(RAND_MAX);
-        spins[i] << cos(p), sin(p);
+        p = 2*PI*randf();
+        spins[i] << std::cos(p), std::sin(p);
     }
 }
 
-void XYModel::add_bond(int d1, int d2, int d3, int ds, Eigen::Vector3d v, std::function<float(Eigen::Vector2d, Eigen::Vector2d)> bondfunc) {
-    XYBond b{d1, d2, d3, ds, v, bondfunc};
+void Spin2DModel::add_bond(int d1, int d2, int d3, int ds, Eigen::Vector3d v, std::function<float(Eigen::Vector2d, Eigen::Vector2d)> bondfunc) {
+    Spin2DBond b{d1, d2, d3, ds, v, bondfunc};
     this->bonds.push_back(b);
     int i; int j;
     for (int n1 = 0; n1 < N1; n1++) {
@@ -59,13 +64,13 @@ void XYModel::add_bond(int d1, int d2, int d3, int ds, Eigen::Vector3d v, std::f
 
     Eigen::Matrix2d R;
     R << std::cos(v[0]*alpha), -std::sin(v[0]*alpha),
-            std::sin(v[0]*alpha), std::cos(v[0]*alpha);
+         std::sin(v[0]*alpha),  std::cos(v[0]*alpha);
     R1s.push_back(R);
     R2s.push_back(R*R);
     R3s.push_back(R*R*R);
 }
 
-std::vector<double> XYModel::twist_stiffness() {
+std::vector<double> Spin2DModel::twist_stiffness() const {
     // Returns the first and second derivative in response to a phase twist
     double E0 = 0.;
     double E1 = 0.;
@@ -109,7 +114,7 @@ std::vector<double> XYModel::twist_stiffness() {
                                 d1E*d2E, pow(d1E,2), pow(d1E,4), pow(d1E,3)};
 }
 
-Eigen::Vector2d XYModel::get_magnetization() {
+Eigen::Vector2d Spin2DModel::get_magnetization() const {
     Eigen::Vector2d M = Eigen::Vector2d::Constant(0);
     for (int i = 0; i < V; i++) {
         M += spins[i];
@@ -122,25 +127,25 @@ Eigen::Vector2d XYModel::get_magnetization() {
 #endif
 }
 
-void XYModel::generate_mutation() {
+void Spin2DModel::generate_mutation() {
 #ifdef CLUSTER_UPDATE
     cluster_update();
 #else
-    mut.i = r() % V;
+    mut.i = rand() % V;
     metropolis_mutation();
 #endif
 }
 
-void XYModel::cluster_update() {
+void Spin2DModel::cluster_update() {
     s.clear();
 
     std::stack<int> c;
-    int m = r() % (V + 1);
+    int m = rand() % (V + 1);
     Eigen::Matrix2d s0_new;
     bool is_ghost; bool neighbor_is_ghost;
     c.push(m);
 
-    float p = (float) 2*PI*r()/RAND_MAX;
+    float p = (float) 2*PI*rand()/RAND_MAX;
     Eigen::Vector2d ax; ax << std::cos(p), std::sin(p);
     Eigen::Matrix2d R = Eigen::Matrix2d::Identity() - 2*ax*ax.transpose()/std::pow(ax.norm(), 2);
 
@@ -172,7 +177,7 @@ void XYModel::cluster_update() {
                         dE = bonds[n].bondfunc(spins[j], s_new) - bonds[n].bondfunc(spins[j], spins[m]);
                     }
 
-                    if ((float) r()/RAND_MAX < 1. - std::exp(-dE/T)) {
+                    if (randf() < 1. - std::exp(-dE/temperature)) {
                         c.push(j);
                     }
                 }
@@ -187,8 +192,8 @@ void XYModel::cluster_update() {
     }
 }
 
-void XYModel::metropolis_mutation() {
-    float dp = sigma*(float(r())/float(RAND_MAX) - 0.5)*2.*PI;
+void Spin2DModel::metropolis_mutation() {
+    float dp = sigma*(randf() - 0.5)*2.*PI;
     Eigen::Vector2d S1 = spins[mut.i];
     Eigen::Vector2d S2; S2 << std::cos(dp)*S1[0]
                         - std::sin(dp)*S1[1],
@@ -200,17 +205,17 @@ void XYModel::metropolis_mutation() {
 }
 
 
-void XYModel::accept_mutation() {
+void Spin2DModel::accept_mutation() {
     return;
 }
 
-void XYModel::reject_mutation() {
+void Spin2DModel::reject_mutation() {
 #ifndef CLUSTER_UPDATE
     spins[mut.i] = spins[mut.i] - mut.dS;
 #endif
 }
 
-double XYModel::onsite_energy(int i) const {
+double Spin2DModel::onsite_energy(int i) const {
 #ifdef CLUSTER_UPDATE
     return onsite_func(s0.transpose()*spins[i]);
 #else
@@ -218,7 +223,7 @@ double XYModel::onsite_energy(int i) const {
 #endif
 }
 
-double XYModel::bond_energy(int i) const {
+double Spin2DModel::bond_energy(int i) const {
     float E = 0.;
     int j;
     for (int n = 0; n < bonds.size(); n++) {
@@ -229,7 +234,7 @@ double XYModel::bond_energy(int i) const {
     return E;
 }
 
-double XYModel::energy() const {
+double Spin2DModel::energy() const {
     float E = 0;
 
     for (int i = 0; i < V; i++) {
@@ -240,7 +245,7 @@ double XYModel::energy() const {
     return E;
 }
 
-double XYModel::energy_change() {
+double Spin2DModel::energy_change() {
 #ifdef CLUSTER_UPDATE
     return -1.;
 #else
@@ -251,7 +256,7 @@ double XYModel::energy_change() {
 #endif
 }
 
-void XYModel::save_spins(std::string filename) {
+void Spin2DModel::save_spins(std::string filename) {
     std::ofstream output_file;
     output_file.open(filename);
     output_file << N1 << "\t" << N2 << "\t" << N3 << "\t" << sl << "\n";
@@ -267,4 +272,11 @@ void XYModel::save_spins(std::string filename) {
         if (i < V-1) { output_file << "\t"; }
     }
     output_file.close();
+}
+
+std::map<std::string, Sample> Spin2DModel::take_samples() const {
+    std::map<std::string, Sample> samples;
+    samples.emplace("energy", energy());
+    samples.emplace("magnetization", get_magnetization().norm());
+    return samples;
 }

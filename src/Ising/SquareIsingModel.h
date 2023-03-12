@@ -1,13 +1,9 @@
 #ifndef SQUAREISING_H
 #define SQUAREISING_H
 
-#include <iostream>
-#include <vector>
-#include <string>
-#include <stdlib.h>
-#include <Eigen/Dense>
 #include "IsingModel.h"
-#include "Utility.h"
+
+#define DEFAULT_LAYERS 1
 
 class SquareIsingModel : public IsingModel {
     public:
@@ -16,17 +12,12 @@ class SquareIsingModel : public IsingModel {
         float J;
         float B;
 
-        SquareIsingModel(int N, int L, float J, float B);
+        SquareIsingModel(Params &params);
 
-        SquareIsingModel *clone();
+        virtual MCModel* clone(Params &params) { return new SquareIsingModel(params); }
 
-        double onsite_energy(int i) const;
-
-        double bond_energy(int i) const;
-
-
-        virtual std::map<std::string, int> get_int_params() const;
-        virtual std::map<std::string, double> get_double_params() const;
+        virtual double onsite_energy(int i) const;
+        virtual double bond_energy(int i) const;
 };
 
 #endif
