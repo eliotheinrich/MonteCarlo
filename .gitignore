@@ -11,5 +11,6 @@ __pycache__
 *.ipynb
 CMakeFiles
 build
+cmake
 CTPL
 
