@@ -27,6 +27,7 @@ class IsingModel : virtual public MCModel {
         IsingMutation mut;
 
         IsingModel() {}
+        virtual ~IsingModel() {}
 
         void init_params(int N1, int N2, int N3);
 

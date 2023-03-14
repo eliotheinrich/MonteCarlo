@@ -74,6 +74,8 @@ class Spin3DModel : virtual public MCModel {
 
         Spin3DModel() {}
 
+        virtual ~Spin3DModel() { delete dist; }
+
         void init_params(int sl, int N1, int N2, int N3);
         virtual void init();
 

@@ -21,8 +21,6 @@ class SquareXYModel : public Spin2DModel {
     public:
         SquareXYModel(Params &params);
 
-        virtual MCModel* clone(Params &params) { return new SquareXYModel(params); };
-
         inline std::vector<double> vorticity() const;
 
         float p(int i) const;
@@ -36,6 +34,9 @@ class SquareXYModel : public Spin2DModel {
         void over_relaxation_mutation();
 
         void generate_mutation();
+
+
+        CLONE(MCModel, SquareXYModel)
 };
 
 #endif

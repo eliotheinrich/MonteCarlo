@@ -17,11 +17,12 @@ class XXZHeis : public Spin3DModel {
     public:
         XXZHeis(Params &params);
 
-        virtual MCModel* clone(Params &params) { return new XXZHeis(params); }
 
         inline std::vector<double> vorticity() const;
 
         virtual double onsite_func(const Eigen::Vector3d &S) const;
+        
+        CLONE(MCModel, XXZHeis)
 };
 
 #endif

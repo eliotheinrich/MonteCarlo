@@ -22,12 +22,8 @@ class TrigonalModel : public Spin3DModel {
         int mut_counter;
         int mut_mode;
 
-        GaussianDist *dist_r;
-
     public:
         TrigonalModel(Params &params);
-
-        virtual MCModel* clone(Params &params) { return new TrigonalModel(params); }
 
         void over_relaxation_mutation();
 
@@ -49,6 +45,8 @@ class TrigonalModel : public Spin3DModel {
 
 
         virtual std::map<std::string, Sample> take_samples() const;
+
+        CLONE(MCModel, TrigonalModel)
 };
 
 #endif

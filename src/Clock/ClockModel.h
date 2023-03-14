@@ -45,6 +45,7 @@ class ClockModel : virtual public MCModel {
         int mut_mode;
 
         ClockModel();
+        virtual ~ClockModel() {}
 
         void init_params(int N1, int N2, int N3) {
             this->N1 = N1;

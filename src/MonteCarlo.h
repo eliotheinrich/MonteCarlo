@@ -53,7 +53,10 @@ class MCModel {
         // Give all MCModels a source of random numbers
         int rand() { return (*rng)(); }
         float randf() { return float(rand())/float(RAND_MAX); }
+
         MCModel(int seed=DEFAULT_RANDOM_SEED) : rng(new std::minstd_rand(seed)) {}
+
+        virtual ~MCModel() { delete rng; }
 
         // To be overridden by child classes
         virtual double energy() const = 0;
@@ -66,7 +69,7 @@ class MCModel {
         // expensive operations to the init function
         // This may lead to performance increases for small timesteps and large system sizes
         virtual void init() {}
-        virtual MCModel* clone(Params &params) = 0;
+        virtual std::unique_ptr<MCModel> clone(Params &params)=0;
 
         virtual std::map<std::string, Sample> take_samples() const {
             return std::map<std::string, Sample>();
@@ -75,7 +78,6 @@ class MCModel {
 
 class MonteCarloSimulator : public Simulator {
     private:
-        std::minstd_rand *rng;
         int random_seed;
 
         // For annealing
@@ -84,26 +86,23 @@ class MonteCarloSimulator : public Simulator {
         double init_temperature;
         double temperature;
 
-        MCModel *model;
+        std::unique_ptr<MCModel> model;
     
     public:
-        MonteCarloSimulator(Params &params, MCModel *model);
-
-        uint rand() { return (*rng)(); }
-        float randf() { return float(rand())/float(RAND_MAX); }
+        MonteCarloSimulator(Params &params, std::unique_ptr<MCModel> model);
 
         virtual void init_state();
         virtual void timesteps(uint num_steps);
         virtual void equilibration_timesteps(uint num_steps);
-        virtual Simulator* clone(Params &params) { return new MonteCarloSimulator(params, model); }
+        virtual std::unique_ptr<Simulator> clone(Params &params) { return std::unique_ptr<Simulator>(new MonteCarloSimulator(params, model->clone(params))); }
         virtual std::map<std::string, Sample> take_samples() { return model->take_samples(); };
 };
 
 // TODO remove
-static std::vector<std::string> split(std::string *s, std::string delim) {
+static std::vector<std::string> split(std::string &s, std::string delim) {
     std::vector<std::string> vals(0);
 
-    std::string str = *s;
+    std::string str = s;
     int pos = 0;
     std::string token;
     while ((pos = str.find(delim)) != std::string::npos) {

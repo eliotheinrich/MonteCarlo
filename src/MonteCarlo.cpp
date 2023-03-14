@@ -1,17 +1,13 @@
 #include "MonteCarlo.h"
 #include <iostream>
 
-MonteCarloSimulator::MonteCarloSimulator(Params &params, MCModel *model) {
+MonteCarloSimulator::MonteCarloSimulator(Params &params, std::unique_ptr<MCModel> model) : Simulator(params) {
     temperature = params.getf("temperature");
     init_temperature = params.getf("initial_temperature", temperature);
     num_cooling_steps = params.getf("num_cooling_steps", DEFAULT_NUM_COOLING_STEPS);
     cooling_schedule = parse_cooling_schedule(params.gets("cooling_schedule", DEFAULT_COOLING_SCHEDULE));
-    random_seed = params.geti("random_seed", DEFAULT_RANDOM_SEED);
 
-    if (random_seed == -1) rng = new std::minstd_rand();
-    else rng = new std::minstd_rand(random_seed);
-
-    this->model = model->clone(params);
+    this->model = std::move(model);
 }
 
 void MonteCarloSimulator::init_state() {

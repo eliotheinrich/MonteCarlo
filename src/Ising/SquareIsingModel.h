@@ -14,10 +14,10 @@ class SquareIsingModel : public IsingModel {
 
         SquareIsingModel(Params &params);
 
-        virtual MCModel* clone(Params &params) { return new SquareIsingModel(params); }
-
         virtual double onsite_energy(int i) const;
         virtual double bond_energy(int i) const;
+
+        CLONE(MCModel, SquareIsingModel)
 };
 
 #endif

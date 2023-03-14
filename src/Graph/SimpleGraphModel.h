@@ -11,10 +11,10 @@ class SimpleGraphModel : public GraphModel {
     public:
         SimpleGraphModel(Params &params);
 
-        virtual MCModel* clone(Params &params) { return new SimpleGraphModel(params); }
-
         virtual double onsite_energy(int i) const;
         virtual double bond_energy(int i) const;
+
+        CLONE(MCModel, SimpleGraphModel)
 
 };
 

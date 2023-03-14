@@ -55,6 +55,7 @@ class Spin2DModel : virtual public MCModel {
         Spin2DMutation mut;
 
         Spin2DModel() {}
+        virtual ~Spin2DModel() {}
 
         void init_params(int sl, int N1, int N2, int N3);
 

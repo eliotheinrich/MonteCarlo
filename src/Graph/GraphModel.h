@@ -24,6 +24,7 @@ class GraphModel : virtual public MCModel {
         GraphMutation mut;
 
 		GraphModel() {}
+        virtual ~GraphModel() {}
 
         void init_params(int N);
 		virtual void init();

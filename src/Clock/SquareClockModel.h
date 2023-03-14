@@ -17,9 +17,9 @@ class SquareClockModel : public ClockModel<q> {
 
         SquareClockModel(Params &params);
 
-        virtual MCModel* clone(Params &params) { return new SquareClockModel<q>(params); };
-
         virtual double onsite_energy(int i) const;
+
+        CLONE(MCModel, SquareClockModel<q>)
 };
 
 #include "SquareClockModel.cpp"
