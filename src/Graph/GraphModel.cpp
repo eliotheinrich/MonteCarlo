@@ -1,6 +1,6 @@
 #include "GraphModel.h"
 
-void GraphModel::init_params(int N) {
+void GraphModel::init_params(ull N) {
 	this->N = N;
 }
 

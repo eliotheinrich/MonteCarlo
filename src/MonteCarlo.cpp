@@ -15,7 +15,8 @@ void MonteCarloSimulator::init_state() {
 }
 
 void MonteCarloSimulator::timesteps(uint num_steps) {
-    for (uint i = 0; i < num_steps; i++) {
+    ull num_updates = model->system_size()*num_steps;
+    for (ull i = 0; i < num_updates; i++) {
         model->generate_mutation();
         double dE = model->energy_change();
 

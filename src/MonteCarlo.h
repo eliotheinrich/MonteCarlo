@@ -8,8 +8,9 @@
 #include <DataFrame.hpp>
 #include <Simulator.hpp>
 
+using ull = unsigned long long int;
+
 #define PI 3.14159265
-//#define BOLTZMANN_CONSTANT 0.08617
 
 #define DEFAULT_COOLING_SCHEDULE "constant"
 #define DEFAULT_NUM_COOLING_STEPS 100
@@ -74,6 +75,8 @@ class MCModel {
         virtual std::map<std::string, Sample> take_samples() {
             return std::map<std::string, Sample>();
         }
+
+        virtual ull system_size() const=0;
 };
 
 class MonteCarloSimulator : public Simulator {

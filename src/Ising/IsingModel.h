@@ -18,7 +18,7 @@ class IsingModel : virtual public MCModel {
         int N1;
         int N2;
         int N3;
-        int V;
+        ull V;
 
         float acceptance;
         std::vector<float> spins;
@@ -30,8 +30,15 @@ class IsingModel : virtual public MCModel {
         virtual ~IsingModel() {}
 
         void init_params(int N1, int N2, int N3);
-
         virtual void init();
+
+        virtual ull system_size() const {
+#ifdef CLUSTER_UPDATE
+            return V;
+#else
+            return 1;
+#endif
+        }
 
         inline int flat_idx(int n1, int n2, int n3) const {
             return n1 + N1*(n2 + N2*n3);

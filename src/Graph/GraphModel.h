@@ -14,7 +14,7 @@ class GraphModel : virtual public MCModel {
 
 
     public:
-        int N;
+        ull N;
 
         double acceptance;
 		std::vector<std::vector<int>> edges;
@@ -26,8 +26,11 @@ class GraphModel : virtual public MCModel {
 		GraphModel() {}
         virtual ~GraphModel() {}
 
-        void init_params(int N);
+        void init_params(ull N);
 		virtual void init();
+        virtual ull system_size() const {
+            return N;
+        }
 
         virtual void generate_mutation();
         virtual void accept_mutation();

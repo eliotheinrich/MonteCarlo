@@ -34,7 +34,7 @@ class Spin2DModel : virtual public MCModel {
         int N1;
         int N2;
         int N3;
-        int V;
+        ull V;
 
         float acceptance;
         float sigma;
@@ -58,8 +58,15 @@ class Spin2DModel : virtual public MCModel {
         virtual ~Spin2DModel() {}
 
         void init_params(int sl, int N1, int N2, int N3);
-
         virtual void init();
+
+        virtual ull system_size() const {
+#ifdef CLUSTER_UPDATE
+            return V;
+#else
+            return 1;
+#endif
+        }
 
         inline int flat_idx(int n1, int n2, int n3, int s) const {
             return n1 + N1*(n2 + N2*(n3 + N3*s));

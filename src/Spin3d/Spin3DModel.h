@@ -47,7 +47,7 @@ class Spin3DModel : virtual public MCModel {
         int N1;
         int N2;
         int N3;
-        int V;
+        ull V;
 
         float acceptance;
         double sigma;
@@ -73,11 +73,18 @@ class Spin3DModel : virtual public MCModel {
         GaussianDist dist;
 
         Spin3DModel() {}
-
         virtual ~Spin3DModel() {}
 
         void init_params(int sl, int N1, int N2, int N3);
         virtual void init();
+
+        virtual ull system_size() const {
+#ifdef CLUSTER_UPDATE
+            return V;
+#else
+            return 1;
+#endif
+        }
 
         // -- Currently unused -- //
         virtual std::vector<double> tracking_func(int i);
