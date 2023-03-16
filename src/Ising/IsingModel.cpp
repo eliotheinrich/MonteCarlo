@@ -67,7 +67,7 @@ double IsingModel::energy_change() {
     return E2 - E1;
 }
 
-std::map<std::string, Sample> IsingModel::take_samples() const {
+std::map<std::string, Sample> IsingModel::take_samples() {
     std::map<std::string, Sample> samples;
     samples.emplace("energy", energy());
     samples.emplace("magnetization", get_magnetization());

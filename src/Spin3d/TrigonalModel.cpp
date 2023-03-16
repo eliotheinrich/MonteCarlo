@@ -161,32 +161,40 @@ void TrigonalModel::dynamic_step(float dt) {
     }
 }
 
+#define c_bond 7.7072
+#define a_bond 4.6926
+
 Eigen::Vector3d TrigonalModel::rel_pos(uint i) const {
     Eigen::Vector4i idx = tensor_idx(i);
     uint n1 = idx[0]; uint n2 = idx[1]; uint n3 = idx[2];
 
-    Eigen::Vector3d pos; pos << 0.5*(n1 + n2), std::sqrt(3)/2.*(n1 - n2), n3;
+    Eigen::Vector3d pos; pos << a_bond*0.5*(n1 + n2), a_bond*std::sqrt(3)/2.*(n1 - n2), c_bond*n3;
     return pos;
 }
 
 double TrigonalModel::intensity(Eigen::Vector3d Q) const {
     Eigen::Vector3cd structure_factor; structure_factor << 0., 0., 0.;
     for (uint i = 0; i < V; i++) {
-        structure_factor += spins[i]*std::exp(std::complex<double>(0., 1.)*Q.dot(rel_pos(i)));
+        structure_factor += spins[i]*std::exp(std::complex<double>(0., Q.dot(rel_pos(i))));
     }
-    return std::pow(std::abs(structure_factor.norm()), 2)/(V*V);
+    return std::pow(std::abs(structure_factor.norm())/V, 2);
 }
 
 
-std::map<std::string, Sample> TrigonalModel::take_samples() const {
+std::map<std::string, Sample> TrigonalModel::take_samples() {
     std::map<std::string, Sample> samples = Spin3DModel::take_samples();
+    /*
     std::vector<double> tterms = twist_derivatives();
     samples.emplace("d1E", tterms[0]);
     samples.emplace("d2E", tterms[1]);
     samples.emplace("d3E", tterms[2]);
     samples.emplace("d4E", tterms[3]);
-    
-    Eigen::Vector3d gamma; gamma << 0., 0., 0.;
-    samples.emplace("intensity_gamma", intensity(gamma));
+    */
+
+    for (uint i = 0; i < 30; i++) {
+        Eigen::Vector3d q; q << 0., 0., double(i)/30;
+        samples.emplace("intensity_" + std::to_string(i), intensity(q));
+    }    
     return samples;
 }
+

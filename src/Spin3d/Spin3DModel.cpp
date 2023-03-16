@@ -44,7 +44,7 @@ void Spin3DModel::init() {
     this->acceptance = 0.5;
     this->sigma = 0.25;
 
-    this->dist = new GaussianDist(0., 1.0);
+    this->dist = GaussianDist(0., 1.0);
 
     this->mut.i = 0;
     this->tracking = false;
@@ -292,7 +292,7 @@ void Spin3DModel::cluster_update() {
     int m = rand() % V;
     c.push(m);
 
-    Eigen::Vector3d ax; ax << dist->sample(), dist->sample(), dist->sample();
+    Eigen::Vector3d ax; ax << dist.sample(), dist.sample(), dist.sample();
     Eigen::Matrix3d R = Eigen::Matrix3d::Identity() - 2*ax*ax.transpose()/std::pow(ax.norm(), 2);
 
     int j; double dE;
@@ -441,7 +441,7 @@ void Spin3DModel::save_spins(std::string filename) {
     output_file.close();
 }
 
-std::map<std::string, Sample> Spin3DModel::take_samples() const {
+std::map<std::string, Sample> Spin3DModel::take_samples() {
     std::map<std::string, Sample> samples;
     samples.emplace("energy", energy());
     samples.emplace("magnetization", get_magnetization().norm());

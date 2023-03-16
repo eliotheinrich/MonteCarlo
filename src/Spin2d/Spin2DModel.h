@@ -100,7 +100,7 @@ class Spin2DModel : virtual public MCModel {
 
         virtual double onsite_func(const Eigen::Vector2d& S) const = 0;
         
-        virtual std::map<std::string, Sample> take_samples() const;
+        virtual std::map<std::string, Sample> take_samples();
 
         void save_spins(std::string filename);
 };

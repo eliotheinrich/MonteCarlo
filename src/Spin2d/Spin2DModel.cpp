@@ -274,7 +274,7 @@ void Spin2DModel::save_spins(std::string filename) {
     output_file.close();
 }
 
-std::map<std::string, Sample> Spin2DModel::take_samples() const {
+std::map<std::string, Sample> Spin2DModel::take_samples() {
     std::map<std::string, Sample> samples;
     samples.emplace("energy", energy());
     samples.emplace("magnetization", get_magnetization().norm());

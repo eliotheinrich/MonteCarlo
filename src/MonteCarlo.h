@@ -44,19 +44,19 @@ class MCModel {
     // Most basic Monte-Carlo model to be simulated must have some notion of energy
     // as well as a mutation data structure. Specifics must be supplied by child classes.
     private:
-        std::minstd_rand *rng;
+        std::minstd_rand rng;
 
     public:
         double temperature;
 
 
         // Give all MCModels a source of random numbers
-        int rand() { return (*rng)(); }
+        int rand() { return rng(); }
         float randf() { return float(rand())/float(RAND_MAX); }
 
-        MCModel(int seed=DEFAULT_RANDOM_SEED) : rng(new std::minstd_rand(seed)) {}
+        MCModel(int seed=DEFAULT_RANDOM_SEED) : rng(std::minstd_rand(seed)) {}
 
-        virtual ~MCModel() { delete rng; }
+        virtual ~MCModel() {} //delete rng; }
 
         // To be overridden by child classes
         virtual double energy() const = 0;
@@ -71,7 +71,7 @@ class MCModel {
         virtual void init() {}
         virtual std::unique_ptr<MCModel> clone(Params &params)=0;
 
-        virtual std::map<std::string, Sample> take_samples() const {
+        virtual std::map<std::string, Sample> take_samples() {
             return std::map<std::string, Sample>();
         }
 };

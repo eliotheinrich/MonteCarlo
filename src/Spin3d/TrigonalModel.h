@@ -44,7 +44,7 @@ class TrigonalModel : public Spin3DModel {
         double intensity(Eigen::Vector3d Q) const;
 
 
-        virtual std::map<std::string, Sample> take_samples() const;
+        virtual std::map<std::string, Sample> take_samples();
 
         CLONE(MCModel, TrigonalModel)
 };

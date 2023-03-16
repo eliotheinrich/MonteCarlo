@@ -15,7 +15,7 @@ class GaussianDist {
         std::normal_distribution<> dist;
 
     public:
-
+        GaussianDist() {}
         GaussianDist(float mean, float std);
 
         float sample();
@@ -70,11 +70,11 @@ class Spin3DModel : virtual public MCModel {
         Spin3DMutation mut;
 
         // Internal normally distributed random number generator
-        GaussianDist *dist;
+        GaussianDist dist;
 
         Spin3DModel() {}
 
-        virtual ~Spin3DModel() { delete dist; }
+        virtual ~Spin3DModel() {}
 
         void init_params(int sl, int N1, int N2, int N3);
         virtual void init();
@@ -138,7 +138,7 @@ class Spin3DModel : virtual public MCModel {
         void save_spins(std::string filename);
         bool load_spins(std::string filename);
 
-        virtual std::map<std::string, Sample> take_samples() const;
+        virtual std::map<std::string, Sample> take_samples();
 };
 
 #endif
