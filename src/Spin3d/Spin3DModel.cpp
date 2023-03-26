@@ -356,7 +356,7 @@ void Spin3DModel::metropolis_mutation() {
 
     // Randomly generate mutation
     Eigen::Vector3d Gamma;
-    Gamma << dist->sample(), dist->sample(), dist->sample();
+    Gamma << dist.sample(), dist.sample(), dist.sample();
     Eigen::Vector3d S2 = (spins[mut.i] + this->sigma*Gamma).normalized();
 
 

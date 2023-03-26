@@ -9,11 +9,11 @@
 
 template <int q>
 SquareClockModel<q>::SquareClockModel(Params &params) {
-    this->N = params.geti("system_size");
-    this->L = params.geti("layers", DEFAULT_LAYERS);
+    this->N = params.get<int>("system_size");
+    this->L = params.get<int>("layers", DEFAULT_LAYERS);
     ClockModel<q>::init_params(N, N, L);
 
-    this->J = params.getf("J");
+    this->J = params.get<float>("J");
 
     for (int i = 0; i < q; i++) {
         for (int j = 0; j < q; j++) {

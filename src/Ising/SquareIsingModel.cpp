@@ -1,13 +1,13 @@
 #include "SquareIsingModel.h"
 
 SquareIsingModel::SquareIsingModel(Params &params) {
-    N = params.geti("system_size");
-    L = params.geti("layers", DEFAULT_LAYERS);
+    N = params.get<int>("system_size");
+    L = params.get<int>("layers", DEFAULT_LAYERS);
 
     IsingModel::init_params(N, N, L);
 
-    J = params.getf("J");
-    B = params.getf("B");
+    J = params.get<float>("J");
+    B = params.get<float>("B");
 }
 
 double SquareIsingModel::onsite_energy(int i) const {

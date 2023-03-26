@@ -62,9 +62,9 @@ class Spin2DModel : virtual public MCModel {
 
         virtual ull system_size() const {
 #ifdef CLUSTER_UPDATE
-            return V;
-#else
             return 1;
+#else
+            return V;
 #endif
         }
 

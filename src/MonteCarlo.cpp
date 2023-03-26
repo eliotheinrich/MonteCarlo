@@ -2,10 +2,10 @@
 #include <iostream>
 
 MonteCarloSimulator::MonteCarloSimulator(Params &params, std::unique_ptr<MCModel> model) : Simulator(params) {
-    temperature = params.getf("temperature");
-    init_temperature = params.getf("initial_temperature", temperature);
-    num_cooling_steps = params.getf("num_cooling_steps", DEFAULT_NUM_COOLING_STEPS);
-    cooling_schedule = parse_cooling_schedule(params.gets("cooling_schedule", DEFAULT_COOLING_SCHEDULE));
+    temperature = params.get<float>("temperature");
+    init_temperature = params.get<float>("initial_temperature", temperature);
+    num_cooling_steps = params.get<float>("num_cooling_steps", DEFAULT_NUM_COOLING_STEPS);
+    cooling_schedule = parse_cooling_schedule(params.get<std::string>("cooling_schedule", DEFAULT_COOLING_SCHEDULE));
 
     this->model = std::move(model);
 }

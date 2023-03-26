@@ -1,16 +1,16 @@
 #include "TrigonalModel.h"
 
 TrigonalModel::TrigonalModel(Params &params) {
-    this->N = params.geti("system_size");
-    this->L = params.geti("layers", DEFAULT_LAYERS);
+    this->N = params.get<int>("system_size");
+    this->L = params.get<int>("layers", DEFAULT_LAYERS);
     Spin3DModel::init_params(1, N, N, L);
 
-    this->J1 = params.getf("J1");
-    this->J2 = params.getf("J2");
-    this->K1 = params.getf("K1");
-    this->K2 = params.getf("K2");
-    this->K3 = params.getf("K3");
-    Eigen::Vector3d B; B << params.getf("Bx"), params.getf("By"), params.getf("Bz");
+    this->J1 = params.get<float>("J1");
+    this->J2 = params.get<float>("J2");
+    this->K1 = params.get<float>("K1");
+    this->K2 = params.get<float>("K2");
+    this->K3 = params.get<float>("K3");
+    Eigen::Vector3d B; B << params.get<float>("Bx"), params.get<float>("By"), params.get<float>("Bz");
     this->B = B;
 
     this->R << std::sqrt(3)/2., -0.5, 0.,
