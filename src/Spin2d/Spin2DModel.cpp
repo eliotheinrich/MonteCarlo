@@ -11,23 +11,22 @@ void Spin2DModel::init_params(int sl, int N1, int N2=-1, int N3=-1) {
     this->V = N1*N2*N3*sl;
 
     this->spins = std::vector<Eigen::Vector2d>(V);
-#ifdef CLUSTER_UPDATE
-    this->neighbors = std::vector<std::vector<int>>(V+1, std::vector<int>(0));
-#else
-    this->neighbors = std::vector<std::vector<int>>(V, std::vector<int>(0));
-#endif
-
+    if (cluster_update)
+        this->neighbors = std::vector<std::vector<int>>(V+1, std::vector<int>(0));
+    else
+        this->neighbors = std::vector<std::vector<int>>(V, std::vector<int>(0));
 }
 
 void Spin2DModel::init() {
-#ifdef CLUSTER_UPDATE
-    this->s0 = Eigen::Matrix2d::Identity();
-    // Connect every site to the ghost 
-    for (int i = 0; i < V; i++) {
-        neighbors[V].push_back(i);
-        neighbors[i].push_back(V);
-    }
-#endif
+    if (cluster_update) {
+        // Connect every site to the ghost 
+        for (int i = 0; i < V; i++) {
+            neighbors[V].push_back(i);
+            neighbors[i].push_back(V);
+        }
+
+        this->s0 = Eigen::Matrix2d::Identity();
+    }  
 
     this->randomize_spins();
 
@@ -56,7 +55,6 @@ void Spin2DModel::add_bond(int d1, int d2, int d3, int ds, Eigen::Vector3d v, st
                     i = flat_idx(n1, n2, n3, s);
                     j = flat_idx(mod(n1 + b.d1, N1), mod(n2 + b.d2, N2), mod(n3 + b.d3, N3), mod(s + b.ds, sl));
                     neighbors[i].push_back(j);
-                    std::rotate(neighbors[i].rbegin(), neighbors[i].rbegin()+1, neighbors[i].rend());
                 }
             }
         }
@@ -120,23 +118,22 @@ Eigen::Vector2d Spin2DModel::get_magnetization() const {
         M += spins[i];
     }
     
-#ifdef CLUSTER_UPDATE
-    return s0.transpose()*M/V;
-#else
-    return M/V;
-#endif
+    if (cluster_update)
+        return s0.transpose()*M/V;
+    else
+        return M/V;
 }
 
 void Spin2DModel::generate_mutation() {
-#ifdef CLUSTER_UPDATE
-    cluster_update();
-#else
-    mut.i = rand() % V;
-    metropolis_mutation();
-#endif
+    if (cluster_update)
+        cluster_mutation();
+    else {
+        mut.i = rand() % V;
+        metropolis_mutation();
+    }
 }
 
-void Spin2DModel::cluster_update() {
+void Spin2DModel::cluster_mutation() {
     s.clear();
 
     std::stack<int> c;
@@ -158,28 +155,25 @@ void Spin2DModel::cluster_update() {
         if (!s.count(m)) {
             s.insert(m);
             is_ghost = (m == V);
-            if (is_ghost) { // Site is ghost
+            if (is_ghost) // Site is ghost
                 s0_new = R*s0;
-            } else {
+            else
                 s_new = R*spins[m];
-            }
 
             for (int n = 0; n < neighbors[m].size(); n++) {
                 j = neighbors[m][n];
                 if (!s.count(j)) {
                 neighbor_is_ghost = (j == V);
 
-                    if (neighbor_is_ghost) {
+                    if (neighbor_is_ghost)
                         dE = onsite_func(s0.inverse()*s_new) - onsite_func(s0.inverse()*spins[m]);
-                    } else if (is_ghost) {
+                    else if (is_ghost)
                         dE = onsite_func(s0_new.inverse()*spins[j]) - onsite_func(s0.inverse()*spins[j]);
-                    } else { // Normal bond
+                    else // Normal bond
                         dE = bonds[n].bondfunc(spins[j], s_new) - bonds[n].bondfunc(spins[j], spins[m]);
-                    }
 
-                    if (randf() < 1. - std::exp(-dE/temperature)) {
+                    if (randf() < 1. - std::exp(-dE/temperature))
                         c.push(j);
-                    }
                 }
             }
 
@@ -210,17 +204,15 @@ void Spin2DModel::accept_mutation() {
 }
 
 void Spin2DModel::reject_mutation() {
-#ifndef CLUSTER_UPDATE
-    spins[mut.i] = spins[mut.i] - mut.dS;
-#endif
+    if (!cluster_update)
+        spins[mut.i] = spins[mut.i] - mut.dS;
 }
 
 double Spin2DModel::onsite_energy(int i) const {
-#ifdef CLUSTER_UPDATE
-    return onsite_func(s0.transpose()*spins[i]);
-#else
-    return onsite_func(spins[i]);
-#endif
+    if (cluster_update)
+        return onsite_func(s0.transpose()*spins[i]);
+    else
+        return onsite_func(spins[i]);
 }
 
 double Spin2DModel::bond_energy(int i) const {
@@ -246,14 +238,13 @@ double Spin2DModel::energy() const {
 }
 
 double Spin2DModel::energy_change() {
-#ifdef CLUSTER_UPDATE
-    return -1.;
-#else
+    if (cluster_update)
+        return -1.;
+
     float E1 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
     spins[mut.i] = spins[mut.i] + mut.dS;
     float E2 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
     return E2 - E1;
-#endif
 }
 
 void Spin2DModel::save_spins(std::string filename) {
@@ -263,11 +254,11 @@ void Spin2DModel::save_spins(std::string filename) {
 
     Eigen::Vector2d S;
     for (int i = 0; i < V; i++) {
-#ifdef CLUSTER_UPDATE
-        S = s0.transpose()*spins[i];
-#else
-        S = spins[i];
-#endif
+        if (cluster_update)
+            S = s0.transpose()*spins[i];
+        else
+            S = spins[i];
+
         output_file << S[0] << "\t" << S[1];
         if (i < V-1) { output_file << "\t"; }
     }

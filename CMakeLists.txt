@@ -48,12 +48,3 @@ target_include_directories(main PRIVATE
 	${MODEL_DIRS}
 )
 target_link_libraries(main PRIVATE montecarlo ising spin2d spin3d clock graph)
-
-add_executable(metropolis src/main.cpp)
-set_target_properties(metropolis PROPERTIES DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
-target_include_directories(metropolis PRIVATE
-	${DF_DEPENDENCIES}
-	${MODEL_DIRS}
-)
-target_link_libraries(metropolis PRIVATE montecarlo ising_metropolis spin2d_metropolis spin3d_metropolis clock graph)
-

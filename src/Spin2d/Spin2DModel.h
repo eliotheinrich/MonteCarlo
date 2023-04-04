@@ -8,6 +8,8 @@
 #include <Eigen/Dense>
 #include "MonteCarlo.h"
 
+#define DEFAULT_CLUSTER_UPDATE true
+
 class Spin2DModel : virtual public MCModel {
     // Generic 2d spin model in up to 3d lattice
     private:
@@ -47,25 +49,24 @@ class Spin2DModel : virtual public MCModel {
         std::vector<Eigen::Matrix2d> R2s;
         std::vector<Eigen::Matrix2d> R3s;
 
-
+        bool cluster_update;
         std::unordered_set<int> s;
         Eigen::Matrix2d s0;
 
         // Mutation being considered is stored as an attribute of the model
         Spin2DMutation mut;
 
-        Spin2DModel() {}
+        Spin2DModel() : cluster_update(DEFAULT_CLUSTER_UPDATE) {}
         virtual ~Spin2DModel() {}
 
         void init_params(int sl, int N1, int N2, int N3);
         virtual void init();
 
         virtual ull system_size() const {
-#ifdef CLUSTER_UPDATE
-            return 1;
-#else
+            if (cluster_update)
+                return 1;
+
             return V;
-#endif
         }
 
         inline int flat_idx(int n1, int n2, int n3, int s) const {
@@ -96,7 +97,7 @@ class Spin2DModel : virtual public MCModel {
         virtual double bond_energy(int i) const;
 
         void metropolis_mutation();
-        void cluster_update();
+        void cluster_mutation();
 
         virtual void generate_mutation();
         virtual void accept_mutation();

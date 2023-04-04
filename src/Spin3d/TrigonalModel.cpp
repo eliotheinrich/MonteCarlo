@@ -3,6 +3,7 @@
 TrigonalModel::TrigonalModel(Params &params) {
     this->N = params.get<int>("system_size");
     this->L = params.get<int>("layers", DEFAULT_LAYERS);
+    this->cluster_update = params.get<int>("cluster_update", DEFAULT_CLUSTER_UPDATE);
     Spin3DModel::init_params(1, N, N, L);
 
     this->J1 = params.get<float>("J1");
@@ -74,26 +75,26 @@ Eigen::Vector3d TrigonalModel::molecular_field(int i) const {
 }
 
 void TrigonalModel::generate_mutation() {
-#ifdef CLUSTER_UPDATE
-    cluster_update(); 
-#else
-    mut.i = rand() % V;
-    mut_counter++;
+    if (cluster_update)
+        cluster_mutation(); 
+    else {
+        mut.i = rand() % V;
+        mut_counter++;
 
-    if (mut_counter == V) {
-        mut_counter = 0;
-        mut_mode++;
-    }
+        if (mut_counter == V) {
+            mut_counter = 0;
+            mut_mode++;
+        }
 
-    if (mut_mode < 10) {
-        over_relaxation_mutation();
-    } else if (mut_mode < 14) {
-        metropolis_mutation();
-    } else {
-        metropolis_mutation();
-        mut_mode = 0;
+        if (mut_mode < 10) {
+            over_relaxation_mutation();
+        } else if (mut_mode < 14) {
+            metropolis_mutation();
+        } else {
+            metropolis_mutation();
+            mut_mode = 0;
+        }
     }
-#endif
 }
 
 void TrigonalModel::over_relaxation_mutation() {

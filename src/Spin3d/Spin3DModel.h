@@ -8,6 +8,8 @@
 #include <Eigen/Dense>
 #include "MonteCarlo.h"
 
+#define DEFAULT_CLUSTER_UPDATE true
+
 class GaussianDist {
     private:
         std::minstd_rand rd;
@@ -60,6 +62,7 @@ class Spin3DModel : virtual public MCModel {
         std::vector<Eigen::Matrix3d> R2s;
         std::vector<Eigen::Matrix3d> R3s;
 
+        bool cluster_update;
         std::unordered_set<int> s;
         Eigen::Matrix3d s0;
 
@@ -72,18 +75,17 @@ class Spin3DModel : virtual public MCModel {
         // Internal normally distributed random number generator
         GaussianDist dist;
 
-        Spin3DModel() {}
+        Spin3DModel() : cluster_update(DEFAULT_CLUSTER_UPDATE) {}
         virtual ~Spin3DModel() {}
 
         void init_params(int sl, int N1, int N2, int N3);
         virtual void init();
 
         virtual ull system_size() const {
-#ifdef CLUSTER_UPDATE
-            return 1;
-#else
+            if (cluster_update)
+                return 1;
+            
             return V;
-#endif
         }
 
         // -- Currently unused -- //
@@ -127,7 +129,7 @@ class Spin3DModel : virtual public MCModel {
 
         std::vector<double> skyrmion_correlation_function(int i) const;
 
-        void cluster_update();
+        void cluster_mutation();
         void metropolis_mutation();
 
         virtual double energy() const;

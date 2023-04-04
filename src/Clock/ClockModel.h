@@ -138,7 +138,7 @@ class ClockModel : virtual public MCModel {
             mut.dq = rand() % 3 - 1;
         }
 
-        void cluster_update() {
+        void cluster_mutation() {
             s.clear();
 
             std::stack<int> c;
@@ -183,7 +183,7 @@ class ClockModel : virtual public MCModel {
             if (mut_mode < 3) {
                 metropolis_mutation();
             } else {
-                cluster_update();
+                cluster_mutation();
                 mut_mode = 0;
             }
         }

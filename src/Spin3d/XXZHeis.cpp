@@ -4,6 +4,7 @@
 
 
 XXZHeis::XXZHeis(Params &params) {
+    this->cluster_update = params.get<int>("cluster_update", DEFAULT_CLUSTER_UPDATE);
     this->N = params.get<int>("system_size");
     this->L = params.get<int>("layers", DEFAULT_LAYERS);
     Spin3DModel::init_params(1, N, N, L);

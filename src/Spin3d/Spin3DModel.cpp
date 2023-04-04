@@ -21,23 +21,22 @@ void Spin3DModel::init_params(int sl, int N1, int N2=-1, int N3=-1) {
     this->V = N1*N2*N3*sl;
 
     this->spins = std::vector<Eigen::Vector3d>(V);
-#ifdef CLUSTER_UPDATE
-    this->neighbors = std::vector<std::vector<int>>(V+1, std::vector<int>(0));
-#else
-    this->neighbors = std::vector<std::vector<int>>(V, std::vector<int>(0));
-#endif
+    if (cluster_update)
+        this->neighbors = std::vector<std::vector<int>>(V+1, std::vector<int>(0));
+    else
+        this->neighbors = std::vector<std::vector<int>>(V, std::vector<int>(0));
 }
 
 void Spin3DModel::init() {
-#ifdef CLUSTER_UPDATE
-    // Connect every site to the ghost 
-    for (int i = 0; i < V; i++) {
-        neighbors[V].push_back(i);
-        neighbors[i].push_back(V);
-    }
+    if (cluster_update) {
+        // Connect every site to the ghost 
+        for (int i = 0; i < V; i++) {
+            neighbors[V].push_back(i);
+            neighbors[i].push_back(V);
+        }
 
-    this->s0 = Eigen::Matrix3d::Identity();
-#endif
+        this->s0 = Eigen::Matrix3d::Identity();
+    }
 
     this->randomize_spins();
 
@@ -181,11 +180,10 @@ Eigen::Vector3d Spin3DModel::get_magnetization() const {
     for (int i = 0; i < V; i++)
         M += spins[i];
     
-#ifdef CLUSTER_UPDATE
-    return s0.transpose()*M/V;
-#else
-    return M/V;
-#endif
+    if (cluster_update)
+        return s0.transpose()*M/V;
+    else 
+        return M/V;
 }
 
 std::vector<double> Spin3DModel::correlation_function(int i, int a = 2, int b = 2) const {
@@ -277,8 +275,7 @@ std::vector<double> Spin3DModel::skyrmion_correlation_function(int i) const {
     return Cij;
 }
 
-#ifdef CLUSTER_UPDATE
-void Spin3DModel::cluster_update() {
+void Spin3DModel::cluster_mutation() {
     s.clear();
 
     std::stack<int> c;
@@ -331,10 +328,6 @@ void Spin3DModel::cluster_update() {
     }
 }
 
-void Spin3DModel::generate_mutation() {
-    cluster_update();
-}
-#else
 void Spin3DModel::metropolis_mutation() {
     if (acceptance > 0.5)
         sigma = std::min(2., 1.01*sigma);
@@ -352,10 +345,13 @@ void Spin3DModel::metropolis_mutation() {
 }
 
 void Spin3DModel::generate_mutation() {
-    mut.i = rand() % V;
-    metropolis_mutation();
+    if (cluster_update)
+        cluster_mutation();
+    else {
+        mut.i = rand() % V;
+        metropolis_mutation();
+    }
 }
-#endif
 
 
 void Spin3DModel::accept_mutation() {
@@ -363,17 +359,15 @@ void Spin3DModel::accept_mutation() {
 }
 
 void Spin3DModel::reject_mutation() {
-#ifndef CLUSTER_UPDATE
-    set_spin(mut.i, spins[mut.i] - mut.dS);
-#endif
+    if (!cluster_update)
+        set_spin(mut.i, spins[mut.i] - mut.dS);
 }
 
 double Spin3DModel::onsite_energy(int i) const {
-#ifdef CLUSTER_UPDATE
-    return onsite_func(s0.transpose()*spins[i]);
-#else
-    return onsite_func(spins[i]);
-#endif
+    if (cluster_update)
+        return onsite_func(s0.transpose()*spins[i]);
+    else
+        return onsite_func(spins[i]);
 }
 
 double Spin3DModel::bond_energy(int i) const {
@@ -401,15 +395,14 @@ double Spin3DModel::energy() const {
 }
 
 double Spin3DModel::energy_change() {
-#ifdef CLUSTER_UPDATE
-    return -1.;
-#else
+    if (cluster_update)
+        return -1.;
+
     double E1 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
     set_spin(mut.i, spins[mut.i] + mut.dS);
     double E2 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
 
     return E2 - E1;
-#endif
 }
 
 // Saves current spin configuration
@@ -419,11 +412,11 @@ void Spin3DModel::save_spins(std::string filename) {
     output_file << N1 << "\t" << N2 << "\t" << N3 << "\t" << sl << "\n";
     int i; Eigen::Vector3d S;
     for (int i = 0; i < V; i++) {
-#ifdef CLUSTER_UPDATE
-        S = s0.transpose()*spins[i];
-#else
-        S = spins[i];
-#endif
+        if (cluster_update)
+            S = s0.transpose()*spins[i];
+        else
+            S = spins[i];
+
         output_file << S[0] << "\t" << S[1] << "\t" << S[2];
         if (i < V-1) { output_file << "\t"; }
     }

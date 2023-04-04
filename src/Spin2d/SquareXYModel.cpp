@@ -5,6 +5,8 @@
 #include <string>
 
 SquareXYModel::SquareXYModel(Params &params) {
+    this->cluster_update = params.get<int>("cluster_update", DEFAULT_CLUSTER_UPDATE);
+    
     this->N = params.get<int>("system_size");
     this->L = params.get<int>("layers", DEFAULT_LAYERS);
 
@@ -22,9 +24,8 @@ SquareXYModel::SquareXYModel(Params &params) {
         return -J*S1.dot(S2);
     };
 
-#ifndef CLUSTER_UPDATE
-    this->mut_mode = 0;
-#endif
+    if (!cluster_update)
+        this->mut_mode = 0;
 
     Eigen::Vector3d v1; v1 << 1.,0.,0.;
     Eigen::Vector3d v2; v2 << 0.,1.,0.;
@@ -156,22 +157,22 @@ void SquareXYModel::over_relaxation_mutation() {
 }
 
 void SquareXYModel::generate_mutation() {
-#ifdef CLUSTER_UPDATE
-    cluster_update(); 
-#else
-    mut.i = rand() % V;
+    if (cluster_update)
+        cluster_mutation(); 
+    else {
+        mut.i = rand() % V;
 
-    if (mut.i == 0) {
-        mut_mode++;
-    }
+        if (mut.i == 0) {
+            mut_mode++;
+        }
 
-    if (mut_mode < 10) {
-        over_relaxation_mutation();
-    } else if (mut_mode < 14) {
-        metropolis_mutation();
-    } else {
-        metropolis_mutation();
-        mut_mode = 0;
+        if (mut_mode < 10) {
+            over_relaxation_mutation();
+        } else if (mut_mode < 14) {
+            metropolis_mutation();
+        } else {
+            metropolis_mutation();
+            mut_mode = 0;
+        }
     }
-#endif
 }

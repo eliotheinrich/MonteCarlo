@@ -33,11 +33,7 @@ class IsingModel : virtual public MCModel {
         virtual void init();
 
         virtual ull system_size() const {
-#ifdef CLUSTER_UPDATE
             return V;
-#else
-            return 1;
-#endif
         }
 
         inline int flat_idx(int n1, int n2, int n3) const {
