@@ -13,7 +13,7 @@ using ull = unsigned long long int;
 #define PI 3.14159265
 
 #define DEFAULT_COOLING_SCHEDULE "constant"
-#define DEFAULT_NUM_COOLING_STEPS 100
+#define DEFAULT_NUM_COOLING_UPDATES 100
 #define DEFAULT_RANDOM_SEED -1
 
 enum CoolingSchedule {
@@ -85,7 +85,7 @@ class MonteCarloSimulator : public Simulator {
 
         // For annealing
         CoolingSchedule cooling_schedule;
-        uint num_cooling_steps;
+        uint num_cooling_updates;
         double init_temperature;
         double temperature;
 

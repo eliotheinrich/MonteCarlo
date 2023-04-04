@@ -47,6 +47,8 @@ TrigonalModel::TrigonalModel(Params &params) {
         this->add_bond(0,0,-1,0, -v4, bondfunc_inter);
     }
 
+    this->sample_layer_magnetization = params.get<int>("sample_layer_magnetization", DEFAULT_SAMPLE_LAYER_MAGNETIZATION);
+    this->sample_intensity = params.get<int>("sample_intensity", DEFAULT_SAMPLE_INTENSITY);
 }
 
 Eigen::Vector3d TrigonalModel::molecular_field(int i) const {
@@ -180,6 +182,28 @@ double TrigonalModel::intensity(Eigen::Vector3d Q) const {
     return std::pow(std::abs(structure_factor.norm())/V, 2);
 }
 
+void TrigonalModel::add_layer_magnetization_samples(std::map<std::string, Sample> &samples) const {
+    std::vector<Eigen::Vector3d> magnetization(L, Eigen::Vector3d::Constant(0.));
+    for (uint i = 0; i < V; i++) {
+        auto idx = tensor_idx(i);
+        uint layer = idx[2];
+        magnetization[layer] += spins[i];
+    }
+
+    for (uint layer = 0; layer < L; layer++) {
+        magnetization[layer] /= V/L;
+        samples.emplace("magnetization_" + std::to_string(layer) + "x", magnetization[layer][0]);
+        samples.emplace("magnetization_" + std::to_string(layer) + "y", magnetization[layer][1]);
+        samples.emplace("magnetization_" + std::to_string(layer) + "z", magnetization[layer][2]);
+    }
+}
+
+void TrigonalModel::add_intensity_samples(std::map<std::string, Sample> &samples) const {
+    for (uint i = 0; i < 30; i++) {
+        Eigen::Vector3d q; q << 0., 0., double(i)/30*2*PI/c_bond;
+        samples.emplace("intensity_" + std::to_string(i), intensity(q));
+    }
+}
 
 std::map<std::string, Sample> TrigonalModel::take_samples() {
     std::map<std::string, Sample> samples = Spin3DModel::take_samples();
@@ -191,10 +215,22 @@ std::map<std::string, Sample> TrigonalModel::take_samples() {
     samples.emplace("d4E", tterms[3]);
     */
 
-    for (uint i = 0; i < 30; i++) {
-        Eigen::Vector3d q; q << 0., 0., double(i)/30;
-        samples.emplace("intensity_" + std::to_string(i), intensity(q));
-    }    
+    if (sample_intensity)
+        add_intensity_samples(samples);
+
+    if (sample_layer_magnetization)
+        add_layer_magnetization_samples(samples);
+    
+    if (std::abs(J2) > 1e-6) {
+        double adjacency = 0.;
+        for (uint i = 0; i < V; i++) {
+            uint j = neighbors[i][6]; // Upstairs neighbor
+            adjacency += spins[i].dot(spins[j]);
+        }
+        samples.emplace("adjacency", adjacency/V);
+    }
+
+
     return samples;
 }
 

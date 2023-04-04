@@ -62,9 +62,8 @@ std::vector<double> Spin3DModel::init_func() {
     std::vector<double> vt(dtype_size);
     for (int i = 0; i < V; i++) {
         vt = tracking_func(i);
-        for (int j = 0; j < dtype_size; j++) {
+        for (int j = 0; j < dtype_size; j++)
             v[j] += vt[j];
-        }
     }
 
     return v;
@@ -84,18 +83,16 @@ inline void Spin3DModel::set_spin(int i, Eigen::Vector3d S) {
         std::vector<double> q2 = tracking_func(i);
 
         // Update tracked quantities
-        for (int j = 0; j < q.size(); j++) {
+        for (int j = 0; j < q.size(); j++)
             q[j] += q2[j] - q1[j];
-        }
-    } else { 
+
+    } else
         spins[i] = S;
-    }
 }
 
 void Spin3DModel::randomize_spins() {
-    for (int i = 0; i < V; i++) {
+    for (int i = 0; i < V; i++)
         spins[i] = Eigen::Vector3d::Random(3).normalized();
-    }
 }
 
 void Spin3DModel::add_bond(int d1, int d2, int d3, int ds, Eigen::Vector3d v, std::function<double(Eigen::Vector3d, Eigen::Vector3d)> bondfunc) {
@@ -109,7 +106,7 @@ void Spin3DModel::add_bond(int d1, int d2, int d3, int ds, Eigen::Vector3d v, st
                     i = flat_idx(n1, n2, n3, s);
                     j = flat_idx(mod(n1 + b.d1, N1), mod(n2 + b.d2, N2), mod(n3 + b.d3, N3), mod(s + b.ds, sl));
                     neighbors[i].push_back(j);
-                    std::rotate(neighbors[i].rbegin(), neighbors[i].rbegin()+1, neighbors[i].rend());
+                    //std::rotate(neighbors[i].rbegin(), neighbors[i].rbegin()+1, neighbors[i].rend()); // Why is this rotation happening?
                 }
             }
         }
@@ -173,9 +170,8 @@ std::vector<double> Spin3DModel::twist_derivatives() const {
 
     for (int i = 0; i < V; i++) {
         twist_i = twist_derivatives(i);
-        for (int j = 0; j < 4; j++) {
+        for (int j = 0; j < 4; j++)
             twist[j] += twist_i[j];
-        }
     }
     
     return twist;
@@ -183,9 +179,8 @@ std::vector<double> Spin3DModel::twist_derivatives() const {
 
 Eigen::Vector3d Spin3DModel::get_magnetization() const {
     Eigen::Vector3d M = Eigen::Vector3d::Constant(0);
-    for (int i = 0; i < V; i++) {
+    for (int i = 0; i < V; i++)
         M += spins[i];
-    }
     
 #ifdef CLUSTER_UPDATE
     return s0.transpose()*M/V;
@@ -245,12 +240,11 @@ double Spin3DModel::skyrmion_density(int i) const {
     Eigen::Vector3d dSdY; dSdY << 0., 0., 0.;
     for (int n = 0; n < bonds.size(); n++) {
         j = neighbors[i][n];
-        if (bonds[n].v[0] != 0.) {
+        if (bonds[n].v[0] != 0.)
             dSdX += bonds[n].v[0]*(spins[j] - spins[i]);
-        }
-        if (bonds[n].v[1] != 0.) {
+
+        if (bonds[n].v[1] != 0.)
             dSdX += bonds[n].v[1]*(spins[j] - spins[i]);
-        }
 
     }
     dSdX = dSdX/bonds.size();
@@ -308,36 +302,32 @@ void Spin3DModel::cluster_update() {
             s.insert(m);
 
             is_ghost = (m == V);
-            if (is_ghost) { // Site is ghost
+            if (is_ghost) // Site is ghost
                 s0_new = R*s0;
-            } else {
+            else
                 s_new = R*spins[m];
-            }
 
             for (int n = 0; n < neighbors[m].size(); n++) {
                 j = neighbors[m][n];
                 neighbor_is_ghost = (j == V);
 
                 if (!s.count(j)) {
-                    if (neighbor_is_ghost) {
+                    if (neighbor_is_ghost)
                         dE = onsite_func(s0.transpose()*s_new) - onsite_func(s0.transpose()*spins[m]);
-                    } else if (is_ghost) {
+                    else if (is_ghost)
                         dE = onsite_func(s0_new.transpose()*spins[j]) - onsite_func(s0.transpose()*spins[j]);
-                    } else { // Normal bond
+                    else // Normal bond
                         dE = bonds[n].bondfunc(spins[j], s_new) - bonds[n].bondfunc(spins[j], spins[m]);
-                    }
 
-                    if (randf() < 1. - std::exp(-dE/temperature)) {
+                    if (randf() < 1. - std::exp(-dE/temperature))
                         c.push(j);
-                    }
                 }
             }
 
-            if (is_ghost) {
+            if (is_ghost)
                 s0 = s0_new;
-            } else {
+            else
                 set_spin(m, s_new);
-            }
         }
     }
 }
@@ -347,12 +337,10 @@ void Spin3DModel::generate_mutation() {
 }
 #else
 void Spin3DModel::metropolis_mutation() {
-    if (acceptance > 0.5) {
+    if (acceptance > 0.5)
         sigma = std::min(2., 1.01*sigma);
-
-    } else {
+    else
         sigma = std::max(0.05, 0.99*sigma);
-    }
 
     // Randomly generate mutation
     Eigen::Vector3d Gamma;
@@ -391,10 +379,12 @@ double Spin3DModel::onsite_energy(int i) const {
 
 double Spin3DModel::bond_energy(int i) const {
     double E = 0.;
+    double dE;
     int j;
     for (int n = 0; n < bonds.size(); n++) {
         j = neighbors[i][n];
-        E += 0.5*bonds[n].bondfunc(spins[i], spins[j]);
+        dE = 0.5*bonds[n].bondfunc(spins[i], spins[j]);
+        E += dE;
     }
 
     return E;

@@ -7,6 +7,10 @@
 
 #define DEFAULT_LAYERS 1
 
+#define DEFAULT_SAMPLE_INTENSITY true
+
+#define DEFAULT_SAMPLE_LAYER_MAGNETIZATION false
+
 class TrigonalModel : public Spin3DModel {
     private:
         int N;
@@ -21,6 +25,9 @@ class TrigonalModel : public Spin3DModel {
         Eigen::Matrix3d R;
         int mut_counter;
         int mut_mode;
+
+        bool sample_layer_magnetization;
+        bool sample_intensity;
 
     public:
         TrigonalModel(Params &params);
@@ -43,6 +50,8 @@ class TrigonalModel : public Spin3DModel {
         Eigen::Vector3d rel_pos(uint i) const;
         double intensity(Eigen::Vector3d Q) const;
 
+        void add_intensity_samples(std::map<std::string, Sample> &samples) const;
+        void add_layer_magnetization_samples(std::map<std::string, Sample> &samples) const;
 
         virtual std::map<std::string, Sample> take_samples();
 
