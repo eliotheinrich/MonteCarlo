@@ -106,7 +106,6 @@ void Spin3DModel::add_bond(int d1, int d2, int d3, int ds, Eigen::Vector3d v, st
                     i = flat_idx(n1, n2, n3, s);
                     j = flat_idx(mod(n1 + b.d1, N1), mod(n2 + b.d2, N2), mod(n3 + b.d3, N3), mod(s + b.ds, sl));
                     neighbors[i].push_back(j);
-                    //std::rotate(neighbors[i].rbegin(), neighbors[i].rbegin()+1, neighbors[i].rend()); // Why is this rotation happening?
                 }
             }
         }
