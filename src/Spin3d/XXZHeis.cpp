@@ -3,14 +3,14 @@
 #include <string>
 
 
-XXZHeis::XXZHeis(Params &params) {
-    this->cluster_update = params.get<int>("cluster_update", DEFAULT_CLUSTER_UPDATE);
+XXZHeis::XXZHeis(Params &params) : Spin3DModel(params) {
     this->N = params.get<int>("system_size");
     this->L = params.get<int>("layers", DEFAULT_LAYERS);
     Spin3DModel::init_params(1, N, N, L);
 
     this->J = params.get<float>("J");
     this->K = params.get<float>("K");
+    this->A = params.get<float>("A");
 
     float K = this->K;
     float J = this->J;
@@ -41,7 +41,7 @@ inline std::vector<double> XXZHeis::vorticity() const {
         for (int n2 = 0; n2 < N; n2++) {
             for (int n3 = 0; n3 < L; n3++) {
                 i = flat_idx(n1, n2, n3, 0);
-                phi[n1][n2][n3] = atan2(spins[i][1], spins[i][0]);
+                phi[n1][n2][n3] = atan2(get_spin(i)[1], get_spin(i)[0]);
             }
         }
     }
@@ -65,5 +65,5 @@ inline std::vector<double> XXZHeis::vorticity() const {
 
 double XXZHeis::onsite_func(const Eigen::Vector3d &S) const {
     // Onsite interactions
-    return 0.;
+    return A*S[2]*S[2];
 }

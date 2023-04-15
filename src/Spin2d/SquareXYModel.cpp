@@ -4,9 +4,7 @@
 #include <functional>
 #include <string>
 
-SquareXYModel::SquareXYModel(Params &params) {
-    this->cluster_update = params.get<int>("cluster_update", DEFAULT_CLUSTER_UPDATE);
-    
+SquareXYModel::SquareXYModel(Params &params) : Spin2DModel(params) {
     this->N = params.get<int>("system_size");
     this->L = params.get<int>("layers", DEFAULT_LAYERS);
 
@@ -49,7 +47,7 @@ inline std::vector<double> SquareXYModel::vorticity() const {
             for (int n3 = 0; n3 < L; n3++) {
                 i = flat_idx(n1, n2, n3, 0);
                 phi[n1][n2][n3] = 0.;
-                phi[n1][n2][n3] = std::atan2(spins[i][1], spins[i][0]);
+                phi[n1][n2][n3] = std::atan2(get_spin(i)[1], get_spin(i)[0]);
             }
         }
     }
@@ -72,7 +70,7 @@ inline std::vector<double> SquareXYModel::vorticity() const {
 }
 
 float SquareXYModel::p(int i) const {
-    return std::atan2(spins[i][1], spins[i][0]);
+    return std::atan2(get_spin(i)[1], get_spin(i)[0]);
 }
 
 float SquareXYModel::e1() const {
@@ -112,8 +110,8 @@ std::vector<double> SquareXYModel::twist_stiffness() const {
     for (int i = 0; i < V; i++) {
         j = neighbors[i][0];
 
-        S1 = spins[i];
-        S2 = spins[j];
+        S1 = get_spin(i);
+        S2 = get_spin(j);
 
         E0 += bonds[0].bondfunc(S1, S2);
 
@@ -150,10 +148,10 @@ void SquareXYModel::over_relaxation_mutation() {
     int j;
     for (int n = 0; n < bonds.size(); n++) {
         j = neighbors[mut.i][n];
-        H -= J*spins[j];
+        H -= J*get_spin(j);
     }
 
-    this->mut.dS = -2*spins[mut.i] + 2.*spins[mut.i].dot(H)/std::pow(H.norm(),2) * H;
+    this->mut.dS = -2*get_spin(mut.i) + 2.*get_spin(mut.i).dot(H)/std::pow(H.norm(),2) * H;
 }
 
 void SquareXYModel::generate_mutation() {

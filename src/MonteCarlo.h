@@ -27,11 +27,11 @@ inline double const_T(int n, int n_max, double Ti, double Tf) {
 }
 
 inline double trig_T(int n, int n_max, double Ti, double Tf) {
-    return Tf + 0.5*(Ti - Tf)*(1 - cos(n*PI/n_max));
+    return Ti + 0.5*(Tf - Ti)*(1 - cos(n*PI/n_max));
 }
 
 inline double linear_T(int n, int n_max, double Ti, double Tf) {
-    return Ti + (Tf - Ti)*(n_max - n)/double(n_max);
+    return Ti - (Tf - Ti)*(n_max - n)/double(n_max);
 }
 
 static CoolingSchedule parse_cooling_schedule(std::string s) {

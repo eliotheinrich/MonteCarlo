@@ -13,15 +13,17 @@ class XXZHeis : public Spin3DModel {
         int L;
         float J;
         float K;
+        float A;
+
+        bool sample_helicity;
 
     public:
         XXZHeis(Params &params);
 
-
         inline std::vector<double> vorticity() const;
 
         virtual double onsite_func(const Eigen::Vector3d &S) const;
-        
+
         CLONE(MCModel, XXZHeis)
 };
 

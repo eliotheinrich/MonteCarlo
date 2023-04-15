@@ -30,6 +30,7 @@ void MonteCarloSimulator::timesteps(uint num_steps) {
 
 void MonteCarloSimulator::equilibration_timesteps(uint num_steps) {
     uint steps_per_update = num_steps / num_cooling_updates;
+    model->temperature = init_temperature;
     for (uint i = 0; i < num_cooling_updates; i++) {
         timesteps(steps_per_update);
         switch (cooling_schedule) {

@@ -21,20 +21,18 @@ class SquareXYModel : public Spin2DModel {
     public:
         SquareXYModel(Params &params);
 
-        inline std::vector<double> vorticity() const;
+        std::vector<double> vorticity() const;
 
         float p(int i) const;
         float e1() const;
         float e2() const;
         float U2() const;
-        std::vector<double> twist_stiffness() const;
+        virtual std::vector<double> twist_stiffness() const override;
 
         virtual double onsite_func(const Eigen::Vector2d &S) const;
 
         void over_relaxation_mutation();
-
         void generate_mutation();
-
 
         CLONE(MCModel, SquareXYModel)
 };

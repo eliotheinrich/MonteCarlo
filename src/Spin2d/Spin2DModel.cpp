@@ -3,6 +3,14 @@
 #include <iostream>
 #include <fstream>
 
+Spin2DModel::Spin2DModel(Params &params) {
+    cluster_update = params.get<int>("cluster_update", DEFAULT_CLUSTER_UPDATE);
+
+    sample_energy = params.get<int>("sample_energy", DEFAULT_SAMPLE_ENERGY);
+    sample_magnetization = params.get<int>("sample_magnetization", DEFAULT_SAMPLE_MAGNETIZATION);
+    sample_helicity = params.get<int>("sample_helicity", DEFAULT_SAMPLE_HELICITY);
+}
+
 void Spin2DModel::init_params(int sl, int N1, int N2=-1, int N3=-1) {
     this->sl = sl;
     this->N1 = N1;
@@ -265,9 +273,28 @@ void Spin2DModel::save_spins(std::string filename) {
     output_file.close();
 }
 
+void Spin2DModel::add_magnetization_samples(std::map<std::string, Sample> &samples) const {
+    auto m = get_magnetization();
+    samples.emplace("mx", m[0]);
+    samples.emplace("my", m[1]);
+    samples.emplace("magnetization", m.norm());
+}
+
+void Spin2DModel::add_helicity_samples(std::map<std::string, Sample> &samples) const {
+    std::vector<double> twistd = twist_stiffness();
+    samples.emplace("d1E", twistd[2]);
+    samples.emplace("d2E", twistd[4]);
+}
+
 std::map<std::string, Sample> Spin2DModel::take_samples() {
     std::map<std::string, Sample> samples;
-    samples.emplace("energy", energy());
-    samples.emplace("magnetization", get_magnetization().norm());
+
+    if (sample_energy)
+        samples.emplace("energy", energy());
+    if (sample_magnetization)
+        add_magnetization_samples(samples);
+    if (sample_helicity)
+        add_helicity_samples(samples);
+
     return samples;
 }

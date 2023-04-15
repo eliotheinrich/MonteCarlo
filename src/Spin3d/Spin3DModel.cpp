@@ -13,6 +13,14 @@ float GaussianDist::sample() {
 	return dist(gen);
 }
 
+Spin3DModel::Spin3DModel(Params &params) : nsteps(0), accepted(0) {
+    cluster_update = params.get<int>("cluster_update", DEFAULT_CLUSTER_UPDATE);
+    
+    sample_helicity = params.get<int>("sample_helicity", DEFAULT_SAMPLE_HELICITY);
+    sample_magnetization = params.get<int>("sample_magnetization", DEFAULT_SAMPLE_MAGNETIZATION);
+    sample_energy = params.get<int>("sample_energy", DEFAULT_SAMPLE_ENERGY);
+}
+
 void Spin3DModel::init_params(int sl, int N1, int N2=-1, int N3=-1) {
     this->sl = sl;
     this->N1 = N1;
@@ -73,7 +81,7 @@ void Spin3DModel::start_tracking() {
     this->q = init_func();
 }
 
-inline void Spin3DModel::set_spin(int i, Eigen::Vector3d S) {
+void Spin3DModel::set_spin(int i, Eigen::Vector3d S) {
     if (tracking) {
         std::vector<double> q1 = tracking_func(i);
 
@@ -112,9 +120,9 @@ void Spin3DModel::add_bond(int d1, int d2, int d3, int ds, Eigen::Vector3d v, st
 
     double f = v[0]*alpha;
     Eigen::Matrix3d R;
-    R << cos(f), -sin(f), 0,
-            sin(f), cos(f), 0.,
-            0., 0., 1.;
+    R << std::cos(f), -std::sin(f), 0,
+         std::sin(f),  std::cos(f), 0.,
+         0.,           0.,          1.;
     R1s.push_back(R);
     R2s.push_back(R*R);
     R3s.push_back(R*R*R);
@@ -135,11 +143,11 @@ std::vector<double> Spin3DModel::twist_derivatives(int i) const {
     double Em3 = 0.;
 
     int j;
-    Eigen::Vector3d S1 = spins[i];
+    Eigen::Vector3d S1 = get_spin(i);
     Eigen::Vector3d S2;
     for (int n = 0; n < bonds.size(); n++) {
         j = neighbors[i][n];
-        S2 = spins[j];
+        S2 = get_spin(j);
 
         E0 += bonds[n].bondfunc(S1, S2);
 
@@ -157,7 +165,6 @@ std::vector<double> Spin3DModel::twist_derivatives(int i) const {
     double d2E = (-1./12.*Em2 + 4./3.*Em1 - 5./2.*E0 + 4./3.*E1 - 1./12.*E2)/pow(alpha, 2)/2.;
     double d3E = (1./8.*Em3 - 1.*Em2 + 13./8.*Em1 - 13./8.*E1 + 1.*E2 - 1./8.*E3)/pow(alpha, 3)/2.;
     double d4E = (-1./6.*Em3 + 2.*Em2 - 13./2.*Em1 + 28./3.*E0 - 13./2.*E1 + 2.*E2 - 1./6.*E3)/pow(alpha, 4)/2.;
-
 
     return std::vector<double>{d1E, d2E, d3E, d4E};
 }
@@ -329,6 +336,8 @@ void Spin3DModel::cluster_mutation() {
 }
 
 void Spin3DModel::metropolis_mutation() {
+    nsteps++;
+    acceptance = accepted/nsteps;
     if (acceptance > 0.5)
         sigma = std::min(2., 1.01*sigma);
     else
@@ -355,6 +364,7 @@ void Spin3DModel::generate_mutation() {
 
 
 void Spin3DModel::accept_mutation() {
+    accepted++;
     return;
 }
 
@@ -423,9 +433,31 @@ void Spin3DModel::save_spins(std::string filename) {
     output_file.close();
 }
 
+void Spin3DModel::add_helicity_samples(std::map<std::string, Sample> &samples) const {
+    std::vector<double> tterms = twist_derivatives();
+    samples.emplace("d1E", tterms[0]);
+    samples.emplace("d2E", tterms[1]);
+    samples.emplace("d3E", tterms[2]);
+    samples.emplace("d4E", tterms[3]);
+}
+
+void Spin3DModel::add_magnetization_samples(std::map<std::string, Sample> &samples) const {
+    Eigen::Vector3d m = get_magnetization();
+    samples.emplace("mx", m[0]);
+    samples.emplace("my", m[1]);
+    samples.emplace("mz", m[2]);
+    samples.emplace("magnetization", m.norm());
+}
+
 std::map<std::string, Sample> Spin3DModel::take_samples() {
     std::map<std::string, Sample> samples;
-    samples.emplace("energy", energy());
-    samples.emplace("magnetization", get_magnetization().norm());
+
+    if (sample_energy)
+        samples.emplace("energy", energy());
+    if (sample_magnetization)
+        add_magnetization_samples(samples);
+    if (sample_helicity)
+        add_helicity_samples(samples);
+
     return samples;
 }

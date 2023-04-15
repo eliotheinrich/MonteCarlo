@@ -3,10 +3,7 @@
 #include <functional>
 #include <string>
 
-
-TrigonalXYModel::TrigonalXYModel(Params &params) {
-    this->cluster_update = params.get<int>("cluster_update", DEFAULT_CLUSTER_UPDATE);
-
+TrigonalXYModel::TrigonalXYModel(Params &params) : Spin2DModel(params) {
     this->N = params.get<int>("system_size");
     this->L = params.get<int>("layers", DEFAULT_LAYERS);
     this->J = params.get<float>("J");
@@ -21,8 +18,8 @@ TrigonalXYModel::TrigonalXYModel(Params &params) {
     };
 
     Eigen::Vector3d v1; v1 << 1., 0., 0.;
-    Eigen::Vector3d v2; v2 << 0.5, sqrt(3)/2., 0.;
-    Eigen::Vector3d v3; v3 << 0.5, -sqrt(3)/2., 0.;
+    Eigen::Vector3d v2; v2 << 0.5, std::sqrt(3)/2., 0.;
+    Eigen::Vector3d v3; v3 << 0.5, -std::sqrt(3)/2., 0.;
     this->add_bond(1, 0,0,0,v1, dotfunc);
     this->add_bond(-1,0,0,0,-v1,dotfunc);
     this->add_bond(0, 1,0,0,v2, dotfunc);
@@ -45,7 +42,7 @@ inline std::vector<double> TrigonalXYModel::vorticity() const {
         for (int n2 = 0; n2 < N; n2++) {
             for (int n3 = 0; n3 < L; n3++) {
                 i = flat_idx(n1, n2, n3, 0);
-                phi[n1][n2][n3] = atan2(spins[i][1], spins[i][0]);
+                phi[n1][n2][n3] = atan2(get_spin(i)[1], get_spin(i)[0]);
             }
         }
     }
@@ -77,10 +74,10 @@ void TrigonalXYModel::over_relaxation_mutation() {
     int j;
     for (int n = 0; n < bonds.size(); n++) {
         j = neighbors[mut.i][n];
-        H -= J*spins[j];
+        H -= J*get_spin(j);
     }
 
-    this->mut.dS = -2*spins[mut.i] + 2.*spins[mut.i].dot(H)/std::pow(H.norm(),2) * H;
+    this->mut.dS = -2*get_spin(mut.i) + 2.*get_spin(mut.i).dot(H)/std::pow(H.norm(),2) * H;
 }
 
 void TrigonalXYModel::generate_mutation() {

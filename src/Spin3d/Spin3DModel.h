@@ -10,6 +10,10 @@
 
 #define DEFAULT_CLUSTER_UPDATE true
 
+#define DEFAULT_SAMPLE_ENERGY true
+#define DEFAULT_SAMPLE_MAGNETIZATION true
+#define DEFAULT_SAMPLE_HELICITY false
+
 class GaussianDist {
     private:
         std::minstd_rand rd;
@@ -41,19 +45,38 @@ class Spin3DModel : virtual public MCModel {
             int ds;
             Eigen::Vector3d v;
             std::function<double(const Eigen::Vector3d&, const Eigen::Vector3d&)> bondfunc;
-        };    
+        };   
 
+        bool sample_energy;
+        bool sample_magnetization;
+        bool sample_helicity;
 
-    public:
         int sl;
         int N1;
         int N2;
         int N3;
-        ull V;
 
+        ull nsteps;
+        ull accepted;
         float acceptance;
         double sigma;
         std::vector<Eigen::Vector3d> spins;
+
+        std::unordered_set<int> s;
+        Eigen::Matrix3d s0;
+
+        bool tracking;
+        std::vector<double> q;
+
+        // Internal normally distributed random number generator
+        GaussianDist dist;
+
+    protected:
+        bool cluster_update;
+
+        // Mutation being considered is stored as an attribute of the model
+        Spin3DMutation mut;
+
         std::vector<std::vector<int>> neighbors;
         std::vector<HeisBond> bonds;
 
@@ -62,20 +85,11 @@ class Spin3DModel : virtual public MCModel {
         std::vector<Eigen::Matrix3d> R2s;
         std::vector<Eigen::Matrix3d> R3s;
 
-        bool cluster_update;
-        std::unordered_set<int> s;
-        Eigen::Matrix3d s0;
 
-        bool tracking;
-        std::vector<double> q;
+    public:
+        ull V;
 
-        // Mutation being considered is stored as an attribute of the model
-        Spin3DMutation mut;
-
-        // Internal normally distributed random number generator
-        GaussianDist dist;
-
-        Spin3DModel() : cluster_update(DEFAULT_CLUSTER_UPDATE) {}
+        Spin3DModel(Params &params);
         virtual ~Spin3DModel() {}
 
         void init_params(int sl, int N1, int N2, int N3);
@@ -95,6 +109,9 @@ class Spin3DModel : virtual public MCModel {
         // ---------------------- //
 
         void set_spin(int i, Eigen::Vector3d S);
+        Eigen::Vector3d get_spin(int i) const {
+            return cluster_update ? s0.transpose()*spins[i] : spins[i];
+        }
         void randomize_spins();
 
         inline int flat_idx(int n1, int n2, int n3, int s) const {
@@ -147,6 +164,8 @@ class Spin3DModel : virtual public MCModel {
         void save_spins(std::string filename);
         bool load_spins(std::string filename);
 
+        void add_magnetization_samples(std::map<std::string, Sample> &samples) const;
+        void add_helicity_samples(std::map<std::string, Sample> &samples) const;
         virtual std::map<std::string, Sample> take_samples();
 };
 

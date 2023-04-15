@@ -7,9 +7,13 @@
 
 #define DEFAULT_LAYERS 1
 
-#define DEFAULT_SAMPLE_INTENSITY true
-
 #define DEFAULT_SAMPLE_LAYER_MAGNETIZATION false
+
+#define DEFAULT_SAMPLE_INTENSITY false
+#define DEFAULT_MAX_L 1.
+#define DEFAULT_MIN_L 0.
+#define DEFAULT_INTENSITY_RESOLUTION 30
+
 
 class TrigonalModel : public Spin3DModel {
     private:
@@ -26,23 +30,27 @@ class TrigonalModel : public Spin3DModel {
         int mut_counter;
         int mut_mode;
 
+        bool sample_magnetization;
+
+        bool sample_helicity;
+
         bool sample_layer_magnetization;
         bool sample_intensity;
+        float max_L;
+        float min_L;
+        uint intensity_resolution;
 
     public:
         TrigonalModel(Params &params);
 
         void over_relaxation_mutation();
+        virtual void generate_mutation() override;
 
-        void generate_mutation();
-
-        double onsite_func(const Eigen::Vector3d &S) const;
+        virtual double onsite_func(const Eigen::Vector3d &S) const override;
 
         // --- FOR DYNAMIC UPDATES --- //
         void rotate_spin(int i, Eigen::Vector3d v, float p);
-
         Eigen::Vector3d molecular_field(int i) const;
-
         void dynamic_step(float dt);
         // ------ //
 
@@ -53,7 +61,7 @@ class TrigonalModel : public Spin3DModel {
         void add_intensity_samples(std::map<std::string, Sample> &samples) const;
         void add_layer_magnetization_samples(std::map<std::string, Sample> &samples) const;
 
-        virtual std::map<std::string, Sample> take_samples();
+        virtual std::map<std::string, Sample> take_samples() override;
 
         CLONE(MCModel, TrigonalModel)
 };

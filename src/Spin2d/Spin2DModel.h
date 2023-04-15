@@ -10,6 +10,11 @@
 
 #define DEFAULT_CLUSTER_UPDATE true
 
+#define DEFAULT_SAMPLE_ENERGY true
+#define DEFAULT_SAMPLE_MAGNETIZATION true
+#define DEFAULT_SAMPLE_HELICITY false
+
+
 class Spin2DModel : virtual public MCModel {
     // Generic 2d spin model in up to 3d lattice
     private:
@@ -29,34 +34,41 @@ class Spin2DModel : virtual public MCModel {
             std::function<float(Eigen::Vector2d, Eigen::Vector2d)> bondfunc;
         };
 
+        bool sample_energy;
+        bool sample_magnetization;
+        bool sample_helicity;
 
-
-    public:
         int sl;
         int N1;
         int N2;
         int N3;
-        ull V;
 
         float acceptance;
         float sigma;
         std::vector<Eigen::Vector2d> spins;
-        std::vector<std::vector<int>> neighbors;
-        std::vector<Spin2DBond> bonds;
 
+        std::unordered_set<int> s;
+        Eigen::Matrix2d s0;
+
+    protected:
         static constexpr double alpha = 0.01;
         std::vector<Eigen::Matrix2d> R1s;
         std::vector<Eigen::Matrix2d> R2s;
         std::vector<Eigen::Matrix2d> R3s;
 
         bool cluster_update;
-        std::unordered_set<int> s;
-        Eigen::Matrix2d s0;
+
+        std::vector<std::vector<int>> neighbors;
+        std::vector<Spin2DBond> bonds;
 
         // Mutation being considered is stored as an attribute of the model
         Spin2DMutation mut;
 
-        Spin2DModel() : cluster_update(DEFAULT_CLUSTER_UPDATE) {}
+
+    public:
+        ull V;
+
+        Spin2DModel(Params &params);
         virtual ~Spin2DModel() {}
 
         void init_params(int sl, int N1, int N2, int N3);
@@ -87,9 +99,13 @@ class Spin2DModel : virtual public MCModel {
 
         void randomize_spins();
 
+        Eigen::Vector2d get_spin(uint i) const {
+            return cluster_update ? s0.transpose()*spins[i] : spins[i];
+        }
+
         void add_bond(int d1, int d2, int d3, int ds, Eigen::Vector3d v, std::function<float(Eigen::Vector2d, Eigen::Vector2d)> bondfunc);
 
-        std::vector<double> twist_stiffness() const;
+        virtual std::vector<double> twist_stiffness() const;
 
         Eigen::Vector2d get_magnetization() const;
         
@@ -108,6 +124,8 @@ class Spin2DModel : virtual public MCModel {
 
         virtual double onsite_func(const Eigen::Vector2d& S) const = 0;
         
+        void add_magnetization_samples(std::map<std::string, Sample> &samples) const;
+        void add_helicity_samples(std::map<std::string, Sample> &samples) const;
         virtual std::map<std::string, Sample> take_samples();
 
         void save_spins(std::string filename);
