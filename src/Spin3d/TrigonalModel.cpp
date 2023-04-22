@@ -64,13 +64,12 @@ Eigen::Vector3d TrigonalModel::molecular_field(int i) const {
                             K1*std::pow(z, 2);
     H += B;
 
-    int j;
-    for (int n = 0; n < 6; n++) {
-        j = neighbors[i][n];
+    for (uint n = 0; n < 6; n++) {
+        auto [j, _] = neighbors[i][n];
         H -= J1*get_spin(j);
     }
-    for (int n = 6; n < 8; n++) {
-        j = neighbors[i][n];
+    for (uint n = 6; n < 8; n++) {
+        auto [j, _] = neighbors[i][n];
         H += J2*get_spin(j);
     }
 
@@ -103,15 +102,14 @@ void TrigonalModel::generate_mutation() {
 void TrigonalModel::over_relaxation_mutation() {
     Eigen::Vector3d H = B;
 
-    int j;
-    for (int n = 0; n < 6; n++) {
-        j = neighbors[mut.i][n];
+    for (uint n = 0; n < 6; n++) {
+        auto [j, _] = neighbors[mut.i][n];
         H -= J1*get_spin(j);
     }
 
     if (bonds.size() > 7) {
-        for (int n = 6; n < 8; n++) {
-            j = neighbors[mut.i][n];
+        for (uint n = 6; n < 8; n++) {
+            auto [j, _] = neighbors[mut.i][n];
             H += J2*get_spin(j);
         }
     }

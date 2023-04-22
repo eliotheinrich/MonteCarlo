@@ -76,7 +76,7 @@ float SquareXYModel::p(int i) const {
 float SquareXYModel::e1() const {
     float s = 0;
     for (int i = 0; i < V; i++) {
-        s += std::cos(p(i) - p(neighbors[i][0]));
+        s += std::cos(p(i) - p(neighbors[i][0].first));
     }
     return s/V;
 }
@@ -84,7 +84,7 @@ float SquareXYModel::e1() const {
 float SquareXYModel::e2() const {
     float s = 0;
     for (int i = 0; i < V; i++) {
-        s += std::sin(p(i) - p(neighbors[i][0]));
+        s += std::sin(p(i) - p(neighbors[i][0].first));
     }
     return s/V;
 }
@@ -108,7 +108,7 @@ std::vector<double> SquareXYModel::twist_stiffness() const {
     Eigen::Vector2d S2;
     int j;
     for (int i = 0; i < V; i++) {
-        j = neighbors[i][0];
+        j = neighbors[i][0].first;
 
         S1 = get_spin(i);
         S2 = get_spin(j);
@@ -147,7 +147,7 @@ void SquareXYModel::over_relaxation_mutation() {
     Eigen::Vector2d H; H << 0., 0.;
     int j;
     for (int n = 0; n < bonds.size(); n++) {
-        j = neighbors[mut.i][n];
+        j = neighbors[mut.i][n].first;
         H -= J*get_spin(j);
     }
 

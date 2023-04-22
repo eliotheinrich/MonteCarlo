@@ -24,6 +24,8 @@ class GaussianDist {
 
 enum BoundaryCondition { Periodic, Open };
 
+typedef std::pair<uint, int> Bond;
+
 class Spin3DModel : virtual public MCModel {
     // Generic 3D Heisenberg model
     private:
@@ -67,9 +69,6 @@ class Spin3DModel : virtual public MCModel {
         std::unordered_set<int> s;
         Eigen::Matrix3d s0;
 
-        bool tracking;
-        std::vector<double> q;
-
         // Internal normally distributed random number generator
         GaussianDist dist;
 
@@ -79,8 +78,7 @@ class Spin3DModel : virtual public MCModel {
         // Mutation being considered is stored as an attribute of the model
         Spin3DMutation mut;
 
-        std::vector<std::vector<int>> neighbors;
-        std::vector<std::map<uint, uint>> bond_type;
+        std::vector<std::vector<Bond>> neighbors;
         std::vector<HeisBond> bonds;
 
         static constexpr double alpha = 0.01;
@@ -105,15 +103,8 @@ class Spin3DModel : virtual public MCModel {
             return V;
         }
 
-        // -- Currently unused -- //
-        virtual std::vector<double> tracking_func(int i);
-        virtual std::vector<double> init_func();
-        void start_tracking();
-        // ---------------------- //
-
-        void set_spin(int i, Eigen::Vector3d S);
-        Eigen::Vector3d get_spin(int i) const {
-            return cluster_update ? s0.transpose()*spins[i] : spins[i];
+        void set_spin(int i, Eigen::Vector3d S) { spins[i] = S; }
+        Eigen::Vector3d get_spin(int i) const { return cluster_update ? s0.transpose()*spins[i] : spins[i]; 
         }
         void randomize_spins();
 

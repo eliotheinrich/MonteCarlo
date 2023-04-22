@@ -11,6 +11,9 @@
 
 #define DEFAULT_BOUNDARY_CONDITION "periodic"
 
+
+#define GHOST -1
+
 GaussianDist::GaussianDist(float mean, float std) {
 	this->rd.seed(rand());
 	this->gen = std::default_random_engine(rd());
@@ -50,17 +53,17 @@ void Spin3DModel::init_params(int sl, int N1, int N2=-1, int N3=-1) {
 
     this->spins = std::vector<Eigen::Vector3d>(V);
     if (cluster_update)
-        this->neighbors = std::vector<std::vector<int>>(V+1, std::vector<int>(0));
+        this->neighbors = std::vector<std::vector<Bond>>(V+1, std::vector<Bond>(0));
     else
-        this->neighbors = std::vector<std::vector<int>>(V, std::vector<int>(0));
+        this->neighbors = std::vector<std::vector<Bond>>(V, std::vector<Bond>(0));
 }
 
 void Spin3DModel::init() {
     if (cluster_update) {
         // Connect every site to the ghost 
         for (int i = 0; i < V; i++) {
-            neighbors[V].push_back(i);
-            neighbors[i].push_back(V);
+            neighbors[V].push_back(Bond{i, GHOST});
+            neighbors[i].push_back(Bond{V, GHOST});
         }
 
         this->s0 = Eigen::Matrix3d::Identity();
@@ -74,47 +77,6 @@ void Spin3DModel::init() {
     this->dist = GaussianDist(0., 1.0);
 
     this->mut.i = 0;
-    this->tracking = false;
-}
-
-std::vector<double> Spin3DModel::tracking_func(int i) {
-    return std::vector<double>(0);
-}
-
-std::vector<double> Spin3DModel::init_func() {
-    std::vector<double> v = tracking_func(0);
-    int dtype_size = v.size();
-
-    v = std::vector<double>(dtype_size, 0);
-    std::vector<double> vt(dtype_size);
-    for (int i = 0; i < V; i++) {
-        vt = tracking_func(i);
-        for (int j = 0; j < dtype_size; j++)
-            v[j] += vt[j];
-    }
-
-    return v;
-}
-
-void Spin3DModel::start_tracking() {
-    this->tracking = true;
-    this->q = init_func();
-}
-
-void Spin3DModel::set_spin(int i, Eigen::Vector3d S) {
-    if (tracking) {
-        std::vector<double> q1 = tracking_func(i);
-
-        spins[i] = S;
-
-        std::vector<double> q2 = tracking_func(i);
-
-        // Update tracked quantities
-        for (int j = 0; j < q.size(); j++)
-            q[j] += q2[j] - q1[j];
-
-    } else
-        spins[i] = S;
 }
 
 void Spin3DModel::randomize_spins() {
@@ -154,8 +116,7 @@ void Spin3DModel::add_bond(int d1, int d2, int d3, int ds, Eigen::Vector3d v, st
         }
 
         uint j = flat_idx(nx, ny, nz, ns);
-        neighbors[i].push_back(j);
-        bond_type[i][j] = bonds.size() - 1;
+        neighbors[i].push_back(Bond{j, bonds.size() - 1});
     }
 
 //    for (int n1 = 0; n1 < N1; n1++) {
@@ -197,13 +158,11 @@ std::vector<double> Spin3DModel::twist_derivatives(int i) const {
     int j;
     Eigen::Vector3d S1 = get_spin(i);
     Eigen::Vector3d S2;
-    for (uint n = 0; n < neighbors[i].size(); n++) {
-        if (cluster_update && n == V) continue;
-
-        j = neighbors[i][n];
+    for (auto const &[j, b] : neighbors[i]) {
+        if (b == GHOST) continue;
+        
         S2 = get_spin(j);
 
-        uint b = bond_type[i].at(j);
         E0 += bonds[b].bondfunc(S1, S2);
 
         E1 += bonds[b].bondfunc(S1, R1s[b]*S2);
@@ -240,12 +199,9 @@ std::vector<double> Spin3DModel::twist_derivatives() const {
 Eigen::Vector3d Spin3DModel::get_magnetization() const {
     Eigen::Vector3d M = Eigen::Vector3d::Constant(0);
     for (int i = 0; i < V; i++)
-        M += spins[i];
+        M += get_spin(i);
     
-    if (cluster_update)
-        return s0.transpose()*M/V;
-    else 
-        return M/V;
+    return M/V;
 }
 
 std::vector<double> Spin3DModel::correlation_function(int i, int a = 2, int b = 2) const {
@@ -295,16 +251,14 @@ std::vector<double> Spin3DModel::full_correlation_function(int i) const {
 double Spin3DModel::skyrmion_density(int i) const {
     Eigen::Vector3d dSdX; dSdX << 0., 0., 0.;
     Eigen::Vector3d dSdY; dSdY << 0., 0., 0.;
-    for (uint n = 0; n < neighbors[i].size(); n++) {
-        if (cluster_update && n == V) continue;
+    for (auto const &[j, b] : neighbors[i]) {
+        if (b == GHOST) continue;
 
-        uint j = neighbors[i][n];
-        uint b = bond_type[i].at(j);
         if (bonds[b].v[0] != 0.)
-            dSdX += bonds[n].v[0]*(spins[j] - spins[i]);
+            dSdX += bonds[b].v[0]*(spins[j] - spins[i]);
 
         if (bonds[b].v[1] != 0.)
-            dSdX += bonds[n].v[1]*(spins[j] - spins[i]);
+            dSdX += bonds[b].v[1]*(spins[j] - spins[i]);
 
     }
     dSdX = dSdX/bonds.size();
@@ -366,9 +320,7 @@ void Spin3DModel::cluster_mutation() {
             else
                 s_new = R*spins[m];
 
-            for (int n = 0; n < neighbors[m].size(); n++) {
-                uint j = neighbors[m][n];
-                uint b = bond_type[m][j];
+            for (auto const &[j, b] : neighbors[m]) {
                 neighbor_is_ghost = (j == V);
 
                 if (!s.count(j)) {
@@ -440,11 +392,8 @@ double Spin3DModel::onsite_energy(int i) const {
 double Spin3DModel::bond_energy(int i) const {
     double E = 0.;
     double dE;
-    for (int n = 0; n < neighbors[i].size(); n++) {
-        if (cluster_update && i == V) continue;
-
-        uint j = neighbors[i][n];
-        uint b = bond_type[i].at(j);
+    for (auto const &[j, b] : neighbors[i]) {
+        if (b == GHOST) continue;
         dE = 0.5*bonds[b].bondfunc(spins[i], spins[j]);
         E += dE;
     }

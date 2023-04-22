@@ -73,7 +73,7 @@ void TrigonalXYModel::over_relaxation_mutation() {
     Eigen::Vector2d H; H << 0., 0.;
     int j;
     for (int n = 0; n < bonds.size(); n++) {
-        j = neighbors[mut.i][n];
+        j = neighbors[mut.i][n].first;
         H -= J*get_spin(j);
     }
 

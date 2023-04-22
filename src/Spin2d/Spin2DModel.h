@@ -8,12 +8,7 @@
 #include <Eigen/Dense>
 #include "MonteCarlo.h"
 
-#define DEFAULT_CLUSTER_UPDATE true
-
-#define DEFAULT_SAMPLE_ENERGY true
-#define DEFAULT_SAMPLE_MAGNETIZATION true
-#define DEFAULT_SAMPLE_HELICITY false
-
+typedef std::pair<uint, int> Bond;
 
 class Spin2DModel : virtual public MCModel {
     // Generic 2d spin model in up to 3d lattice
@@ -58,7 +53,7 @@ class Spin2DModel : virtual public MCModel {
 
         bool cluster_update;
 
-        std::vector<std::vector<int>> neighbors;
+        std::vector<std::vector<Bond>> neighbors;
         std::vector<Spin2DBond> bonds;
 
         // Mutation being considered is stored as an attribute of the model
