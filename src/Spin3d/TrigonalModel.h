@@ -9,7 +9,9 @@
 
 #define DEFAULT_SAMPLE_LAYER_MAGNETIZATION false
 
-#define DEFAULT_SAMPLE_INTENSITY false
+#define DEFAULT_SAMPLE_INTENSITYX false
+#define DEFAULT_SAMPLE_INTENSITYY false
+#define DEFAULT_SAMPLE_INTENSITYZ false
 #define DEFAULT_MAX_L 1.
 #define DEFAULT_MIN_L 0.
 #define DEFAULT_INTENSITY_RESOLUTION 30
@@ -35,7 +37,9 @@ class TrigonalModel : public Spin3DModel {
         bool sample_helicity;
 
         bool sample_layer_magnetization;
-        bool sample_intensity;
+        bool sample_intensityx;
+        bool sample_intensityy;
+        bool sample_intensityz;
         float max_L;
         float min_L;
         uint intensity_resolution;
@@ -58,7 +62,9 @@ class TrigonalModel : public Spin3DModel {
         Eigen::Vector3d rel_pos(uint i) const;
         double intensity(Eigen::Vector3d Q) const;
 
-        void add_intensity_samples(std::map<std::string, Sample> &samples) const;
+        void add_intensityx_samples(std::map<std::string, Sample> &samples) const;
+        void add_intensityy_samples(std::map<std::string, Sample> &samples) const;
+        void add_intensityz_samples(std::map<std::string, Sample> &samples) const;
         void add_layer_magnetization_samples(std::map<std::string, Sample> &samples) const;
 
         virtual std::map<std::string, Sample> take_samples() override;

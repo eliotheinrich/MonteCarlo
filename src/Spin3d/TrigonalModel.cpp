@@ -46,7 +46,9 @@ TrigonalModel::TrigonalModel(Params &params) : Spin3DModel(params) {
 
     this->sample_layer_magnetization = params.get<int>("sample_layer_magnetization", DEFAULT_SAMPLE_LAYER_MAGNETIZATION);
 
-    this->sample_intensity = params.get<int>("sample_intensity", DEFAULT_SAMPLE_INTENSITY);
+    this->sample_intensityx = params.get<int>("sample_intensityx", DEFAULT_SAMPLE_INTENSITYX);
+    this->sample_intensityy = params.get<int>("sample_intensityy", DEFAULT_SAMPLE_INTENSITYY);
+    this->sample_intensityz = params.get<int>("sample_intensityz", DEFAULT_SAMPLE_INTENSITYZ);
     this->max_L = params.get<float>("max_L", DEFAULT_MAX_L);
     this->min_L = params.get<float>("min_L", DEFAULT_MIN_L);
     this->intensity_resolution = params.get<int>("intensity_resolution", DEFAULT_INTENSITY_RESOLUTION);
@@ -201,19 +203,40 @@ void TrigonalModel::add_layer_magnetization_samples(std::map<std::string, Sample
     }
 }
 
-void TrigonalModel::add_intensity_samples(std::map<std::string, Sample> &samples) const {
+void TrigonalModel::add_intensityx_samples(std::map<std::string, Sample> &samples) const {
     for (uint i = 0; i < intensity_resolution; i++) {
         float L = (i*max_L + (intensity_resolution - i)*min_L)/intensity_resolution;
-        Eigen::Vector3d q; q << 0., 0., L*2.*PI/c_bond;
-        samples.emplace("intensity_" + std::to_string(i), intensity(q));
+        float d = 2.*PI*L/a_bond;
+        Eigen::Vector3d q; q << d, d/std::sqrt(3), 0;
+        samples.emplace("intensityx_" + std::to_string(i), intensity(q));
+    }
+}
+
+void TrigonalModel::add_intensityy_samples(std::map<std::string, Sample> &samples) const {
+    for (uint i = 0; i < intensity_resolution; i++) {
+        float L = (i*max_L + (intensity_resolution - i)*min_L)/intensity_resolution;
+        Eigen::Vector3d q; q << 0, 4.*PI*L/(std::sqrt(3)*a_bond), 0;
+        samples.emplace("intensityy_" + std::to_string(i), intensity(q));
+    }
+}
+
+void TrigonalModel::add_intensityz_samples(std::map<std::string, Sample> &samples) const {
+    for (uint i = 0; i < intensity_resolution; i++) {
+        float L = (i*max_L + (intensity_resolution - i)*min_L)/intensity_resolution;
+        Eigen::Vector3d q; q << 0., 0., 2.*PI*L/c_bond;
+        samples.emplace("intensityz_" + std::to_string(i), intensity(q));
     }
 }
 
 std::map<std::string, Sample> TrigonalModel::take_samples() {
     std::map<std::string, Sample> samples = Spin3DModel::take_samples();
     
-    if (sample_intensity)
-        add_intensity_samples(samples);
+    if (sample_intensityx)
+        add_intensityx_samples(samples);
+    if (sample_intensityy)
+        add_intensityy_samples(samples);
+    if (sample_intensityz)
+        add_intensityz_samples(samples);
 
     if (sample_layer_magnetization)
         add_layer_magnetization_samples(samples);

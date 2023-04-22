@@ -8,12 +8,6 @@
 #include <Eigen/Dense>
 #include "MonteCarlo.h"
 
-#define DEFAULT_CLUSTER_UPDATE true
-
-#define DEFAULT_SAMPLE_ENERGY true
-#define DEFAULT_SAMPLE_MAGNETIZATION true
-#define DEFAULT_SAMPLE_HELICITY false
-
 class GaussianDist {
     private:
         std::minstd_rand rd;
@@ -27,6 +21,8 @@ class GaussianDist {
         float sample();
 
 };
+
+enum BoundaryCondition { Periodic, Open };
 
 class Spin3DModel : virtual public MCModel {
     // Generic 3D Heisenberg model
@@ -47,6 +43,8 @@ class Spin3DModel : virtual public MCModel {
             std::function<double(const Eigen::Vector3d&, const Eigen::Vector3d&)> bondfunc;
         };   
 
+        static BoundaryCondition parse_boundary_condition(std::string s);
+
         bool sample_energy;
         bool sample_magnetization;
         bool sample_helicity;
@@ -55,6 +53,10 @@ class Spin3DModel : virtual public MCModel {
         int N1;
         int N2;
         int N3;
+
+        BoundaryCondition bcx;
+        BoundaryCondition bcy;
+        BoundaryCondition bcz;
 
         ull nsteps;
         ull accepted;
@@ -78,6 +80,7 @@ class Spin3DModel : virtual public MCModel {
         Spin3DMutation mut;
 
         std::vector<std::vector<int>> neighbors;
+        std::vector<std::map<uint, uint>> bond_type;
         std::vector<HeisBond> bonds;
 
         static constexpr double alpha = 0.01;
