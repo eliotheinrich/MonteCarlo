@@ -312,8 +312,6 @@ void Spin3DModel::cluster_mutation() {
 
             for (auto const &[j, b] : neighbors[m]) {
                 neighbor_is_ghost = (b == GHOST);
-                std::cout << "m = " << m << ", j = " << j << ", b = " << b << std::endl;
-                LOG("m = " << m << ", j = " << j << ", b = " << b << std::endl);
                 if (!s.count(j)) {
                     if (neighbor_is_ghost)
                         dE = onsite_func(s0.transpose()*s_new) - onsite_func(s0.transpose()*spins[m]);

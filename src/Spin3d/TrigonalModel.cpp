@@ -57,14 +57,15 @@ TrigonalModel::TrigonalModel(Params &params) : Spin3DModel(params) {
     };
 
 
-    std::function<bool(uint, uint)> fm_layer_filter =
-    [this](uint i, uint j) {
+    std::function<bool(uint, uint)> fm_layer_filter = [this](uint i, uint j) {
         auto idx1 = tensor_idx(i);
         auto idx2 = tensor_idx(j);
         return idx1[2] < this->fm_layers && idx2[2] < this->fm_layers;
     };
 
-    std::function<bool(uint, uint)> afm_layer_filter = [&fm_layer_filter](uint i, uint j) { return !fm_layer_filter(i, j); };
+    std::function<bool(uint, uint)> afm_layer_filter = [fm_layer_filter](uint i, uint j) {
+         return !fm_layer_filter(i, j); 
+    };
 
     Eigen::Vector3d v4; v4 << 0., 0., 1.;
     this->add_bond(0, 0, 1, 0, v4, bondfunc_inter,    afm_layer_filter);
