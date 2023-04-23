@@ -17,8 +17,8 @@ SquareXYModel::SquareXYModel(Params &params) : Spin2DModel(params) {
     this->By = this->B*sin(this->Bp);
 
     float J = this->J;
-    std::function<float(Eigen::Vector2d, Eigen::Vector2d)> bondfunc = 
-    [J](Eigen::Vector2d S1, Eigen::Vector2d S2) {
+    std::function<double(const Eigen::Vector2d &, const Eigen::Vector2d &)> bondfunc = 
+    [J](const Eigen::Vector2d &S1, const Eigen::Vector2d &S2) {
         return -J*S1.dot(S2);
     };
 
@@ -33,7 +33,7 @@ SquareXYModel::SquareXYModel(Params &params) : Spin2DModel(params) {
     this->add_bond(0,-1,0,0, -v2, bondfunc);
 }
 
-inline std::vector<double> SquareXYModel::vorticity() const {
+std::vector<double> SquareXYModel::vorticity() const {
     float v1 = 0;
     float v2 = 0;
 

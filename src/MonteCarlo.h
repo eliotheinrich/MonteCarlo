@@ -12,9 +12,17 @@ using ull = unsigned long long int;
 
 #define PI 3.14159265
 
-#define DEFAULT_COOLING_SCHEDULE "constant"
-#define DEFAULT_NUM_COOLING_UPDATES 100
-#define DEFAULT_RANDOM_SEED -1
+enum BoundaryCondition { Periodic, Open };
+
+typedef std::pair<uint, int> Bond;
+
+inline BoundaryCondition parse_boundary_condition(std::string s) {
+    if (s == "periodic") return BoundaryCondition::Periodic;
+    else if (s == "open") return BoundaryCondition::Open;
+    else std::cout << "Invalid boundary condition: " << s << "\n";
+    
+    assert(false);
+}
 
 enum CoolingSchedule {
     Constant,

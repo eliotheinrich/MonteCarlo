@@ -12,8 +12,8 @@ TrigonalXYModel::TrigonalXYModel(Params &params) : Spin2DModel(params) {
     Spin2DModel::init_params(1, N, N, L);
 
     float J = this->J;
-    std::function<float(Eigen::Vector2d, Eigen::Vector2d)> dotfunc = 
-    [J](Eigen::Vector2d S1, Eigen::Vector2d S2) {
+    std::function<double(const Eigen::Vector2d &, const Eigen::Vector2d &)> dotfunc = 
+    [J](const Eigen::Vector2d &S1, const Eigen::Vector2d &S2) {
         return -J*S1.dot(S2);
     };
 
@@ -29,7 +29,7 @@ TrigonalXYModel::TrigonalXYModel(Params &params) : Spin2DModel(params) {
     this->mut_mode = 0;
 }
 
-inline std::vector<double> TrigonalXYModel::vorticity() const {
+std::vector<double> TrigonalXYModel::vorticity() const {
     float v1 = 0;
     float v2 = 0;
 

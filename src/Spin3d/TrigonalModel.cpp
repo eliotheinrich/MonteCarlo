@@ -1,5 +1,19 @@
 #include "TrigonalModel.h"
 
+#define DEFAULT_LAYERS 1
+
+#define DEFAULT_SAMPLE_LAYER_MAGNETIZATION false
+
+#define DEFAULT_SAMPLE_INTENSITYX false
+#define DEFAULT_SAMPLE_INTENSITYY false
+#define DEFAULT_SAMPLE_INTENSITYZ false
+#define DEFAULT_MAX_L 1.
+#define DEFAULT_MIN_L 0.
+#define DEFAULT_INTENSITY_RESOLUTION 30
+
+#define DEFAULT_FM_LAYERS 0
+
+
 TrigonalModel::TrigonalModel(Params &params) : Spin3DModel(params) {
     this->N = params.get<int>("system_size");
     this->L = params.get<int>("layers", DEFAULT_LAYERS);
@@ -13,13 +27,13 @@ TrigonalModel::TrigonalModel(Params &params) : Spin3DModel(params) {
     Eigen::Vector3d B; B << params.get<float>("Bx"), params.get<float>("By"), params.get<float>("Bz");
     this->B = B;
 
+    this->fm_layers = params.get<int>("fm_layers", DEFAULT_FM_LAYERS);
     this->mut_mode = 0;
     this->mut_counter = 0; 
 
-    float J1 = this->J1;
     std::function<float(const Eigen::Vector3d &, const Eigen::Vector3d &)> bondfunc = 
-    [J1](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) {
-        return -J1*S1.dot(S2);
+    [this](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) {
+        return -this->J1*S1.dot(S2);
     };
 
     Eigen::Vector3d v1; v1 << 1., 0., 0.;
@@ -32,17 +46,34 @@ TrigonalModel::TrigonalModel(Params &params) : Spin3DModel(params) {
     this->add_bond(1,-1,0,0, v3, bondfunc);
     this->add_bond(-1,1,0,0, -v3, bondfunc);
 
-    float J2 = this->J2;
     std::function<float(const Eigen::Vector3d &, const Eigen::Vector3d &)> bondfunc_inter = 
-    [J2](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) {
-        return J2*S1.dot(S2);
+    [this](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) {
+        return this->J2*S1.dot(S2);
     };
 
-    if ((std::abs(J2) > 1e-6) && (this->L > 1)) {
-        Eigen::Vector3d v4; v4 << 0., 0., 1.;
-        this->add_bond(0,0,1,0, v4, bondfunc_inter);
-        this->add_bond(0,0,-1,0, -v4, bondfunc_inter);
-    }
+    std::function<float(const Eigen::Vector3d &, const Eigen::Vector3d &)> bondfunc_inter_fm = 
+    [this](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) {
+        return -this->J2*S1.dot(S2);
+    };
+
+
+    std::function<bool(uint, uint)> fm_layer_filter =
+    [this](uint i, uint j) {
+        auto idx1 = tensor_idx(i);
+        auto idx2 = tensor_idx(j);
+        return idx1[2] < this->fm_layers && idx2[2] < this->fm_layers;
+    };
+
+    std::function<bool(uint, uint)> afm_layer_filter = [&fm_layer_filter](uint i, uint j) { return !fm_layer_filter(i, j); };
+
+    Eigen::Vector3d v4; v4 << 0., 0., 1.;
+    this->add_bond(0, 0, 1, 0, v4, bondfunc_inter,    afm_layer_filter);
+    this->add_bond(0, 0,-1, 0,-v4, bondfunc_inter,    afm_layer_filter);
+    this->add_bond(0, 0, 1, 0, v4, bondfunc_inter_fm, fm_layer_filter);
+    this->add_bond(0, 0,-1, 0,-v4, bondfunc_inter_fm, fm_layer_filter);
+
+
+
 
     this->sample_layer_magnetization = params.get<int>("sample_layer_magnetization", DEFAULT_SAMPLE_LAYER_MAGNETIZATION);
 

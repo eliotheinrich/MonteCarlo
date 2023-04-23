@@ -20,9 +20,9 @@ class XXZHeis : public Spin3DModel {
     public:
         XXZHeis(Params &params);
 
-        inline std::vector<double> vorticity() const;
+        std::vector<double> vorticity() const;
 
-        virtual double onsite_func(const Eigen::Vector3d &S) const;
+        virtual double onsite_func(const Eigen::Vector3d &S) const override;
 
         CLONE(MCModel, XXZHeis)
 };

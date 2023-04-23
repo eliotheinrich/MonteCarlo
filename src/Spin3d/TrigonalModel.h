@@ -5,18 +5,6 @@
 #include "Spin3DModel.h"
 #include "MonteCarlo.h"
 
-#define DEFAULT_LAYERS 1
-
-#define DEFAULT_SAMPLE_LAYER_MAGNETIZATION false
-
-#define DEFAULT_SAMPLE_INTENSITYX false
-#define DEFAULT_SAMPLE_INTENSITYY false
-#define DEFAULT_SAMPLE_INTENSITYZ false
-#define DEFAULT_MAX_L 1.
-#define DEFAULT_MIN_L 0.
-#define DEFAULT_INTENSITY_RESOLUTION 30
-
-
 class TrigonalModel : public Spin3DModel {
     private:
         int N;
@@ -27,6 +15,8 @@ class TrigonalModel : public Spin3DModel {
         float K2;
         float K3;
         Eigen::Vector3d B; 
+
+        uint fm_layers;
 
         Eigen::Matrix3d R;
         int mut_counter;

@@ -30,17 +30,17 @@ class IsingModel : virtual public MCModel {
         virtual ~IsingModel() {}
 
         void init_params(int N1, int N2, int N3);
-        virtual void init();
+        virtual void init() override;
 
-        virtual ull system_size() const {
+        virtual ull system_size() const override {
             return V;
         }
 
-        inline int flat_idx(int n1, int n2, int n3) const {
+        int flat_idx(int n1, int n2, int n3) const {
             return n1 + N1*(n2 + N2*n3);
         }
 
-        inline Eigen::Vector3i tensor_idx(int i) const {
+        Eigen::Vector3i tensor_idx(int i) const {
             int n1 = i % N1;
             i = i / N1;
             int n2 = i % N2;
@@ -56,14 +56,14 @@ class IsingModel : virtual public MCModel {
         virtual double onsite_energy(int i) const = 0;
         virtual double bond_energy(int i) const = 0;
 
-        virtual void generate_mutation();
-        virtual void accept_mutation();
-        virtual void reject_mutation();
+        virtual void generate_mutation() override;
+        virtual void accept_mutation() override;
+        virtual void reject_mutation() override;
         
-        virtual double energy() const;
-        virtual double energy_change();
+        virtual double energy() const override;
+        virtual double energy_change() override;
 
-        virtual std::map<std::string, Sample> take_samples();
+        virtual std::map<std::string, Sample> take_samples() override;
 
         void save_spins(std::string filename);
 };

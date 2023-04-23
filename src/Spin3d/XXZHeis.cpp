@@ -14,7 +14,8 @@ XXZHeis::XXZHeis(Params &params) : Spin3DModel(params) {
 
     float K = this->K;
     float J = this->J;
-    std::function<float(Eigen::Vector3d, Eigen::Vector3d)> bondfunc = [J, K](Eigen::Vector3d S1, Eigen::Vector3d S2) {
+    std::function<double(const Eigen::Vector3d &, const Eigen::Vector3d &)> bondfunc = 
+    [J, K](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) {
         return -J*S1.dot(S2) + K*S1[2]*S2[2];
     };
 
@@ -28,7 +29,7 @@ XXZHeis::XXZHeis(Params &params) : Spin3DModel(params) {
     this->add_bond(0,-1,0,0, -v2, bondfunc);
 }
 
-inline std::vector<double> XXZHeis::vorticity() const {
+std::vector<double> XXZHeis::vorticity() const {
     float v1 = 0;
     float v2 = 0;
 

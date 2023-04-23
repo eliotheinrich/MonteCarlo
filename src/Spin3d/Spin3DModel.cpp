@@ -24,14 +24,6 @@ float GaussianDist::sample() {
 	return dist(gen);
 }
 
-BoundaryCondition Spin3DModel::parse_boundary_condition(std::string s) {
-    if (s == "periodic") return BoundaryCondition::Periodic;
-    else if (s == "open") return BoundaryCondition::Open;
-    else std::cout << "Invalid boundary condition: " << s << "\n";
-    
-    assert(false);
-}
-
 Spin3DModel::Spin3DModel(Params &params) : nsteps(0), accepted(0) {
     cluster_update = params.get<int>("cluster_update", DEFAULT_CLUSTER_UPDATE);
     
@@ -59,6 +51,43 @@ void Spin3DModel::init_params(int sl, int N1, int N2=-1, int N3=-1) {
 }
 
 void Spin3DModel::init() {
+    for (uint n = 0; n < bonds.size(); n++) {
+        auto b = bonds[n];
+        auto bond_filter = bond_filters[n];
+
+        for (uint i = 0; i < V; i++) {
+            Eigen::Vector4i idx = tensor_idx(i);
+
+            uint nx = idx[0] + b.d1;
+            uint ny = idx[1] + b.d2;
+            uint nz = idx[2] + b.d3;
+            uint ns = idx[3] + b.ds;
+
+            if (bcx == BoundaryCondition::Open) {
+                if (nx < 0 || nx > N1) continue;
+            } else if (bcx == BoundaryCondition::Periodic) {
+                nx = mod(nx, N1);
+            }
+
+            if (bcy == BoundaryCondition::Open) {
+                if (ny < 0 || ny > N2) continue;
+            } else if (bcx == BoundaryCondition::Periodic) {
+                ny = mod(ny, N2);
+            }
+
+            if (bcz == BoundaryCondition::Open) {
+                if (nz < 0 || nz > N3) continue;
+            } else if (bcz == BoundaryCondition::Periodic) {
+                nz = mod(nz, N3);
+            }
+
+            uint j = flat_idx(nx, ny, nz, ns);
+            if (!bond_filter(i, j)) continue;
+
+            neighbors[i].push_back(Bond{j, bonds.size() - 1});
+        }
+    }
+
     if (cluster_update) {
         // Connect every site to the ghost 
         for (int i = 0; i < V; i++) {
@@ -84,52 +113,13 @@ void Spin3DModel::randomize_spins() {
         spins[i] = Eigen::Vector3d::Random(3).normalized();
 }
 
-void Spin3DModel::add_bond(int d1, int d2, int d3, int ds, Eigen::Vector3d v, std::function<double(Eigen::Vector3d, Eigen::Vector3d)> bondfunc) {
-    HeisBond b{d1, d2, d3, ds, v, bondfunc};
+void Spin3DModel::add_bond(int d1, int d2, int d3, int ds, 
+                           Eigen::Vector3d v, 
+                           std::function<double(const Eigen::Vector3d &, const Eigen::Vector3d &)> bondfunc, 
+                           std::function<bool(uint, uint)> bond_filter) {
+    Spin3DBond b{d1, d2, d3, ds, v, bondfunc};
     this->bonds.push_back(b);
-    int i; int j;
-
-    for (uint i = 0; i < V; i++) {
-        Eigen::Vector4i idx = tensor_idx(i);
-
-        uint nx = idx[0] + b.d1;
-        uint ny = idx[1] + b.d2;
-        uint nz = idx[2] + b.d3;
-        uint ns = idx[3] + b.ds;
-
-        if (bcx == BoundaryCondition::Open) {
-            if (nx < 0 || nx > N1) continue;
-        } else if (bcx == BoundaryCondition::Periodic) {
-            nx = mod(nx, N1);
-        }
-
-        if (bcy == BoundaryCondition::Open) {
-            if (ny < 0 || ny > N2) continue;
-        } else if (bcx == BoundaryCondition::Periodic) {
-            ny = mod(ny, N2);
-        }
-
-        if (bcz == BoundaryCondition::Open) {
-            if (nz < 0 || nz > N3) continue;
-        } else if (bcz == BoundaryCondition::Periodic) {
-            nz = mod(nz, N3);
-        }
-
-        uint j = flat_idx(nx, ny, nz, ns);
-        neighbors[i].push_back(Bond{j, bonds.size() - 1});
-    }
-
-//    for (int n1 = 0; n1 < N1; n1++) {
-//        for (int n2 = 0; n2 < N2; n2++) {
-//            for (int n3 = 0; n3 < N3; n3++) {
-//                for (int s = 0; s < sl; s++) {
-//                    i = flat_idx(n1, n2, n3, s);
-//                    j = flat_idx(mod(n1 + b.d1, N1), mod(n2 + b.d2, N2), mod(n3 + b.d3, N3), mod(s + b.ds, sl));
-//                    neighbors[i].push_back(j);
-//                }
-//            }
-//        }
-//    }
+    this->bond_filters.push_back(bond_filter);
 
     double f = v[0]*alpha;
     Eigen::Matrix3d R;
@@ -321,8 +311,9 @@ void Spin3DModel::cluster_mutation() {
                 s_new = R*spins[m];
 
             for (auto const &[j, b] : neighbors[m]) {
-                neighbor_is_ghost = (j == V);
-
+                neighbor_is_ghost = (b == GHOST);
+                std::cout << "m = " << m << ", j = " << j << ", b = " << b << std::endl;
+                LOG("m = " << m << ", j = " << j << ", b = " << b << std::endl);
                 if (!s.count(j)) {
                     if (neighbor_is_ghost)
                         dE = onsite_func(s0.transpose()*s_new) - onsite_func(s0.transpose()*spins[m]);

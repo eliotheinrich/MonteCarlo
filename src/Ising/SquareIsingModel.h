@@ -14,8 +14,8 @@ class SquareIsingModel : public IsingModel {
 
         SquareIsingModel(Params &params);
 
-        virtual double onsite_energy(int i) const;
-        virtual double bond_energy(int i) const;
+        virtual double onsite_energy(int i) const override;
+        virtual double bond_energy(int i) const override;
 
         CLONE(MCModel, SquareIsingModel)
 };

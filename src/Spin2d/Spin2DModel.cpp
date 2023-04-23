@@ -9,6 +9,8 @@
 #define DEFAULT_SAMPLE_MAGNETIZATION true
 #define DEFAULT_SAMPLE_HELICITY false
 
+#define DEFAULT_BOUNDARY_CONDITION "periodic"
+
 #define GHOST -1
 
 Spin2DModel::Spin2DModel(Params &params) {
@@ -17,6 +19,11 @@ Spin2DModel::Spin2DModel(Params &params) {
     sample_energy = params.get<int>("sample_energy", DEFAULT_SAMPLE_ENERGY);
     sample_magnetization = params.get<int>("sample_magnetization", DEFAULT_SAMPLE_MAGNETIZATION);
     sample_helicity = params.get<int>("sample_helicity", DEFAULT_SAMPLE_HELICITY);
+
+
+    bcx = parse_boundary_condition(params.get<std::string>("bcx", DEFAULT_BOUNDARY_CONDITION));
+    bcy = parse_boundary_condition(params.get<std::string>("bcy", DEFAULT_BOUNDARY_CONDITION));
+    bcz = parse_boundary_condition(params.get<std::string>("bcz", DEFAULT_BOUNDARY_CONDITION));
 }
 
 void Spin2DModel::init_params(int sl, int N1, int N2=-1, int N3=-1) {
@@ -34,6 +41,43 @@ void Spin2DModel::init_params(int sl, int N1, int N2=-1, int N3=-1) {
 }
 
 void Spin2DModel::init() {
+    for (uint n = 0; n < bonds.size(); n++) {
+        auto b = bonds[n];
+        auto bond_filter = bond_filters[n];
+
+        for (uint i = 0; i < V; i++) {
+            Eigen::Vector4i idx = tensor_idx(i);
+
+            uint nx = idx[0] + b.d1;
+            uint ny = idx[1] + b.d2;
+            uint nz = idx[2] + b.d3;
+            uint ns = idx[3] + b.ds;
+
+            if (bcx == BoundaryCondition::Open) {
+                if (nx < 0 || nx > N1) continue;
+            } else if (bcx == BoundaryCondition::Periodic) {
+                nx = mod(nx, N1);
+            }
+
+            if (bcy == BoundaryCondition::Open) {
+                if (ny < 0 || ny > N2) continue;
+            } else if (bcx == BoundaryCondition::Periodic) {
+                ny = mod(ny, N2);
+            }
+
+            if (bcz == BoundaryCondition::Open) {
+                if (nz < 0 || nz > N3) continue;
+            } else if (bcz == BoundaryCondition::Periodic) {
+                nz = mod(nz, N3);
+            }
+
+            uint j = flat_idx(nx, ny, nz, ns);
+            if (!bond_filter(i, j)) continue;
+
+            neighbors[i].push_back(Bond{j, bonds.size() - 1});
+        }
+    }
+
     if (cluster_update) {
         // Connect every site to the ghost 
         for (int i = 0; i < V; i++) {
@@ -60,21 +104,13 @@ void Spin2DModel::randomize_spins() {
     }
 }
 
-void Spin2DModel::add_bond(int d1, int d2, int d3, int ds, Eigen::Vector3d v, std::function<float(Eigen::Vector2d, Eigen::Vector2d)> bondfunc) {
+void Spin2DModel::add_bond(int d1, int d2, int d3, int ds, 
+                           Eigen::Vector3d v, 
+                           std::function<double(const Eigen::Vector2d &, const Eigen::Vector2d &)> bondfunc,
+                           std::function<bool(uint, uint)> bond_filter) {
     Spin2DBond b{d1, d2, d3, ds, v, bondfunc};
     this->bonds.push_back(b);
-    int i; int j;
-    for (int n1 = 0; n1 < N1; n1++) {
-        for (int n2 = 0; n2 < N2; n2++) {
-            for (int n3 = 0; n3 < N3; n3++) {
-                for (int s = 0; s < sl; s++) {
-                    i = flat_idx(n1, n2, n3, s);
-                    j = flat_idx(mod(n1 + b.d1, N1), mod(n2 + b.d2, N2), mod(n3 + b.d3, N3), mod(s + b.ds, sl));
-                    neighbors[i].push_back(Bond{j, bonds.size() - 1});
-                }
-            }
-        }
-    }
+    this->bond_filters.push_back(bond_filter);
 
     Eigen::Matrix2d R;
     R << std::cos(v[0]*alpha), -std::sin(v[0]*alpha),

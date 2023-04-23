@@ -1,6 +1,10 @@
 #include "MonteCarlo.h"
 #include <iostream>
 
+#define DEFAULT_COOLING_SCHEDULE "constant"
+#define DEFAULT_NUM_COOLING_UPDATES 100
+#define DEFAULT_RANDOM_SEED -1
+
 MonteCarloSimulator::MonteCarloSimulator(Params &params, std::unique_ptr<MCModel> model) : Simulator(params) {
     temperature = params.get<float>("temperature");
     init_temperature = params.get<float>("initial_temperature", temperature);

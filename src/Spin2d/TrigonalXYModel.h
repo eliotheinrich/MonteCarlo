@@ -20,12 +20,12 @@ class TrigonalXYModel : public Spin2DModel {
 
         TrigonalXYModel(Params &params);
 
-        inline std::vector<double> vorticity() const;
+        std::vector<double> vorticity() const;
 
         virtual double onsite_func(const Eigen::Vector2d &S) const override;
 
         void over_relaxation_mutation();
-        void generate_mutation();
+        virtual void generate_mutation() override;
 
         CLONE(MCModel, TrigonalXYModel)
 };

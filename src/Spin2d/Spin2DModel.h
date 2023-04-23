@@ -8,8 +8,6 @@
 #include <Eigen/Dense>
 #include "MonteCarlo.h"
 
-typedef std::pair<uint, int> Bond;
-
 class Spin2DModel : virtual public MCModel {
     // Generic 2d spin model in up to 3d lattice
     private:
@@ -38,9 +36,15 @@ class Spin2DModel : virtual public MCModel {
         int N2;
         int N3;
 
+        BoundaryCondition bcx;
+        BoundaryCondition bcy;
+        BoundaryCondition bcz;
+
         float acceptance;
         float sigma;
         std::vector<Eigen::Vector2d> spins;
+
+        std::vector<std::function<bool(uint, uint)>> bond_filters;
 
         std::unordered_set<int> s;
         Eigen::Matrix2d s0;
@@ -98,7 +102,16 @@ class Spin2DModel : virtual public MCModel {
             return cluster_update ? s0.transpose()*spins[i] : spins[i];
         }
 
-        void add_bond(int d1, int d2, int d3, int ds, Eigen::Vector3d v, std::function<float(Eigen::Vector2d, Eigen::Vector2d)> bondfunc);
+        void add_bond(int d1, int d2, int d3, int ds, 
+                      Eigen::Vector3d v, 
+                      std::function<double(const Eigen::Vector2d &, const Eigen::Vector2d &)> bondfunc) {
+            add_bond(d1, d2, d3, ds, v, bondfunc, [](uint, uint) { return true; });
+        }
+
+        void add_bond(int d1, int d2, int d3, int ds, 
+                      Eigen::Vector3d v, 
+                      std::function<double(const Eigen::Vector2d &, const Eigen::Vector2d &)> bondfunc, 
+                      std::function<bool(uint, uint)> bond_filter);
 
         virtual std::vector<double> twist_stiffness() const;
 
@@ -110,18 +123,18 @@ class Spin2DModel : virtual public MCModel {
         void metropolis_mutation();
         void cluster_mutation();
 
-        virtual void generate_mutation();
-        virtual void accept_mutation();
-        virtual void reject_mutation();
+        virtual void generate_mutation() override;
+        virtual void accept_mutation() override;
+        virtual void reject_mutation() override;
 
-        virtual double energy() const;
-        virtual double energy_change();
+        virtual double energy() const override;
+        virtual double energy_change() override;
 
         virtual double onsite_func(const Eigen::Vector2d& S) const = 0;
         
         void add_magnetization_samples(std::map<std::string, Sample> &samples) const;
         void add_helicity_samples(std::map<std::string, Sample> &samples) const;
-        virtual std::map<std::string, Sample> take_samples();
+        virtual std::map<std::string, Sample> take_samples() override;
 
         void save_spins(std::string filename);
 };
