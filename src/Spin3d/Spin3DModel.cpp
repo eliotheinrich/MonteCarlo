@@ -84,7 +84,7 @@ void Spin3DModel::init() {
             uint j = flat_idx(nx, ny, nz, ns);
             if (!bond_filter(i, j)) continue;
 
-            neighbors[i].push_back(Bond{j, bonds.size() - 1});
+            neighbors[i].push_back(Bond{j, n});
         }
     }
 
