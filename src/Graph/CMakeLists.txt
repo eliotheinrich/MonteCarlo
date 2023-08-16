@@ -3,4 +3,4 @@ add_library(graph
 	SimpleGraphModel.cpp
 )
 target_link_libraries(graph montecarlo)
-target_include_directories(graph PUBLIC ${CMAKE_SOURCE_DIR}/src ${DF_DEPENDENCIES})
+target_include_directories(graph PUBLIC ${CMAKE_SOURCE_DIR}/src)

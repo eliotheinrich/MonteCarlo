@@ -1,9 +1,9 @@
 #include "SimpleGraphModel.h"
 
 SimpleGraphModel::SimpleGraphModel(Params &params) {
-    this->N = params.get<int>("system_size");
+    this->N = get<int>(params, "system_size");
     GraphModel::init_params(N);
-    this->J = params.get<float>("J");
+    this->J = get<double>(params, "J");
 }
 
 double SimpleGraphModel::onsite_energy(int i) const {

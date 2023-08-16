@@ -53,30 +53,30 @@ int main(int argc, char *argv[]) {
 
     std::cout << "Starting job\n";
 
-    auto params = Params::load_json(data, true);
-    std::vector<std::unique_ptr<Config>> configs;
+    auto params = load_json(data, true);
+    std::vector<std::shared_ptr<Config>> configs;
 
     std::string data_prefix = "../data/";
 
     for (auto param : params) {
-        std::unique_ptr<TimeConfig> config(new TimeConfig(param));
+        std::shared_ptr<TimeConfig> config(new TimeConfig(param));
 
-        std::unique_ptr<MCModel> model;
-        if (model_type == "square_ising") model = std::unique_ptr<MCModel>(new SquareIsingModel(param));
-        else if (model_type == "square_xy") model = std::unique_ptr<MCModel>(new SquareXYModel(param));
-        else if (model_type == "trigonal_xy") model = std::unique_ptr<MCModel>(new TrigonalXYModel(param));
-        else if (model_type == "square_xxz") model = std::unique_ptr<MCModel>(new XXZHeis(param));
-        else if (model_type == "trigonal_heisenberg") model = std::unique_ptr<MCModel>(new TrigonalModel(param));
-        else if (model_type == "simple_graph") model = std::unique_ptr<MCModel>(new SimpleGraphModel(param));
+        std::shared_ptr<MCModel> model;
+        if (model_type == "square_ising") model = std::make_shared<SquareIsingModel>(param);
+        else if (model_type == "square_xy") model = std::make_shared<SquareXYModel>(param); 
+        else if (model_type == "trigonal_xy") model = std::make_shared<TrigonalXYModel>(param); 
+        else if (model_type == "square_xxz") model = std::make_shared<XXZHeis>(param); 
+        else if (model_type == "trigonal_heisenberg") model = std::make_shared<TrigonalModel>(param);
+        else if (model_type == "simple_graph") model = std::make_shared<SimpleGraphModel>(param);
         // Clock models not currently supported
 
-        std::unique_ptr<Simulator> sim = std::unique_ptr<Simulator>(new MonteCarloSimulator(param, std::move(model)));
-        config->init_simulator(std::move(sim));
-        configs.push_back(std::move(config));
+        std::shared_ptr<Simulator> sim = std::shared_ptr<Simulator>(new MonteCarloSimulator(param, std::move(model)));
+        config->init_simulator(sim);
+        configs.push_back(config);
     }
 
-    ParallelCompute pc(std::move(configs));
-    DataFrame df = pc.compute(num_threads, true);
-    df.write_json(data_prefix + data_filename);
+    ParallelCompute pc(configs, num_threads);
+    pc.compute(true);
+    pc.write_json(data_prefix + data_filename);
     std::cout << "Finishing job\n";
 }

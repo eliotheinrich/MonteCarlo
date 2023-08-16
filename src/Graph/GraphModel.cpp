@@ -71,7 +71,7 @@ double GraphModel::get_connectivity() const {
 	return c/N;
 }
 
-std::map<std::string, Sample> GraphModel::take_samples() const {
+data_t GraphModel::take_samples() const {
 	std::map<std::string, Sample> samples;
 	samples.emplace("connectivity", get_connectivity());
 	return samples;

@@ -78,7 +78,7 @@ class MCModel {
         // expensive operations to the init function
         // This may lead to performance increases for small timesteps and large system sizes
         virtual void init() {}
-        virtual std::unique_ptr<MCModel> clone(Params &params)=0;
+        virtual std::shared_ptr<MCModel> clone(Params &params)=0;
 
         virtual std::map<std::string, Sample> take_samples() {
             return std::map<std::string, Sample>();
@@ -97,16 +97,16 @@ class MonteCarloSimulator : public Simulator {
         double init_temperature;
         double temperature;
 
-        std::unique_ptr<MCModel> model;
+        std::shared_ptr<MCModel> model;
     
     public:
-        MonteCarloSimulator(Params &params, std::unique_ptr<MCModel> model);
+        MonteCarloSimulator(Params &params, std::shared_ptr<MCModel> model);
 
         virtual void init_state();
         virtual void timesteps(uint num_steps);
         virtual void equilibration_timesteps(uint num_steps);
-        virtual std::unique_ptr<Simulator> clone(Params &params) { return std::unique_ptr<Simulator>(new MonteCarloSimulator(params, model->clone(params))); }
-        virtual std::map<std::string, Sample> take_samples() { return model->take_samples(); };
+        virtual std::shared_ptr<Simulator> clone(Params &params) { return std::shared_ptr<Simulator>(new MonteCarloSimulator(params, model->clone(params))); }
+        virtual data_t take_samples() { return model->take_samples(); };
 };
 
 // TODO remove

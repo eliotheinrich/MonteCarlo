@@ -132,9 +132,9 @@ class Spin2DModel : virtual public MCModel {
 
         virtual double onsite_func(const Eigen::Vector2d& S) const = 0;
         
-        void add_magnetization_samples(std::map<std::string, Sample> &samples) const;
-        void add_helicity_samples(std::map<std::string, Sample> &samples) const;
-        virtual std::map<std::string, Sample> take_samples() override;
+        void add_magnetization_samples(data_t &samples) const;
+        void add_helicity_samples(data_t &samples) const;
+        virtual data_t take_samples() override;
 
         void save_spins(std::string filename);
 };

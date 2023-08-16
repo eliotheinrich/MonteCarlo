@@ -5,14 +5,14 @@
 #include <string>
 
 SquareXYModel::SquareXYModel(Params &params) : Spin2DModel(params) {
-    this->N = params.get<int>("system_size");
-    this->L = params.get<int>("layers", DEFAULT_LAYERS);
+    this->N = get<int>(params, "system_size");
+    this->L = get<int>(params, "layers", DEFAULT_LAYERS);
 
     Spin2DModel::init_params(1, N, N, L);
 
-    this->J = params.get<float>("J");
-    this->B = params.get<float>("B");
-    this->Bp = params.get<float>("Bp");
+    this->J = get<double>(params, "J");
+    this->B = get<double>(params, "B");
+    this->Bp = get<double>(params, "Bp");
     this->Bx = this->B*cos(this->Bp);
     this->By = this->B*sin(this->Bp);
 

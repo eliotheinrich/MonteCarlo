@@ -161,9 +161,9 @@ class Spin3DModel : virtual public MCModel {
         void save_spins(std::string filename);
         bool load_spins(std::string filename);
 
-        void add_magnetization_samples(std::map<std::string, Sample> &samples) const;
-        void add_helicity_samples(std::map<std::string, Sample> &samples) const;
-        virtual std::map<std::string, Sample> take_samples() override;
+        void add_magnetization_samples(data_t &samples) const;
+        void add_helicity_samples(data_t &samples) const;
+        virtual data_t take_samples() override;
 };
 
 #endif

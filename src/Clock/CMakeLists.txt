@@ -3,4 +3,4 @@ add_library(clock
 	SquareClockModel.cpp
 )
 target_link_libraries(clock montecarlo)
-target_include_directories(clock PRIVATE ${CMAKE_SOURCE_DIR}/src ${EIGEN_DIR} ${DF_DEPENDENCIES})
+target_include_directories(clock PRIVATE ${CMAKE_SOURCE_DIR}/src)

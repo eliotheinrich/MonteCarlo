@@ -14,16 +14,16 @@
 #define GHOST -1
 
 Spin2DModel::Spin2DModel(Params &params) {
-    cluster_update = params.get<int>("cluster_update", DEFAULT_CLUSTER_UPDATE);
+    cluster_update = get<int>(params, "cluster_update", DEFAULT_CLUSTER_UPDATE);
 
-    sample_energy = params.get<int>("sample_energy", DEFAULT_SAMPLE_ENERGY);
-    sample_magnetization = params.get<int>("sample_magnetization", DEFAULT_SAMPLE_MAGNETIZATION);
-    sample_helicity = params.get<int>("sample_helicity", DEFAULT_SAMPLE_HELICITY);
+    sample_energy = get<int>(params, "sample_energy", DEFAULT_SAMPLE_ENERGY);
+    sample_magnetization = get<int>(params, "sample_magnetization", DEFAULT_SAMPLE_MAGNETIZATION);
+    sample_helicity = get<int>(params, "sample_helicity", DEFAULT_SAMPLE_HELICITY);
 
 
-    bcx = parse_boundary_condition(params.get<std::string>("bcx", DEFAULT_BOUNDARY_CONDITION));
-    bcy = parse_boundary_condition(params.get<std::string>("bcy", DEFAULT_BOUNDARY_CONDITION));
-    bcz = parse_boundary_condition(params.get<std::string>("bcz", DEFAULT_BOUNDARY_CONDITION));
+    bcx = parse_boundary_condition(get<std::string>(params, "bcx", DEFAULT_BOUNDARY_CONDITION));
+    bcy = parse_boundary_condition(get<std::string>(params, "bcy", DEFAULT_BOUNDARY_CONDITION));
+    bcz = parse_boundary_condition(get<std::string>(params, "bcz", DEFAULT_BOUNDARY_CONDITION));
 }
 
 void Spin2DModel::init_params(int sl, int N1, int N2=-1, int N3=-1) {
@@ -54,19 +54,19 @@ void Spin2DModel::init() {
             uint ns = idx[3] + b.ds;
 
             if (bcx == BoundaryCondition::Open) {
-                if (nx < 0 || nx > N1) continue;
+                if (nx < 0 || nx >= N1) continue;
             } else if (bcx == BoundaryCondition::Periodic) {
                 nx = mod(nx, N1);
             }
 
             if (bcy == BoundaryCondition::Open) {
-                if (ny < 0 || ny > N2) continue;
+                if (ny < 0 || ny >= N2) continue;
             } else if (bcx == BoundaryCondition::Periodic) {
                 ny = mod(ny, N2);
             }
 
             if (bcz == BoundaryCondition::Open) {
-                if (nz < 0 || nz > N3) continue;
+                if (nz < 0 || nz >= N3) continue;
             } else if (bcz == BoundaryCondition::Periodic) {
                 nz = mod(nz, N3);
             }
@@ -314,20 +314,20 @@ void Spin2DModel::save_spins(std::string filename) {
     output_file.close();
 }
 
-void Spin2DModel::add_magnetization_samples(std::map<std::string, Sample> &samples) const {
+void Spin2DModel::add_magnetization_samples(data_t &samples) const {
     auto m = get_magnetization();
     samples.emplace("mx", m[0]);
     samples.emplace("my", m[1]);
     samples.emplace("magnetization", m.norm());
 }
 
-void Spin2DModel::add_helicity_samples(std::map<std::string, Sample> &samples) const {
+void Spin2DModel::add_helicity_samples(data_t &samples) const {
     std::vector<double> twistd = twist_stiffness();
     samples.emplace("d1E", twistd[2]);
     samples.emplace("d2E", twistd[4]);
 }
 
-std::map<std::string, Sample> Spin2DModel::take_samples() {
+data_t Spin2DModel::take_samples() {
     std::map<std::string, Sample> samples;
 
     if (sample_energy)

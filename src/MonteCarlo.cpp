@@ -5,11 +5,11 @@
 #define DEFAULT_NUM_COOLING_UPDATES 100
 #define DEFAULT_RANDOM_SEED -1
 
-MonteCarloSimulator::MonteCarloSimulator(Params &params, std::unique_ptr<MCModel> model) : Simulator(params) {
-    temperature = params.get<float>("temperature");
-    init_temperature = params.get<float>("initial_temperature", temperature);
-    num_cooling_updates = params.get<int>("num_cooling_updates", DEFAULT_NUM_COOLING_UPDATES);
-    cooling_schedule = parse_cooling_schedule(params.get<std::string>("cooling_schedule", DEFAULT_COOLING_SCHEDULE));
+MonteCarloSimulator::MonteCarloSimulator(Params &params, std::shared_ptr<MCModel> model) : Simulator(params) {
+    temperature = get<double>(params, "temperature");
+    init_temperature = get<double>(params, "initial_temperature", temperature);
+    num_cooling_updates = get<int>(params, "num_cooling_updates", DEFAULT_NUM_COOLING_UPDATES);
+    cooling_schedule = parse_cooling_schedule(get<std::string>(params, "cooling_schedule", DEFAULT_COOLING_SCHEDULE));
 
     this->model = std::move(model);
 }

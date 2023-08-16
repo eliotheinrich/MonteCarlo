@@ -46,7 +46,7 @@ class GraphModel : virtual public MCModel {
 		int deg(int i) const;
 
 		double get_connectivity() const;
-        virtual std::map<std::string, Sample> take_samples() const;
+        virtual data_t take_samples() const;
 };
 
 #endif

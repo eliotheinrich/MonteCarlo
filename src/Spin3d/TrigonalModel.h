@@ -11,6 +11,7 @@ class TrigonalModel : public Spin3DModel {
         int L;
         float J1;
         float J2;
+        float J3;
         float K1;
         float K2;
         float K3;
@@ -52,12 +53,12 @@ class TrigonalModel : public Spin3DModel {
         Eigen::Vector3d rel_pos(uint i) const;
         double intensity(Eigen::Vector3d Q) const;
 
-        void add_intensityx_samples(std::map<std::string, Sample> &samples) const;
-        void add_intensityy_samples(std::map<std::string, Sample> &samples) const;
-        void add_intensityz_samples(std::map<std::string, Sample> &samples) const;
-        void add_layer_magnetization_samples(std::map<std::string, Sample> &samples) const;
+        void add_intensityx_samples(data_t &samples) const;
+        void add_intensityy_samples(data_t &samples) const;
+        void add_intensityz_samples(data_t &samples) const;
+        void add_layer_magnetization_samples(data_t &samples) const;
 
-        virtual std::map<std::string, Sample> take_samples() override;
+        virtual data_t take_samples() override;
 
         CLONE(MCModel, TrigonalModel)
 };

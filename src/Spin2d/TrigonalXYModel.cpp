@@ -4,10 +4,10 @@
 #include <string>
 
 TrigonalXYModel::TrigonalXYModel(Params &params) : Spin2DModel(params) {
-    this->N = params.get<int>("system_size");
-    this->L = params.get<int>("layers", DEFAULT_LAYERS);
-    this->J = params.get<float>("J");
-    this->A = params.get<float>("A");
+    this->N = get<int>(params, "system_size");
+    this->L = get<int>(params, "layers", DEFAULT_LAYERS);
+    this->J = get<double>(params, "J");
+    this->A = get<double>(params, "A");
 
     Spin2DModel::init_params(1, N, N, L);
 

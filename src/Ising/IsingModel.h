@@ -63,7 +63,7 @@ class IsingModel : virtual public MCModel {
         virtual double energy() const override;
         virtual double energy_change() override;
 
-        virtual std::map<std::string, Sample> take_samples() override;
+        virtual data_t take_samples() override;
 
         void save_spins(std::string filename);
 };

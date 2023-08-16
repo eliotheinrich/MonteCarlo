@@ -4,13 +4,13 @@
 
 
 XXZHeis::XXZHeis(Params &params) : Spin3DModel(params) {
-    this->N = params.get<int>("system_size");
-    this->L = params.get<int>("layers", DEFAULT_LAYERS);
+    this->N = get<int>(params, "system_size");
+    this->L = get<int>(params, "layers", DEFAULT_LAYERS);
     Spin3DModel::init_params(1, N, N, L);
 
-    this->J = params.get<float>("J");
-    this->K = params.get<float>("K");
-    this->A = params.get<float>("A");
+    this->J = get<double>(params, "J");
+    this->K = get<double>(params, "K");
+    this->A = get<double>(params, "A");
 
     float K = this->K;
     float J = this->J;

@@ -15,19 +15,20 @@
 
 
 TrigonalModel::TrigonalModel(Params &params) : Spin3DModel(params) {
-    this->N = params.get<int>("system_size");
-    this->L = params.get<int>("layers", DEFAULT_LAYERS);
+    this->N = get<int>(params, "system_size");
+    this->L = get<int>(params, "layers", DEFAULT_LAYERS);
     Spin3DModel::init_params(1, N, N, L);
 
-    this->J1 = params.get<float>("J1");
-    this->J2 = params.get<float>("J2");
-    this->K1 = params.get<float>("K1");
-    this->K2 = params.get<float>("K2");
-    this->K3 = params.get<float>("K3");
-    Eigen::Vector3d B; B << params.get<float>("Bx"), params.get<float>("By"), params.get<float>("Bz");
+    this->J1 = get<double>(params, "J1");
+    this->J2 = get<double>(params, "J2");
+    this->J3 = get<double>(params, "J3", this->J2);
+    this->K1 = get<double>(params, "K1");
+    this->K2 = get<double>(params, "K2");
+    this->K3 = get<double>(params, "K3");
+    Eigen::Vector3d B; B << get<double>(params, "Bx"), get<double>(params, "By"), get<double>(params, "Bz");
     this->B = B;
 
-    this->fm_layers = params.get<int>("fm_layers", DEFAULT_FM_LAYERS);
+    this->fm_layers = get<int>(params, "fm_layers", DEFAULT_FM_LAYERS);
     this->mut_mode = 0;
     this->mut_counter = 0; 
 
@@ -53,7 +54,7 @@ TrigonalModel::TrigonalModel(Params &params) : Spin3DModel(params) {
 
     std::function<float(const Eigen::Vector3d &, const Eigen::Vector3d &)> bondfunc_inter_fm = 
     [this](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) {
-        return -this->J2*S1.dot(S2);
+        return -this->J3*S1.dot(S2);
     };
 
 
@@ -76,14 +77,14 @@ TrigonalModel::TrigonalModel(Params &params) : Spin3DModel(params) {
 
 
 
-    this->sample_layer_magnetization = params.get<int>("sample_layer_magnetization", DEFAULT_SAMPLE_LAYER_MAGNETIZATION);
+    this->sample_layer_magnetization = get<int>(params, "sample_layer_magnetization", DEFAULT_SAMPLE_LAYER_MAGNETIZATION);
 
-    this->sample_intensityx = params.get<int>("sample_intensityx", DEFAULT_SAMPLE_INTENSITYX);
-    this->sample_intensityy = params.get<int>("sample_intensityy", DEFAULT_SAMPLE_INTENSITYY);
-    this->sample_intensityz = params.get<int>("sample_intensityz", DEFAULT_SAMPLE_INTENSITYZ);
-    this->max_L = params.get<float>("max_L", DEFAULT_MAX_L);
-    this->min_L = params.get<float>("min_L", DEFAULT_MIN_L);
-    this->intensity_resolution = params.get<int>("intensity_resolution", DEFAULT_INTENSITY_RESOLUTION);
+    this->sample_intensityx = get<int>(params, "sample_intensityx", DEFAULT_SAMPLE_INTENSITYX);
+    this->sample_intensityy = get<int>(params, "sample_intensityy", DEFAULT_SAMPLE_INTENSITYY);
+    this->sample_intensityz = get<int>(params, "sample_intensityz", DEFAULT_SAMPLE_INTENSITYZ);
+    this->max_L = get<double>(params, "max_L", DEFAULT_MAX_L);
+    this->min_L = get<double>(params, "min_L", DEFAULT_MIN_L);
+    this->intensity_resolution = get<int>(params, "intensity_resolution", DEFAULT_INTENSITY_RESOLUTION);
 }
 
 Eigen::Vector3d TrigonalModel::molecular_field(int i) const {
@@ -131,21 +132,19 @@ void TrigonalModel::generate_mutation() {
     }
 }
 
+// This function has a high capacity for bugs; beware when changing things
 void TrigonalModel::over_relaxation_mutation() {
     Eigen::Vector3d H = B;
 
-    for (uint n = 0; n < 6; n++) {
-        auto [j, _] = neighbors[mut.i][n];
-        H -= J1*get_spin(j);
-    }
-
-    if (bonds.size() > 7) {
-        for (uint n = 6; n < 8; n++) {
-            auto [j, _] = neighbors[mut.i][n];
+    for (auto const &[j, n] : neighbors[mut.i]) {
+        if (n < 6) {
+            H -= J1*get_spin(j);
+        } else if (n < 8) {
             H += J2*get_spin(j);
+        } else if (n < 10) {
+            H -= J3*get_spin(j);
         }
     }
-
 
     this->mut.dS = -2*get_spin(mut.i) + 2.*get_spin(mut.i).dot(H)/std::pow(H.norm(),2) * H;
 }
