@@ -1,0 +1,31 @@
+[build-system]
+requires = [
+    "scikit-build-core>=0.4.3", 
+    "nanobind>=1.5.0",
+    "cmake>=3.27"
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "pymc"
+version = "0.0.1"
+description = "Provides access to C++ functions for my Monte Carlo simulations."
+requires-python = ">=3.10"
+authors = [
+	{ name = "Eliot Heinrich", email = "heinriea@bc.edu" },
+]
+
+[tool.scikit-build]
+minimum-version = "0.4"
+build-dir = "build/{wheel_tag}"
+wheel.py-api = "cp312"
+cmake.verbose = true
+
+[tool.scikit-build.cmake.define]
+MC_BUILDING_PYTHON="On"
+
+[tool.cibuildwheel]
+build-verbosity = 1
+
+[tool.cibuildwheel.macos.environment]
+MACOSX_DEPLOYMENT_TARGET = "10.14"
