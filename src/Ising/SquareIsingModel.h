@@ -1,23 +1,20 @@
-#ifndef SQUAREISING_H
-#define SQUAREISING_H
+#pragma once
 
 #include "IsingModel.h"
 
 #define DEFAULT_LAYERS 1
 
 class SquareIsingModel : public IsingModel {
-    public:
-        int N;
-        int L;
-        float J;
-        float B;
+  public:
+    SquareIsingModel(dataframe::Params &params, uint32_t num_threads);
 
-        SquareIsingModel(Params &params);
+    virtual double onsite_energy(uint32_t i) const override;
+    virtual double bond_energy(uint32_t i) const override;
 
-        virtual double onsite_energy(int i) const override;
-        virtual double bond_energy(int i) const override;
-
-        CLONE(MCModel, SquareIsingModel)
+  private:
+    uint32_t N;
+    uint32_t L;
+    double J;
+    double B;
 };
 
-#endif

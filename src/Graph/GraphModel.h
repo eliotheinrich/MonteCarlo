@@ -1,52 +1,50 @@
-#ifndef GRAPH_MC_H
-#define GRAPH_MC_H
+#pragma once
 
-#include <vector>
 #include "MonteCarlo.h"
 
-class GraphModel : virtual public MCModel {
-	// Generic graph model
-    private:
-        struct GraphMutation {
-            int i;
-			int j;
-        };
+#include <vector>
 
+class GraphModel : public MonteCarloSimulator {
+  // Generic graph model
+  public:
+    uint64_t N;
 
-    public:
-        ull N;
+    double acceptance;
+    std::vector<std::vector<uint32_t>> edges;
+    std::vector<int> vals;
 
-        double acceptance;
-		std::vector<std::vector<int>> edges;
-		std::vector<int> vals;
+    GraphModel(dataframe::Params &params, uint32_t num_threads);
+    GraphModel()=default;
+    virtual ~GraphModel()=default;
 
-        // Mutation being considered is stored as an attribute of the model
-        GraphMutation mut;
+    void init(uint64_t N);
+    virtual uint64_t system_size() const override {
+      return N;
+    }
 
-		GraphModel() {}
-        virtual ~GraphModel() {}
+    virtual void generate_mutation() override;
+    virtual void accept_mutation() override;
+    virtual void reject_mutation() override;
 
-        void init_params(ull N);
-		virtual void init();
-        virtual ull system_size() const {
-            return N;
-        }
+    virtual double onsite_energy(uint32_t i) const=0;
+    virtual double bond_energy(uint32_t i) const=0;
 
-        virtual void generate_mutation();
-        virtual void accept_mutation();
-        virtual void reject_mutation();
+    virtual double energy() const override;
+    virtual double energy_change() override;
 
-        virtual double onsite_energy(int i) const=0;
-        virtual double bond_energy(int i) const=0;
+    void toggle_edge(uint32_t i, uint32_t j);
+    uint32_t deg(uint32_t i) const;
 
-        virtual double energy() const;
-        virtual double energy_change();
+    double get_connectivity() const;
+    virtual dataframe::data_t take_samples() const;
 
-		void toggle_edge(int i, int j);
-		int deg(int i) const;
+  protected:
+    struct GraphMutation {
+      uint32_t i;
+      uint32_t j;
+    };
 
-		double get_connectivity() const;
-        virtual data_t take_samples() const;
+    // Mutation being considered is stored as an attribute of the model
+    GraphMutation mut;
 };
 
-#endif

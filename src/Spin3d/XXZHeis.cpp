@@ -1,70 +1,74 @@
 #include "XXZHeis.h"
 #include <functional>
-#include <string>
 
 
-XXZHeis::XXZHeis(Params &params) : Spin3DModel(params) {
-    this->N = get<int>(params, "system_size");
-    this->L = get<int>(params, "layers", DEFAULT_LAYERS);
-    Spin3DModel::init_params(1, N, N, L);
+XXZHeis::XXZHeis(dataframe::Params &params, uint32_t num_threads) : Spin3DModel(params, num_threads) {
+  N = dataframe::utils::get<int>(params, "system_size");
+  L = dataframe::utils::get<int>(params, "layers", DEFAULT_LAYERS);
 
-    this->J = get<double>(params, "J");
-    this->K = get<double>(params, "K");
-    this->A = get<double>(params, "A");
+  J = dataframe::utils::get<double>(params, "J");
+  K = dataframe::utils::get<double>(params, "K");
+  A = dataframe::utils::get<double>(params, "A");
 
-    float K = this->K;
-    float J = this->J;
-    std::function<double(const Eigen::Vector3d &, const Eigen::Vector3d &)> bondfunc = 
-    [J, K](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) {
-        return -J*S1.dot(S2) + K*S1[2]*S2[2];
+  double Kt = K;
+  double Jt = J;
+  std::function<double(const Eigen::Vector3d &, const Eigen::Vector3d &)> bondfunc = 
+    [Jt, Kt](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) {
+      return -Jt*S1.dot(S2) + Kt*S1[2]*S2[2];
     };
 
 
 
-    Eigen::Vector3d v1; v1 << 1.,0.,0.;
-    Eigen::Vector3d v2; v2 << 0.,1.,0.;
-    this->add_bond(1,0,0,0,   v1, bondfunc);
-    this->add_bond(-1,0,0,0, -v1, bondfunc);
-    this->add_bond(0,1,0,0,   v2, bondfunc);
-    this->add_bond(0,-1,0,0, -v2, bondfunc);
+  Eigen::Vector3d v1; v1 << 1.,0.,0.;
+  Eigen::Vector3d v2; v2 << 0.,1.,0.;
+  add_bond(1,0,0,0,   v1, bondfunc);
+  add_bond(-1,0,0,0, -v1, bondfunc);
+  add_bond(0,1,0,0,   v2, bondfunc);
+  add_bond(0,-1,0,0, -v2, bondfunc);
+
+  Spin3DModel::init(1, N, N, L);
 }
 
 std::vector<double> XXZHeis::vorticity() const {
-    float v1 = 0;
-    float v2 = 0;
+  double v1 = 0;
+  double v2 = 0;
 
-    std::vector<std::vector<std::vector<float>>> phi = std::vector<std::vector<std::vector<float>>>(N,
-                                                std::vector<std::vector<float>>(N,
-                                                        std::vector<float>(L)));
+  std::vector<std::vector<std::vector<double>>> phi = std::vector<std::vector<std::vector<double>>>(N,
+                                                                  std::vector<std::vector<double>>(N,
+                                                                              std::vector<double>(L)));
 
-    int i;
-    for (int n1 = 0; n1 < N; n1++) {
-        for (int n2 = 0; n2 < N; n2++) {
-            for (int n3 = 0; n3 < L; n3++) {
-                i = flat_idx(n1, n2, n3, 0);
-                phi[n1][n2][n3] = atan2(get_spin(i)[1], get_spin(i)[0]);
-            }
-        }
+  int i;
+  for (uint32_t n1 = 0; n1 < N; n1++) {
+    for (uint32_t n2 = 0; n2 < N; n2++) {
+      for (uint32_t n3 = 0; n3 < L; n3++) {
+        i = flat_idx(n1, n2, n3, 0);
+        phi[n1][n2][n3] = atan2(get_spin(i)[1], get_spin(i)[0]);
+      }
     }
+  }
 
-    float p1; float p2; float p3; float p4;
-    float w;
-    for (int n1 = 0; n1 < N; n1++) {
-        for (int n2 = 0; n2 < N; n2++) {
-            for (int n3 = 0; n3 < L; n3++) {
-                p1 = phi[n1][n2][n3]; p2 = phi[(n1+1)%N][n2][n3];
-                p3 = phi[(n1+1)%N][(n2+1)%N][n3]; p4 = phi[n1][(n2+1)%N][n3];
-                w = arg(exp(std::complex<float>(0., p2 - p1))) + arg(exp(std::complex<float>(0., p3 - p2)))
-                    + arg(exp(std::complex<float>(0., p4 - p3))) + arg(exp(std::complex<float>(0., p1 - p4)));
-                if (w > 0) { v1 += w; } else { v2 += w; }
-            }
+  double p1; double p2; double p3; double p4;
+  double w;
+  for (uint32_t n1 = 0; n1 < N; n1++) {
+    for (uint32_t n2 = 0; n2 < N; n2++) {
+      for (uint32_t n3 = 0; n3 < L; n3++) {
+        p1 = phi[n1][n2][n3]; p2 = phi[(n1+1)%N][n2][n3];
+        p3 = phi[(n1+1)%N][(n2+1)%N][n3]; p4 = phi[n1][(n2+1)%N][n3];
+        w = arg(exp(std::complex<double>(0., p2 - p1))) + arg(exp(std::complex<double>(0., p3 - p2)))
+          + arg(exp(std::complex<double>(0., p4 - p3))) + arg(exp(std::complex<double>(0., p1 - p4)));
+        if (w > 0) { 
+          v1 += w; 
+        } else { 
+          v2 += w; 
         }
+      }
     }
-    
-    return std::vector<double>{v1/(2*PI*N*N*L), v2/(2*PI*N*N*L)};
+  }
+
+  return std::vector<double>{v1/(2*PI*N*N*L), v2/(2*PI*N*N*L)};
 }
 
 double XXZHeis::onsite_func(const Eigen::Vector3d &S) const {
-    // Onsite interactions
-    return A*S[2]*S[2];
+  // Onsite interactions
+  return A*S[2]*S[2];
 }

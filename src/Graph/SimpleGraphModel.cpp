@@ -1,19 +1,19 @@
 #include "SimpleGraphModel.h"
 
-SimpleGraphModel::SimpleGraphModel(Params &params) {
-    this->N = get<int>(params, "system_size");
-    GraphModel::init_params(N);
-    this->J = get<double>(params, "J");
+SimpleGraphModel::SimpleGraphModel(dataframe::Params &params, uint32_t num_threads) : GraphModel(params, num_threads) {
+  N = dataframe::utils::get<int>(params, "system_size");
+  J = dataframe::utils::get<double>(params, "J");
+  GraphModel::init(N);
 }
 
-double SimpleGraphModel::onsite_energy(int i) const {
-    double E = 0;
+double SimpleGraphModel::onsite_energy(uint32_t i) const {
+  double E = 0;
 
-    return E;
+  return E;
 }
 
-double SimpleGraphModel::bond_energy(int i) const {
-    double E = 0;
-    E += deg(i);
-    return J*E;
+double SimpleGraphModel::bond_energy(uint32_t i) const {
+  double E = 0;
+  E += deg(i);
+  return J*E;
 }

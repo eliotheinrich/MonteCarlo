@@ -1,44 +1,36 @@
-#ifndef SQUARECLOCK_
-#define SQUARECLOCK_
-
 #include "SquareClockModel.h"
-#include <iostream>
-#include <functional>
-#include <vector>
-#include <string>
 
-template <int q>
-SquareClockModel<q>::SquareClockModel(Params &params) {
-    this->N = get<int>(params, "system_size");
-    this->L = get<int>(params, "layers", DEFAULT_LAYERS);
-    ClockModel<q>::init_params(N, N, L);
+template <uint32_t q>
+SquareClockModel<q>::SquareClockModel(dataframe::Params &params, uint32_t num_threads) : ClockModel<q>(params, num_threads) {
+  N = dataframe::utils::get<int>(params, "system_size");
+  L = dataframe::utils::get<int>(params, "layers", DEFAULT_LAYERS);
 
-    this->J = get<double>(params, "J");
+  J = dataframe::utils::get<double>(params, "J");
 
-    for (int i = 0; i < q; i++) {
-        for (int j = 0; j < q; j++) {
-            bond_table[i][j] = -J*cos(2*PI/q*(i - j));
-        }
+  for (uint32_t i = 0; i < q; i++) {
+    for (uint32_t j = 0; j < q; j++) {
+      bond_table[i][j] = -J*cos(2*PI/q*(i - j));
     }
+  }
 
-    std::function<float(int, int)> bondfunc = [this](int p1, int p2) {
-        return this->bond_table[p1][p2];
-    };
+  std::function<double(uint32_t, uint32_t)> bondfunc = [this](uint32_t p1, uint32_t p2) {
+    return this->bond_table[p1][p2];
+  };
 
 
 
-    Eigen::Vector3d v1; v1 << 1.,0.,0.;
-    Eigen::Vector3d v2; v2 << 0.,1.,0.;
-    this->add_bond(1,0,0,   v1, bondfunc);
-    this->add_bond(-1,0,0, -v1, bondfunc);
-    this->add_bond(0,1,0,   v2, bondfunc);
-    this->add_bond(0,-1,0, -v2, bondfunc);
+  Eigen::Vector3d v1; v1 << 1.,0.,0.;
+  Eigen::Vector3d v2; v2 << 0.,1.,0.;
+  this->add_bond(1,0,0,   v1, bondfunc);
+  this->add_bond(-1,0,0, -v1, bondfunc);
+  this->add_bond(0,1,0,   v2, bondfunc);
+  this->add_bond(0,-1,0, -v2, bondfunc);
+
+  ClockModel<q>::init(N, N, L);
 }
 
-template <int q>
-double SquareClockModel<q>::onsite_energy(int i) const {
-    return 0.;
+template <uint32_t q>
+double SquareClockModel<q>::onsite_energy(uint32_t i) const {
+  return 0.;
 }
 
-
-#endif

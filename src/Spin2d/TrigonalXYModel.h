@@ -1,34 +1,28 @@
-#ifndef TRIGONALXY_H
-#define TRIGONALXY_H
+#pragma once
 
 #include <vector>
-#include <Eigen/Dense>
 #include "Spin2DModel.h"
-    
+
 #define DEFAULT_LAYERS 1
 
 class TrigonalXYModel : public Spin2DModel {
-    private:
-        int N;
-        int L;
-        float J;
-        float A;
+  public:
 
-        int mut_mode;
+    TrigonalXYModel(dataframe::Params &params, uint32_t num_threads);
 
-    public:
+    std::vector<double> vorticity() const;
 
-        TrigonalXYModel(Params &params);
+    virtual double onsite_func(const Eigen::Vector2d &S) const override;
 
-        std::vector<double> vorticity() const;
+    void over_relaxation_mutation();
+    virtual void generate_mutation() override;
 
-        virtual double onsite_func(const Eigen::Vector2d &S) const override;
+  private:
+    uint32_t N;
+    uint32_t L;
+    double J;
+    double A;
 
-        void over_relaxation_mutation();
-        virtual void generate_mutation() override;
-
-        CLONE(MCModel, TrigonalXYModel)
+    int mut_mode;
 };
 
-
-#endif

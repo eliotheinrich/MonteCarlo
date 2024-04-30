@@ -1,71 +1,56 @@
-#ifndef ISINGMC_H
-#define ISINGMC_H
+#pragma once
 
-#include <vector>
-#include <Eigen/Dense>
 #include "MonteCarlo.h"
 
-class IsingModel : virtual public MCModel {
-    // Generic 3D Ising model
-    // Must be supplied with number of sublattices
-    private:
-        struct IsingMutation {
-            int i;
-        };
+#include <Eigen/Dense>
 
+#include <vector>
 
-    public:
-        int N1;
-        int N2;
-        int N3;
-        ull V;
+class IsingModel : public MonteCarloSimulator {
+  // Generic 3D Ising model
+  // Must be supplied with number of sublattices
+  public:
+    uint32_t N1;
+    uint32_t N2;
+    uint32_t N3;
+    uint64_t V;
 
-        float acceptance;
-        std::vector<float> spins;
+    double acceptance;
+    std::vector<double> spins;
 
-        // Mutation being considered is stored as an attribute of the model
-        IsingMutation mut;
+    IsingModel(dataframe::Params &params, uint32_t num_threads) : MonteCarloSimulator(params, num_threads) {}
+    IsingModel()=default;
+    virtual ~IsingModel()=default;
 
-        IsingModel() {}
-        virtual ~IsingModel() {}
+    void init(uint32_t N1, uint32_t N2, uint32_t N3);
 
-        void init_params(int N1, int N2, int N3);
-        virtual void init() override;
+    uint32_t flat_idx(uint32_t n1, uint32_t n2, uint32_t n3) const;
 
-        virtual ull system_size() const override {
-            return V;
-        }
+    Eigen::Vector3i tensor_idx(uint32_t i) const;
 
-        int flat_idx(int n1, int n2, int n3) const {
-            return n1 + N1*(n2 + N2*n3);
-        }
+    void randomize_spins();
 
-        Eigen::Vector3i tensor_idx(int i) const {
-            int n1 = i % N1;
-            i = i / N1;
-            int n2 = i % N2;
-            i = i / N2;
-            int n3 = i % N3;
-            Eigen::Vector3i v; v << n1, n2, n3;
-            return v;
-        }
+    double get_magnetization() const;
+    virtual double onsite_energy(uint32_t i) const { return 0.0; }
+    virtual double bond_energy(uint32_t i) const { return 0.0; }
+    
+    virtual uint64_t system_size() const override;
+    virtual void generate_mutation() override;
+    virtual void accept_mutation() override;
+    virtual void reject_mutation() override;
+    virtual double energy() const override;
+    virtual double energy_change() override;
 
-        void randomize_spins();
+    virtual dataframe::data_t take_samples() override;
 
-        double get_magnetization() const;
-        virtual double onsite_energy(int i) const = 0;
-        virtual double bond_energy(int i) const = 0;
+    void save_spins(const std::string& filename);
 
-        virtual void generate_mutation() override;
-        virtual void accept_mutation() override;
-        virtual void reject_mutation() override;
-        
-        virtual double energy() const override;
-        virtual double energy_change() override;
+  protected:
+    struct IsingMutation {
+      uint32_t i;
+    };
 
-        virtual data_t take_samples() override;
-
-        void save_spins(std::string filename);
+    // Mutation being considered is stored as an attribute of the model
+    IsingMutation mut;
 };
 
-#endif

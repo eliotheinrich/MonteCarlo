@@ -1,21 +1,13 @@
-#ifndef SIMPLEGRAPH_H
-#define SIMPLEGRAPH_H
-
 #include "GraphModel.h"
 
 class SimpleGraphModel : public GraphModel {
-    private:
-        int N;
-        float J;
-        
-    public:
-        SimpleGraphModel(Params &params);
+  public:
+    SimpleGraphModel(dataframe::Params &params, uint32_t num_threads);
 
-        virtual double onsite_energy(int i) const;
-        virtual double bond_energy(int i) const;
+    virtual double onsite_energy(uint32_t i) const override;
+    virtual double bond_energy(uint32_t i) const override;
 
-        CLONE(MCModel, SimpleGraphModel)
-
+  private:
+    uint32_t N;
+    double J;
 };
-
-#endif

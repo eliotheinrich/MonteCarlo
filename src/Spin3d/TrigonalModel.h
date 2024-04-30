@@ -1,66 +1,60 @@
-#ifndef TRIGONALMODEL_H
-#define TRIGONALMODEL_H
+#pragma once
 
 #include <vector>
 #include "Spin3DModel.h"
-#include "MonteCarlo.h"
 
 class TrigonalModel : public Spin3DModel {
-    private:
-        int N;
-        int L;
-        float J1;
-        float J2;
-        float J3;
-        float K1;
-        float K2;
-        float K3;
-        Eigen::Vector3d B; 
+  public:
+    TrigonalModel(dataframe::Params &params, uint32_t num_threads);
 
-        uint fm_layers;
+    void over_relaxation_mutation();
+    virtual void generate_mutation() override;
 
-        Eigen::Matrix3d R;
-        int mut_counter;
-        int mut_mode;
+    virtual double onsite_func(const Eigen::Vector3d &S) const override;
 
-        bool sample_magnetization;
+    // --- FOR DYNAMIC UPDATES --- //
+    void rotate_spin(uint32_t i, Eigen::Vector3d v, double p);
+    Eigen::Vector3d molecular_field(uint32_t i) const;
+    void dynamic_step(double dt);
+    // ------ //
 
-        bool sample_helicity;
+    // For computing structure factor
+    Eigen::Vector3d rel_pos(uint32_t i) const;
+    double intensity(Eigen::Vector3d Q) const;
 
-        bool sample_layer_magnetization;
-        bool sample_intensityx;
-        bool sample_intensityy;
-        bool sample_intensityz;
-        float max_L;
-        float min_L;
-        uint intensity_resolution;
+    void add_intensityx_samples(dataframe::data_t &samples) const;
+    void add_intensityy_samples(dataframe::data_t &samples) const;
+    void add_intensityz_samples(dataframe::data_t &samples) const;
+    void add_layer_magnetization_samples(dataframe::data_t &samples) const;
 
-    public:
-        TrigonalModel(Params &params);
+    virtual dataframe::data_t take_samples() override;
 
-        void over_relaxation_mutation();
-        virtual void generate_mutation() override;
+  private:
+    uint32_t N;
+    uint32_t L;
+    double J1;
+    double J2;
+    double J3;
+    double K1;
+    double K2;
+    double K3;
+    Eigen::Vector3d B; 
 
-        virtual double onsite_func(const Eigen::Vector3d &S) const override;
+    uint32_t fm_layers;
 
-        // --- FOR DYNAMIC UPDATES --- //
-        void rotate_spin(int i, Eigen::Vector3d v, float p);
-        Eigen::Vector3d molecular_field(int i) const;
-        void dynamic_step(float dt);
-        // ------ //
+    Eigen::Matrix3d R;
+    uint32_t mut_counter;
+    uint32_t mut_mode;
 
-        // For computing structure factor
-        Eigen::Vector3d rel_pos(uint i) const;
-        double intensity(Eigen::Vector3d Q) const;
+    bool sample_magnetization;
 
-        void add_intensityx_samples(data_t &samples) const;
-        void add_intensityy_samples(data_t &samples) const;
-        void add_intensityz_samples(data_t &samples) const;
-        void add_layer_magnetization_samples(data_t &samples) const;
+    bool sample_helicity;
 
-        virtual data_t take_samples() override;
-
-        CLONE(MCModel, TrigonalModel)
+    bool sample_layer_magnetization;
+    bool sample_intensityx;
+    bool sample_intensityy;
+    bool sample_intensityz;
+    double max_L;
+    double min_L;
+    uint32_t intensity_resolution;
 };
-
-#endif

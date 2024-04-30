@@ -1,27 +1,23 @@
-#ifndef SQUARECLOCK_H
-#define SQUARECLOCK_H
+#pragma once
 
 #include <Eigen/Dense>
 #include "ClockModel.h"
 
 #define DEFAULT_LAYERS 1
 
-template <int q>
+template <uint32_t q>
 class SquareClockModel : public ClockModel<q> {
-    public:
-        int N;
-        int L;
-        float J;
+  public:
+    uint32_t N;
+    uint32_t L;
+    double J;
 
-        float bond_table[q][q];
+    double bond_table[q][q];
 
-        SquareClockModel(Params &params);
+    SquareClockModel(dataframe::Params &params, uint32_t num_threads);
 
-        virtual double onsite_energy(int i) const;
-
-        CLONE(MCModel, SquareClockModel<q>)
+    virtual double onsite_energy(uint32_t i) const override;
 };
 
 #include "SquareClockModel.cpp"
 
-#endif

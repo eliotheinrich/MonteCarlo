@@ -1,5 +1,4 @@
-#ifndef SQUAREXY_H
-#define SQUAREXY_H
+#pragma once
 
 #include <vector>
 #include <Eigen/Dense>
@@ -8,33 +7,29 @@
 #define DEFAULT_LAYERS 1
 
 class SquareXYModel : public Spin2DModel {
-    private:
-        int N;
-        int L;
-        int mut_mode;
-        float J;
-        float B;
-        float Bp;
-        float Bx;
-        float By;
+  public:
+    SquareXYModel(dataframe::Params &params, uint32_t num_threads);
 
-    public:
-        SquareXYModel(Params &params);
+    std::vector<double> vorticity() const;
 
-        std::vector<double> vorticity() const;
+    double p(uint32_t i) const;
+    double e1() const;
+    double e2() const;
+    double U2() const;
+    virtual std::vector<double> twist_stiffness() const override;
 
-        float p(int i) const;
-        float e1() const;
-        float e2() const;
-        float U2() const;
-        virtual std::vector<double> twist_stiffness() const override;
+    virtual double onsite_func(const Eigen::Vector2d &S) const override;
 
-        virtual double onsite_func(const Eigen::Vector2d &S) const override;
+    void over_relaxation_mutation();
+    virtual void generate_mutation() override;
 
-        void over_relaxation_mutation();
-        virtual void generate_mutation() override;
-
-        CLONE(MCModel, SquareXYModel)
+  private:
+    uint32_t N;
+    uint32_t L;
+    int mut_mode;
+    double J;
+    double B;
+    double Bp;
+    double Bx;
+    double By;
 };
-
-#endif

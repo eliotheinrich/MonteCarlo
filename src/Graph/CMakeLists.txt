@@ -1,6 +1,5 @@
-add_library(graph
+add_library(mc_graph
 	GraphModel.cpp
 	SimpleGraphModel.cpp
 )
-target_link_libraries(graph montecarlo)
-target_include_directories(graph PUBLIC ${CMAKE_SOURCE_DIR}/src)
+target_include_directories(mc_graph PUBLIC ${CMAKE_SOURCE_DIR}/src)

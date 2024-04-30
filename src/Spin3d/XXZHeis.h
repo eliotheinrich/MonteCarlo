@@ -1,5 +1,4 @@
-#ifndef XXZ_H
-#define XXZ_H
+#pragma once
 
 #include <vector>
 #include <Eigen/Dense>
@@ -8,23 +7,19 @@
 #define DEFAULT_LAYERS 1
 
 class XXZHeis : public Spin3DModel {
-    private: 
-        int N;
-        int L;
-        float J;
-        float K;
-        float A;
+  public:
+    XXZHeis(dataframe::Params &params, uint32_t num_threads);
 
-        bool sample_helicity;
+    std::vector<double> vorticity() const;
 
-    public:
-        XXZHeis(Params &params);
+    virtual double onsite_func(const Eigen::Vector3d &S) const override;
 
-        std::vector<double> vorticity() const;
+  private: 
+    uint32_t N;
+    uint32_t L;
+    double J;
+    double K;
+    double A;
 
-        virtual double onsite_func(const Eigen::Vector3d &S) const override;
-
-        CLONE(MCModel, XXZHeis)
+    bool sample_helicity;
 };
-
-#endif
