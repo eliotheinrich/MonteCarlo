@@ -1,6 +1,6 @@
 #include "GraphModel.h"
 
-GraphModel::GraphModel(dataframe::Params &params, uint32_t num_threads) : MonteCarloSimulator(params, num_threads) {
+GraphModel::GraphModel(dataframe::ExperimentParams &params, uint32_t num_threads) : MonteCarloSimulator(params, num_threads) {
   edges = std::vector<std::vector<uint32_t>>(N, std::vector<uint32_t>(0));
   vals = std::vector<int>(N);
 
@@ -71,8 +71,10 @@ double GraphModel::get_connectivity() const {
   return c/N;
 }
 
-dataframe::data_t GraphModel::take_samples() const {
-  dataframe::data_t samples;
-  samples.emplace("connectivity", get_connectivity());
+dataframe::SampleMap GraphModel::take_samples() const {
+  dataframe::SampleMap samples;
+
+  dataframe::utils::emplace(samples, "connectivity", get_connectivity());
+
   return samples;
 }

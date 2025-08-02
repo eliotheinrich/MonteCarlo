@@ -1,7 +1,7 @@
 #include "SquareClockModel.h"
 
 template <uint32_t q>
-SquareClockModel<q>::SquareClockModel(dataframe::Params &params, uint32_t num_threads) : ClockModel<q>(params, num_threads) {
+SquareClockModel<q>::SquareClockModel(dataframe::ExperimentParams &params, uint32_t num_threads) : ClockModel<q>(params, num_threads) {
   N = dataframe::utils::get<int>(params, "system_size");
   L = dataframe::utils::get<int>(params, "layers", DEFAULT_LAYERS);
 

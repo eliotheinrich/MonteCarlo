@@ -13,7 +13,7 @@ class GraphModel : public MonteCarloSimulator {
     std::vector<std::vector<uint32_t>> edges;
     std::vector<int> vals;
 
-    GraphModel(dataframe::Params &params, uint32_t num_threads);
+    GraphModel(dataframe::ExperimentParams &params, uint32_t num_threads);
     GraphModel()=default;
     virtual ~GraphModel()=default;
 
@@ -36,7 +36,7 @@ class GraphModel : public MonteCarloSimulator {
     uint32_t deg(uint32_t i) const;
 
     double get_connectivity() const;
-    virtual dataframe::data_t take_samples() const;
+    virtual dataframe::SampleMap take_samples() const;
 
   protected:
     struct GraphMutation {

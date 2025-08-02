@@ -8,11 +8,13 @@
 
 class XXZHeis : public Spin3DModel {
   public:
-    XXZHeis(dataframe::Params &params, uint32_t num_threads);
+    XXZHeis(dataframe::ExperimentParams &params, uint32_t num_threads);
 
     std::vector<double> vorticity() const;
 
     virtual double onsite_func(const Eigen::Vector3d &S) const override;
+
+    virtual dataframe::SampleMap take_samples() override;
 
   private: 
     uint32_t N;
@@ -22,4 +24,7 @@ class XXZHeis : public Spin3DModel {
     double A;
 
     bool sample_helicity;
+    bool sample_structure_factor;
+
+    void add_structure_factor_samples(dataframe::SampleMap& samples) const;
 };

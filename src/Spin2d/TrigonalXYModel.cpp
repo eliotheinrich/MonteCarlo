@@ -1,7 +1,7 @@
 #include "TrigonalXYModel.h"
 #include <functional>
 
-TrigonalXYModel::TrigonalXYModel(dataframe::Params &params, uint32_t num_threads) : Spin2DModel(params, num_threads) {
+TrigonalXYModel::TrigonalXYModel(dataframe::ExperimentParams &params, uint32_t num_threads) : Spin2DModel(params, num_threads) {
   N = dataframe::utils::get<int>(params, "system_size");
   L = dataframe::utils::get<int>(params, "layers", DEFAULT_LAYERS);
   J = dataframe::utils::get<double>(params, "J");
@@ -13,20 +13,29 @@ TrigonalXYModel::TrigonalXYModel(dataframe::Params &params, uint32_t num_threads
       return -Jt*S1.dot(S2);
     };
 
+  std::vector<SpinBond<Spin2D>> bonds = {
+    SpinBond<Spin2D>( 1, 0, 0, 0, dotfunc),
+    SpinBond<Spin2D>(-1, 0, 0, 0, dotfunc),
+    SpinBond<Spin2D>( 0, 1, 0, 0, dotfunc),
+    SpinBond<Spin2D>( 0,-1, 0, 0, dotfunc),
+    SpinBond<Spin2D>( 1,-1, 0, 0, dotfunc),
+    SpinBond<Spin2D>(-1, 1, 0, 0, dotfunc)
+  };
+
   Eigen::Vector3d v1; v1 << 1., 0., 0.;
   Eigen::Vector3d v2; v2 << 0.5, std::sqrt(3)/2., 0.;
-  Eigen::Vector3d v3; v3 << 0.5, -std::sqrt(3)/2., 0.;
-  add_bond(1, 0,0,0,v1, dotfunc);
-  add_bond(-1,0,0,0,-v1,dotfunc);
-  add_bond(0, 1,0,0,v2, dotfunc);
-  add_bond(0,-1,0,0,-v2,dotfunc);
-  add_bond(1,-1,0,0,v3, dotfunc);
-  add_bond(-1,1,0,0,-v3,dotfunc);
-  
-  mut_mode = 0;
+  Eigen::Vector3d v3; v3 << 0., 0., 1.;
 
-  Spin2DModel::init(1, N, N, L);
+  LatticeDimension dx(N, BoundaryCondition::Periodic, v1);
+  LatticeDimension dy(N, BoundaryCondition::Periodic, v2);
+  LatticeDimension dz(L, BoundaryCondition::Periodic, v3);
+  
+  Lattice<Spin2D> lattice(dx, dy, dz, bonds);
+  Spin2DModel::init(lattice);
+
+  mut_mode = 0;
 }
+
 
 std::vector<double> TrigonalXYModel::vorticity() const {
   double v1 = 0;
@@ -39,7 +48,7 @@ std::vector<double> TrigonalXYModel::vorticity() const {
   for (uint32_t n1 = 0; n1 < N; n1++) {
     for (uint32_t n2 = 0; n2 < N; n2++) {
       for (uint32_t n3 = 0; n3 < L; n3++) {
-        uint32_t i = flat_idx(n1, n2, n3, 0);
+        uint32_t i = lattice.flat_idx(n1, n2, n3, 0);
         phi[n1][n2][n3] = atan2(get_spin(i)[1], get_spin(i)[0]);
       }
     }
@@ -62,7 +71,7 @@ std::vector<double> TrigonalXYModel::vorticity() const {
     }
   }
 
-  return std::vector<double>{v1/(2*PI*N*N*L), v2/(2*PI*N*N*L)};
+  return std::vector<double>{v1/(2*M_PI*N*N*L), v2/(2*M_PI*N*N*L)};
 }
 
 double TrigonalXYModel::onsite_func(const Eigen::Vector2d &S) const {
@@ -72,8 +81,8 @@ double TrigonalXYModel::onsite_func(const Eigen::Vector2d &S) const {
 
 void TrigonalXYModel::over_relaxation_mutation() {
   Eigen::Vector2d H; H << 0., 0.;
-  for (uint32_t n = 0; n < bonds.size(); n++) {
-    uint32_t j = neighbors[mut.i][n].first;
+  for (uint32_t n = 0; n < lattice.bonds.size(); n++) {
+    uint32_t j = lattice.neighbors[mut.i][n].first;
     H -= J*get_spin(j);
   }
 

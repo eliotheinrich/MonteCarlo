@@ -1,17 +1,28 @@
 #include "Spin3DModel.h"
-#include <fstream>
+
 #include <stack>
 
-#define DEFAULT_CLUSTER_UPDATE true
+std::pair<std::vector<double>, std::vector<double>> split_complex_output(const std::vector<std::complex<double>>& complex_data) {
+  size_t n = complex_data.size();
+  std::vector<double> real(n);
+  std::vector<double> imag(n);
+  for (size_t i = 0; i < n; ++i) {
+    real[i] = complex_data[i].real();
+    imag[i] = complex_data[i].imag();
+  }
 
-#define DEFAULT_SAMPLE_ENERGY true
-#define DEFAULT_SAMPLE_MAGNETIZATION true
-#define DEFAULT_SAMPLE_HELICITY false
+  return std::make_pair(real, imag);
+}
 
-#define DEFAULT_BOUNDARY_CONDITION "periodic"
+std::pair<std::vector<double>, std::vector<double>> fft2d_channel(std::vector<double>& x, std::vector<double>& y, std::vector<std::complex<double>>& input, int N, int s) {
+  std::vector<std::complex<double>> output(N * N);
+  finufft_opts opts;
+  finufft_default_opts(&opts);
+  opts.nthreads = 1;
 
-
-#define GHOST -1
+  int ier = finufft2d1(s*N*N, &x[0], &y[0], &input[0], +1, 1e-6, N, N, &output[0], &opts);
+  return split_complex_output(output);
+}
 
 GaussianDist::GaussianDist(double mean, double std) {
   rd.seed(rand());
@@ -23,95 +34,24 @@ double GaussianDist::sample() {
   return dist(gen);
 }
 
-Spin3DModel::Spin3DModel(dataframe::Params &params, uint32_t num_threads) : MonteCarloSimulator(params, num_threads), nsteps(0), accepted(0) {
-  cluster_update = dataframe::utils::get<int>(params, "cluster_update", DEFAULT_CLUSTER_UPDATE);
+Spin3DModel::Spin3DModel(dataframe::ExperimentParams &params, uint32_t num_threads) : MonteCarloSimulator(params, num_threads), nsteps(0), accepted(0) {
+  cluster_update = dataframe::utils::get<int>(params, "cluster_update", true);
 
-  sample_helicity = dataframe::utils::get<int>(params, "sample_helicity", DEFAULT_SAMPLE_HELICITY);
-  sample_magnetization = dataframe::utils::get<int>(params, "sample_magnetization", DEFAULT_SAMPLE_MAGNETIZATION);
-  sample_energy = dataframe::utils::get<int>(params, "sample_energy", DEFAULT_SAMPLE_ENERGY);
-
-  bcx = parse_boundary_condition(dataframe::utils::get<std::string>(params, "bcx", DEFAULT_BOUNDARY_CONDITION));
-  bcy = parse_boundary_condition(dataframe::utils::get<std::string>(params, "bcy", DEFAULT_BOUNDARY_CONDITION));
-  bcz = parse_boundary_condition(dataframe::utils::get<std::string>(params, "bcz", DEFAULT_BOUNDARY_CONDITION));
+  sample_helicity      = dataframe::utils::get<int>(params, "sample_helicity",      false);
+  sample_magnetization = dataframe::utils::get<int>(params, "sample_magnetization", true);
+  sample_energy        = dataframe::utils::get<int>(params, "sample_energy",        true);
+  sample_spins         = dataframe::utils::get<int>(params, "sample_spins",         false);
 }
 
-void Spin3DModel::init(uint32_t sl, uint32_t N1, uint32_t N2=-1, uint32_t N3=-1) {
-  this->sl = sl;
-  this->N1 = N1;
-  if (N2 == -1) { 
-    this->N2 = N1;
-  } else { 
-    this->N2 = N2;
-  }
-
-  if (N3 == -1) { 
-    this->N3 = N1; 
-  } else { 
-    this->N3 = N3; 
-  }
-  V = N1*N2*N3*sl;
-
-  spins = std::vector<Eigen::Vector3d>(V);
+void Spin3DModel::init(const Lattice<Spin3D>& lattice) {
+  this->lattice = lattice;
   if (cluster_update) {
-    neighbors = std::vector<std::vector<Bond>>(V+1, std::vector<Bond>(0));
-  } else {
-    neighbors = std::vector<std::vector<Bond>>(V, std::vector<Bond>(0));
+    this->lattice.add_ghost();
   }
 
-  for (uint32_t n = 0; n < bonds.size(); n++) {
-    auto b = bonds[n];
-    auto bond_filter = bond_filters[n];
+  V = lattice.system_size();
 
-    for (uint32_t i = 0; i < V; i++) {
-      Eigen::Vector4i idx = tensor_idx(i);
-
-      uint nx = idx[0] + b.d1;
-      uint ny = idx[1] + b.d2;
-      uint nz = idx[2] + b.d3;
-      uint ns = idx[3] + b.ds;
-
-      if (bcx == BoundaryCondition::Open) {
-        if (nx < 0 || nx >= N1) {
-          continue;
-        }
-      } else if (bcx == BoundaryCondition::Periodic) {
-        nx = mod(nx, N1);
-      }
-
-      if (bcy == BoundaryCondition::Open) {
-        if (ny < 0 || ny >= N2) {
-          continue;
-        }
-      } else if (bcx == BoundaryCondition::Periodic) {
-        ny = mod(ny, N2);
-      }
-
-      if (bcz == BoundaryCondition::Open) {
-        if (nz < 0 || nz >= N3) { 
-          continue; 
-        }
-      } else if (bcz == BoundaryCondition::Periodic) {
-        nz = mod(nz, N3);
-      }
-
-      uint j = flat_idx(nx, ny, nz, ns);
-      if (!bond_filter(i, j)) {
-        continue;
-      }
-
-      neighbors[i].push_back(Bond{j, n});
-    }
-  }
-
-  if (cluster_update) {
-    // Connect every site to the ghost 
-    for (uint32_t i = 0; i < V; i++) {
-      neighbors[V].push_back(Bond{i, GHOST});
-      neighbors[i].push_back(Bond{V, GHOST});
-    }
-
-    s0 = Eigen::Matrix3d::Identity();
-  }
+  s0 = Eigen::Matrix3d::Identity();
 
   randomize_spins();
 
@@ -125,32 +65,10 @@ void Spin3DModel::init(uint32_t sl, uint32_t N1, uint32_t N2=-1, uint32_t N3=-1)
 
 void Spin3DModel::randomize_spins() {
   for (uint32_t i = 0; i < V; i++) {
-    spins[i] = Eigen::Vector3d::Random(3).normalized();
+    set_spin(i, Eigen::Vector3d::Random(3).normalized());
   }
 }
 
-void Spin3DModel::add_bond(
-  int d1, 
-  int d2, 
-  int d3, 
-  int ds, 
-  Eigen::Vector3d v, 
-  std::function<double(const Eigen::Vector3d &, const Eigen::Vector3d &)> bondfunc, 
-  std::function<bool(uint32_t, uint32_t)> bond_filter
-) {
-  Spin3DBond b{d1, d2, d3, ds, v, bondfunc};
-  bonds.push_back(b);
-  bond_filters.push_back(bond_filter);
-
-  double f = v[0]*alpha;
-  Eigen::Matrix3d R;
-  R << std::cos(f), -std::sin(f), 0,
-       std::sin(f),  std::cos(f), 0.,
-       0.,           0.,          1.;
-  R1s.push_back(R);
-  R2s.push_back(R*R);
-  R3s.push_back(R*R*R);
-}
 
 std::vector<double> Spin3DModel::twist_terms(std::vector<double> dE) {
   return std::vector<double>{dE[3], dE[2], dE[0], pow(dE[1],2), dE[1], dE[0]*dE[2], std::pow(dE[0],2)*dE[1], 
@@ -168,28 +86,31 @@ std::vector<double> Spin3DModel::twist_derivatives(uint32_t i) const {
 
   Eigen::Vector3d S1 = get_spin(i);
   Eigen::Vector3d S2;
-  for (auto const &[j, b] : neighbors[i]) {
+
+  auto [R1s, R2s, R3s] = lattice.get_twist_matrices(alpha);
+
+  for (auto const &[j, b] : lattice.neighbors[i]) {
     if (b == GHOST) {
       continue;
     }
 
     S2 = get_spin(j);
 
-    E0 += bonds[b].bondfunc(S1, S2);
+    E0  += lattice.bonds[b].bondfunc(S1, S2);
 
-    E1 += bonds[b].bondfunc(S1, R1s[b]*S2);
-    Em1 += bonds[b].bondfunc(S1, R1s[b].transpose()*S2);
+    E1  += lattice.bonds[b].bondfunc(S1, R1s[b]*S2);
+    Em1 += lattice.bonds[b].bondfunc(S1, R1s[b].transpose()*S2);
 
-    E2 += bonds[b].bondfunc(S1, R2s[b]*S2);
-    Em2 += bonds[b].bondfunc(S1, R2s[b].transpose()*S2);
+    E2  += lattice.bonds[b].bondfunc(S1, R2s[b]*S2);
+    Em2 += lattice.bonds[b].bondfunc(S1, R2s[b].transpose()*S2);
 
-    E3 += bonds[b].bondfunc(S1, R3s[b]*S2);
-    Em3 += bonds[b].bondfunc(S1, R3s[b].transpose()*S2);
+    E3  += lattice.bonds[b].bondfunc(S1, R3s[b]*S2);
+    Em3 += lattice.bonds[b].bondfunc(S1, R3s[b].transpose()*S2);
   }
 
-  double d1E = (1./12.*Em2 - 2./3.*Em1 + 2./3.*E1 - 1./12.*E2)/alpha/2.;
+  double d1E = ( 1./12.*Em2 - 2./3.*Em1 + 2./3.*E1 - 1./12.*E2)/alpha/2.;
   double d2E = (-1./12.*Em2 + 4./3.*Em1 - 5./2.*E0 + 4./3.*E1 - 1./12.*E2)/pow(alpha, 2)/2.;
-  double d3E = (1./8.*Em3 - 1.*Em2 + 13./8.*Em1 - 13./8.*E1 + 1.*E2 - 1./8.*E3)/pow(alpha, 3)/2.;
+  double d3E = ( 1./8.*Em3 - 1.*Em2 + 13./8.*Em1 - 13./8.*E1 + 1.*E2 - 1./8.*E3)/pow(alpha, 3)/2.;
   double d4E = (-1./6.*Em3 + 2.*Em2 - 13./2.*Em1 + 28./3.*E0 - 13./2.*E1 + 2.*E2 - 1./6.*E3)/pow(alpha, 4)/2.;
 
   return std::vector<double>{d1E, d2E, d3E, d4E};
@@ -210,7 +131,7 @@ std::vector<double> Spin3DModel::twist_derivatives() const {
 }
 
 Eigen::Vector3d Spin3DModel::get_magnetization() const {
-  Eigen::Vector3d M = Eigen::Vector3d::Constant(0);
+  Eigen::Vector3d M = Eigen::Vector3d::Zero();
   for (uint32_t i = 0; i < V; i++) {
     M += get_spin(i);
   }
@@ -219,19 +140,18 @@ Eigen::Vector3d Spin3DModel::get_magnetization() const {
 }
 
 std::vector<double> Spin3DModel::correlation_function(uint32_t i, uint32_t a = 2, uint32_t b = 2) const {
-  std::vector<double> Cij = std::vector<double>(V); 
+  std::vector<double> Cij = std::vector<double>(V, 0.0); 
 
-  Eigen::Vector4i idxs = tensor_idx(i);
-  int m1 = idxs[0]; int m2 = idxs[1]; int m3 = idxs[2]; int k = idxs[3];
-  for (uint32_t n1 = 0; n1 < N1; n1++) {
-    for (uint32_t n2 = 0; n2 < N2; n2++) {
-      for (uint32_t n3 = 0; n3 < N3; n3++) {
-        for (uint32_t s = 0; s < sl; s++) {
-          uint32_t j = flat_idx(n1, n2, n3, s);
-          Cij[j] = spins[flat_idx((m1 + n1)%N1, 
-                                  (m2 + n2)%N2, 
-                                  (m3 + n3)%N3, 
-                                  (s + k)%sl)][a]*spins[i][b];
+  auto spini = get_spin(i);
+  for (uint32_t n1 = 0; n1 < lattice.dx.N; n1++) {
+    for (uint32_t n2 = 0; n2 < lattice.dy.N; n2++) {
+      for (uint32_t n3 = 0; n3 < lattice.dz.N; n3++) {
+        for (uint32_t s = 0; s < lattice.num_sublattices; s++) {
+          auto neighbor_opt = lattice.get_neighbor(i, n1, n2, n3, s);
+          if (neighbor_opt) {
+            uint32_t j = lattice.flat_idx(n1, n2, n3, s);
+            Cij[j] = get_spin(neighbor_opt.value())[a] * spini[b];
+          }
         }
       }
     }
@@ -240,19 +160,18 @@ std::vector<double> Spin3DModel::correlation_function(uint32_t i, uint32_t a = 2
 }
 
 std::vector<double> Spin3DModel::full_correlation_function(uint32_t i) const {
-  std::vector<double> Cij = std::vector<double>(V); 
+  std::vector<double> Cij = std::vector<double>(V, 0.0); 
 
-  Eigen::Vector4i idxs = tensor_idx(i);
-  int m1 = idxs[0]; int m2 = idxs[1]; int m3 = idxs[2]; int k = idxs[3];
-  for (uint32_t n1 = 0; n1 < N1; n1++) {
-    for (uint32_t n2 = 0; n2 < N2; n2++) {
-      for (uint32_t n3 = 0; n3 < N3; n3++) {
-        for (uint32_t s = 0; s < sl; s++) {
-          uint32_t j = flat_idx(n1, n2, n3, s);
-          Cij[j] = spins[flat_idx((m1 + n1)%N1, 
-                                  (m2 + n2)%N2, 
-                                  (m3 + n3)%N3, 
-                                  (s + k)%sl)].dot(spins[i]);
+  auto spini = get_spin(i);
+  for (uint32_t n1 = 0; n1 < lattice.dx.N; n1++) {
+    for (uint32_t n2 = 0; n2 < lattice.dy.N; n2++) {
+      for (uint32_t n3 = 0; n3 < lattice.dz.N; n3++) {
+        for (uint32_t s = 0; s < lattice.num_sublattices; s++) {
+          auto neighbor_opt = lattice.get_neighbor(i, n1, n2, n3, s);
+          if (neighbor_opt) {
+            uint32_t j = lattice.flat_idx(n1, n2, n3, s);
+            Cij[j] = get_spin(neighbor_opt.value()).dot(spini);
+          }
         }
       }
     }
@@ -263,43 +182,34 @@ std::vector<double> Spin3DModel::full_correlation_function(uint32_t i) const {
 double Spin3DModel::skyrmion_density(uint32_t i) const {
   Eigen::Vector3d dSdX; dSdX << 0., 0., 0.;
   Eigen::Vector3d dSdY; dSdY << 0., 0., 0.;
-  for (auto const &[j, b] : neighbors[i]) {
+  for (auto const &[j, b] : lattice.neighbors[i]) {
     if (b == GHOST) {
       continue;
     }
 
-    if (bonds[b].v[0] != 0.) {
-      dSdX += bonds[b].v[0]*(spins[j] - spins[i]);
-    }
-
-    if (bonds[b].v[1] != 0.) {
-      dSdX += bonds[b].v[1]*(spins[j] - spins[i]);
-    }
+    auto bond = lattice.bonds[b];
+    Eigen::Vector3d pos = lattice.position(bond.d1, bond.d2, bond.d3, bond.ds);
+    dSdX += pos[0]*(lattice.spins[j] - lattice.spins[i]) + pos[1]*(lattice.spins[j] - lattice.spins[i]);
   }
-  dSdX = dSdX/bonds.size();
-  dSdY = dSdY/bonds.size();
+  dSdX = dSdX/lattice.bonds.size();
+  dSdY = dSdY/lattice.bonds.size();
 
-  return spins[i].dot(dSdX.cross(dSdY));
+  return lattice.spins[i].dot(dSdX.cross(dSdY));
 }
 
 std::vector<double> Spin3DModel::skyrmion_correlation_function(uint32_t i) const {
-  std::vector<double> Cij = std::vector<double>(V); 
-
-  int j;
-
-  Eigen::Vector4i idxs = tensor_idx(i);
-  int m1 = idxs[0]; int m2 = idxs[1]; int m3 = idxs[2]; int k = idxs[3];
+  std::vector<double> Cij = std::vector<double>(V, 0.0); 
 
   double Si = skyrmion_density(i);
-  for (uint32_t n1 = 0; n1 < N1; n1++) {
-    for (uint32_t n2 = 0; n2 < N2; n2++) {
-      for (uint32_t n3 = 0; n3 < N3; n3++) {
-        for (uint32_t s = 0; s < sl; s++) {
-          j = flat_idx(n1, n2, n3, s);
-          Cij[j] = skyrmion_density(flat_idx((m1 + n1)%N1, 
-                                             (m2 + n2)%N2, 
-                                             (m3 + n3)%N3, 
-                                             (s + k)%sl))*Si;
+  for (uint32_t n1 = 0; n1 < lattice.dx.N; n1++) {
+    for (uint32_t n2 = 0; n2 < lattice.dy.N; n2++) {
+      for (uint32_t n3 = 0; n3 < lattice.dz.N; n3++) {
+        for (uint32_t s = 0; s < lattice.num_sublattices; s++) {
+          auto neighbor_opt = lattice.get_neighbor(i, n1, n2, n3, s);
+          if (neighbor_opt) {
+            uint32_t j = lattice.flat_idx(n1, n2, n3, s);
+            Cij[j] = skyrmion_density(neighbor_opt.value()) * Si;
+          }
         }
       }
     }
@@ -319,10 +229,10 @@ void Spin3DModel::cluster_mutation() {
 
   Eigen::Matrix3d s0_new;
   Eigen::Vector3d s_new;
+
   while (!c.empty()) {
     m = c.top();
     c.pop();
-
 
     if (!s.count(m)) {
       s.insert(m);
@@ -331,19 +241,21 @@ void Spin3DModel::cluster_mutation() {
       if (is_ghost) { // Site is ghost
         s0_new = R*s0;
       } else {
-        s_new = R*spins[m];
+        s_new = R*lattice.spins[m];
       }
 
-      for (auto const &[j, b] : neighbors[m]) {
-        bool neighbor_is_ghost = (b == GHOST);
+      for (auto const &[j, b] : lattice.neighbors[m]) {
+        bool neighbor_is_ghost = (j == V);
+
         if (!s.count(j)) {
           double dE;
+
           if (neighbor_is_ghost) {
-            dE = onsite_func(s0.transpose()*s_new) - onsite_func(s0.transpose()*spins[m]);
+            dE = onsite_func(s0.transpose()*s_new) - onsite_func(s0.transpose()*lattice.spins[m]);
           } else if (is_ghost) {
-            dE = onsite_func(s0_new.transpose()*spins[j]) - onsite_func(s0.transpose()*spins[j]);
+            dE = onsite_func(s0_new.transpose()*lattice.spins[j]) - onsite_func(s0.transpose()*lattice.spins[j]);
           } else { // Normal bond
-            dE = bonds[b].bondfunc(spins[j], s_new) - bonds[b].bondfunc(spins[j], spins[m]);
+            dE = lattice.bonds[b].bondfunc(lattice.spins[j], s_new) - lattice.bonds[b].bondfunc(lattice.spins[j], lattice.spins[m]);
           }
 
           if (randf() < 1. - std::exp(-dE/temperature)) {
@@ -373,11 +285,11 @@ void Spin3DModel::metropolis_mutation() {
   // Randomly generate mutation
   Eigen::Vector3d Gamma;
   Gamma << dist.sample(), dist.sample(), dist.sample();
-  Eigen::Vector3d S2 = (spins[mut.i] + sigma*Gamma).normalized();
+  Eigen::Vector3d S2 = (lattice.spins[mut.i] + sigma*Gamma).normalized();
 
 
   // Store mutation for consideration
-  mut.dS = S2 - spins[mut.i];
+  mut.dS = S2 - lattice.spins[mut.i];
 }
 
 void Spin3DModel::generate_mutation() {
@@ -389,7 +301,6 @@ void Spin3DModel::generate_mutation() {
   }
 }
 
-
 void Spin3DModel::accept_mutation() {
   accepted++;
   return;
@@ -397,27 +308,28 @@ void Spin3DModel::accept_mutation() {
 
 void Spin3DModel::reject_mutation() {
   if (!cluster_update) {
-    set_spin(mut.i, spins[mut.i] - mut.dS);
+    set_spin(mut.i, lattice.spins[mut.i] - mut.dS);
   }
 }
 
 double Spin3DModel::onsite_energy(uint32_t i) const {
+  //std::cout << fmt::format("Called onsite_energy on site {}\n", i);
+  //std::cout << "S = " << lattice.spins[i] <<"\n OR \n" << get_spin(i) << "\n\n";
   if (cluster_update) {
-    return onsite_func(s0.transpose()*spins[i]);
+    return onsite_func(s0.transpose()*lattice.spins[i]);
   } else {
-    return onsite_func(spins[i]);
+    return onsite_func(lattice.spins[i]);
   }
 }
 
 double Spin3DModel::bond_energy(uint32_t i) const {
   double E = 0.;
-  double dE;
-  for (auto const &[j, b] : neighbors[i]) {
+  for (auto const &[j, b] : lattice.neighbors[i]) {
     if (b == GHOST) {
       continue;
     }
-    dE = 0.5*bonds[b].bondfunc(spins[i], spins[j]);
-    E += dE;
+
+    E += 0.5*lattice.bonds[b].bondfunc(lattice.spins[i], lattice.spins[j]);
   }
 
   return E;
@@ -440,54 +352,52 @@ double Spin3DModel::energy_change() {
   }
 
   double E1 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
-  set_spin(mut.i, spins[mut.i] + mut.dS);
+  set_spin(mut.i, lattice.spins[mut.i] + mut.dS);
   double E2 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
 
   return E2 - E1;
 }
 
-// Saves current spin configuration
-void Spin3DModel::save_spins(const std::string& filename) {
-  std::ofstream output_file;
-  output_file.open(filename);
-  output_file << N1 << "\t" << N2 << "\t" << N3 << "\t" << sl << "\n";
-  Eigen::Vector3d S;
-  for (uint32_t i = 0; i < V; i++) {
-    if (cluster_update) {
-      S = s0.transpose()*spins[i];
-    } else {
-      S = spins[i];
-    }
-
-    output_file << S[0] << "\t" << S[1] << "\t" << S[2];
-    if (i < V-1) { 
-      output_file << "\t";
-    }
-  }
-  output_file.close();
-}
-
-void Spin3DModel::add_helicity_samples(dataframe::data_t &samples) const {
-  std::vector<double> tterms = twist_derivatives();
-  samples.emplace("d1E", tterms[0]);
-  samples.emplace("d2E", tterms[1]);
-  samples.emplace("d3E", tterms[2]);
-  samples.emplace("d4E", tterms[3]);
-}
-
-void Spin3DModel::add_magnetization_samples(dataframe::data_t &samples) const {
+void Spin3DModel::add_magnetization_samples(dataframe::SampleMap &samples) const {
   Eigen::Vector3d m = get_magnetization();
-  samples.emplace("mx", m[0]);
-  samples.emplace("my", m[1]);
-  samples.emplace("mz", m[2]);
-  samples.emplace("magnetization", m.norm());
+  dataframe::utils::emplace(samples, "mx", m[0]);
+  dataframe::utils::emplace(samples, "my", m[1]);
+  dataframe::utils::emplace(samples, "mz", m[2]);
+
+  dataframe::utils::emplace(samples, "mx_mag", std::abs(m[0]));
+  dataframe::utils::emplace(samples, "my_mag", std::abs(m[1]));
+  dataframe::utils::emplace(samples, "mz_mag", std::abs(m[2]));
+
+  double mn = m.norm();
+  dataframe::utils::emplace(samples, "magnetization", mn);
+  dataframe::utils::emplace(samples, "magnetization2", mn*mn);
 }
 
-dataframe::data_t Spin3DModel::take_samples() {
-  dataframe::data_t samples;
+void Spin3DModel::add_helicity_samples(dataframe::SampleMap &samples) const {
+  std::vector<double> tterms = twist_derivatives();
+  dataframe::utils::emplace(samples, "d1E", tterms[0]);
+  dataframe::utils::emplace(samples, "d2E", tterms[1]);
+  dataframe::utils::emplace(samples, "d3E", tterms[2]);
+  dataframe::utils::emplace(samples, "d4E", tterms[3]);
+}
+
+void Spin3DModel::add_spin_samples(dataframe::SampleMap& samples) const {
+  std::vector<double> spins(3*V);
+  for (size_t i = 0; i < V; i++) {
+    auto spin = get_spin(i);
+    spins[i]     = spin(0);
+    spins[i+V]   = spin(1);
+    spins[i+2*V] = spin(2);
+  }
+
+  dataframe::utils::emplace(samples, "spins", spins, {3, lattice.num_sublattices, lattice.dz.N, lattice.dy.N, lattice.dx.N});
+}
+
+dataframe::SampleMap Spin3DModel::take_samples() {
+  dataframe::SampleMap samples;
 
   if (sample_energy) {
-    samples.emplace("energy", energy());
+    dataframe::utils::emplace(samples, "energy", energy());
   }
 
   if (sample_magnetization) {
@@ -496,6 +406,10 @@ dataframe::data_t Spin3DModel::take_samples() {
 
   if (sample_helicity) {
     add_helicity_samples(samples);
+  }
+
+  if (sample_spins) {
+    add_spin_samples(samples);
   }
 
   return samples;

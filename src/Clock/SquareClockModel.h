@@ -14,7 +14,7 @@ class SquareClockModel : public ClockModel<q> {
 
     double bond_table[q][q];
 
-    SquareClockModel(dataframe::Params &params, uint32_t num_threads);
+    SquareClockModel(dataframe::ExperimentParams &params, uint32_t num_threads);
 
     virtual double onsite_energy(uint32_t i) const override;
 };

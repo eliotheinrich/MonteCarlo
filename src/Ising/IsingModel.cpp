@@ -82,23 +82,22 @@ Eigen::Vector3i IsingModel::tensor_idx(uint32_t i) const {
   return v;
 }
 
-dataframe::data_t IsingModel::take_samples() {
-  dataframe::data_t samples;
+dataframe::SampleMap IsingModel::take_samples() {
+  dataframe::SampleMap samples;
 
   double E = energy();
   double M = get_magnetization();
 
-  samples.emplace("energy", E);
-  samples.emplace("energy_second_moment", E*E);
-  samples.emplace("energy_third_moment", E*E*E);
-  samples.emplace("energy_fourth_moment", E*E*E*E);
+  dataframe::utils::emplace(samples, "energy", E);
+  dataframe::utils::emplace(samples, "energy_second_moment", std::pow(E, 2));
+  dataframe::utils::emplace(samples, "energy_third_moment",  std::pow(E, 3));
+  dataframe::utils::emplace(samples, "energy_fourth_moment", std::pow(E, 4));
 
-  samples.emplace("magnetization", std::abs(M));
-  samples.emplace("signed_magnetization", M);
-  samples.emplace("magnetization_second_moment", M*M);
-  samples.emplace("magnetization_third_moment", M*M*M);
-  samples.emplace("magnetization_fourth_moment", M*M*M*M);
-
+  dataframe::utils::emplace(samples, "magnetization", std::abs(M));
+  dataframe::utils::emplace(samples, "signed_magnetization", M);
+  dataframe::utils::emplace(samples, "magnetization_second_moment", std::pow(std::abs(M), 2));
+  dataframe::utils::emplace(samples, "magnetization_third_moment",  std::pow(std::abs(M), 3));
+  dataframe::utils::emplace(samples, "magnetization_fourth_moment", std::pow(std::abs(M), 4));
 
   return samples;
 }

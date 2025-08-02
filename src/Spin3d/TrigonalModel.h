@@ -5,7 +5,7 @@
 
 class TrigonalModel : public Spin3DModel {
   public:
-    TrigonalModel(dataframe::Params &params, uint32_t num_threads);
+    TrigonalModel(dataframe::ExperimentParams &params, uint32_t num_threads);
 
     void over_relaxation_mutation();
     virtual void generate_mutation() override;
@@ -19,15 +19,14 @@ class TrigonalModel : public Spin3DModel {
     // ------ //
 
     // For computing structure factor
-    Eigen::Vector3d rel_pos(uint32_t i) const;
     double intensity(Eigen::Vector3d Q) const;
 
-    void add_intensityx_samples(dataframe::data_t &samples) const;
-    void add_intensityy_samples(dataframe::data_t &samples) const;
-    void add_intensityz_samples(dataframe::data_t &samples) const;
-    void add_layer_magnetization_samples(dataframe::data_t &samples) const;
+    void add_intensityx_samples(dataframe::SampleMap &samples) const;
+    void add_intensityy_samples(dataframe::SampleMap &samples) const;
+    void add_intensityz_samples(dataframe::SampleMap &samples) const;
+    void add_layer_magnetization_samples(dataframe::SampleMap &samples) const;
 
-    virtual dataframe::data_t take_samples() override;
+    virtual dataframe::SampleMap take_samples() override;
 
   private:
     uint32_t N;

@@ -5,7 +5,7 @@ find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} g++ PATHS ENV PATH NO_DEFAULT_PA
 
 project(MonteCarlo LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -26,9 +26,19 @@ endif()
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3")
 
+set(CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
+string(REPLACE ":" ";" CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
+
 # -------------------------------- #
 # ------ Fetching externals ------ #
 # -------------------------------- #
+
+foreach(PATH IN LISTS CMAKE_PREFIX_PATH)
+    include_directories("${PATH}/include")
+    link_directories("${PATH}/lib")
+endforeach()
+
+add_definitions(-DFMT_HEADER_ONLY)
 
 include(FetchContent)
 
@@ -47,13 +57,18 @@ execute_process(
 list(APPEND CMAKE_PREFIX_PATH "${NB_DIR}")
 find_package(nanobind CONFIG REQUIRED)
 
-FetchContent_Declare(
-    utils
-    GIT_REPOSITORY https://github.com/eliotheinrich/utils.git
-    GIT_TAG main
-    GIT_SHALLOW TRUE
-)
-list(APPEND EXTERNALS utils)
+if (DEFINED UTILS_SOURCE) 
+    set(utils_SOURCE_DIR ${UTILS_SOURCE})
+    add_subdirectory(${utils_SOURCE_DIR} ${CMAKE_BINARY_DIR}/utils-build)
+else()
+    FetchContent_Declare(
+        utils
+        GIT_REPOSITORY https://github.com/eliotheinrich/utils.git
+        GIT_TAG main
+        GIT_SHALLOW TRUE
+    )
+    list(APPEND EXTERNALS utils)
+endif()
 
 if (DEFINED DATAFRAME_SOURCE)
     set(dataframe_SOURCE_DIR ${DATAFRAME_SOURCE})
@@ -68,6 +83,13 @@ else()
 endif()
 
 FetchContent_Declare(
+  glaze
+  GIT_REPOSITORY https://github.com/stephenberry/glaze.git
+  GIT_TAG cc4ce0efe5133c23ec55f07d9e753f7dd1abb0b8
+)
+list(APPEND EXTERNALS glaze)
+
+FetchContent_Declare(
     eigen
     GIT_REPOSITORY https://gitlab.com/libeigen/eigen
     GIT_TAG master
@@ -80,9 +102,20 @@ set(BUILD_TESTING OFF)
 set(EIGEN_BUILD_PKGCONFIG OFF)
 list(APPEND EXTERNALS eigen)
 
+set(FINUFFT_FFTW_LIBRARIES "${CONDA_PREFIX}/lib/libfftw3.so" "${CONDA_PREFIX}/lib/libfftw3.a")
+
+FetchContent_Declare(
+  finufft
+  GIT_REPOSITORY https://github.com/flatironinstitute/finufft.git
+  GIT_TAG master
+)
+
+list(APPEND EXTERNALS finufft)
+
 FetchContent_MakeAvailable(${EXTERNALS})
 
 include_directories(
+    ${glaze_SOURCE_DIR}/include
     ${dataframe_SOURCE_DIR}/src
     ${utils_SOURCE_DIR}/src
     ${eigen_SOURCE_DIR}
@@ -100,6 +133,7 @@ foreach(DIR IN LISTS MODEL_DIRS)
 endforeach()
 
 set(SIMULATOR_LIBS ising multibody_ising mc_graph spin2d spin3d)
+target_link_libraries(spin3d PUBLIC finufft)
 
 if (MC_BUILDING_PYTHON)
     nanobind_add_module(
@@ -110,7 +144,7 @@ if (MC_BUILDING_PYTHON)
     )
     set_target_properties(montecarlo_bindings PROPERTIES POSITION_INDEPENDENT_CODE ON)
     target_include_directories(montecarlo_bindings PRIVATE src ${MODEL_DIRS})
-    target_link_libraries(montecarlo_bindings PRIVATE ${SIMULATOR_LIBS})
+    target_link_libraries(montecarlo_bindings PRIVATE ${SIMULATOR_LIBS} montecarlo)
     target_compile_definitions(montecarlo_bindings PUBLIC CLUSTER_UPDATE)
 
     install(

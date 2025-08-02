@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MonteCarlo.h"
+#include "Support.hpp"
 
 #include <Eigen/Dense>
 
@@ -27,7 +28,7 @@ class ClockModel : public MonteCarloSimulator {
     // Mutation being considered is stored as an attribute of the model
     int mut_mode;
 
-    ClockModel(dataframe::Params& params, uint32_t num_threads) : MonteCarloSimulator(params, num_threads) {}
+    ClockModel(dataframe::ExperimentParams& params, uint32_t num_threads) : MonteCarloSimulator(params, num_threads) {}
     ClockModel()=default;
     virtual ~ClockModel()=default;
 
@@ -212,10 +213,12 @@ class ClockModel : public MonteCarloSimulator {
       output_file.close();
     }
 
-    virtual dataframe::data_t take_samples() const {
-      dataframe::data_t samples;
-      samples.emplace("energy", energy());
-      samples.emplace("magnetization", get_magnetization());
+    virtual dataframe::SampleMap take_samples() const {
+      dataframe::SampleMap samples;
+
+      dataframe::utils::emplace(samples, "energy", energy());
+      dataframe::utils::emplace(samples, "magnetization", get_magnetization());
+
       return samples;
     }
 

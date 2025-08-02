@@ -8,7 +8,7 @@
 class TrigonalXYModel : public Spin2DModel {
   public:
 
-    TrigonalXYModel(dataframe::Params &params, uint32_t num_threads);
+    TrigonalXYModel(dataframe::ExperimentParams &params, uint32_t num_threads);
 
     std::vector<double> vorticity() const;
 

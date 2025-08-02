@@ -1,6 +1,6 @@
 #include "SimpleGraphModel.h"
 
-SimpleGraphModel::SimpleGraphModel(dataframe::Params &params, uint32_t num_threads) : GraphModel(params, num_threads) {
+SimpleGraphModel::SimpleGraphModel(dataframe::ExperimentParams &params, uint32_t num_threads) : GraphModel(params, num_threads) {
   N = dataframe::utils::get<int>(params, "system_size");
   J = dataframe::utils::get<double>(params, "J");
   GraphModel::init(N);

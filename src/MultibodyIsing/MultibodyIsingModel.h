@@ -23,7 +23,7 @@ class MultibodyIsingModel : public MonteCarloSimulator {
     std::vector<double> onsite_potential;
     std::vector<std::vector<MultibodyIsingTerm>> terms;
 
-    MultibodyIsingModel(dataframe::Params &params, uint32_t num_threads) : MonteCarloSimulator(params, num_threads) {}
+    MultibodyIsingModel(dataframe::ExperimentParams &params, uint32_t num_threads) : MonteCarloSimulator(params, num_threads) {}
     MultibodyIsingModel()=default;
     virtual ~MultibodyIsingModel()=default;
 
@@ -46,7 +46,7 @@ class MultibodyIsingModel : public MonteCarloSimulator {
     virtual double energy() const override;
     virtual double energy_change() override;
 
-    virtual dataframe::data_t take_samples() override;
+    virtual dataframe::SampleMap take_samples() override;
 
   protected:
     struct MultibodyIsingMutation {

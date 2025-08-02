@@ -1,4 +1,5 @@
 #include "MultibodyIsingModel.h"
+#include <Support.hpp>
 
 void MultibodyIsingModel::init(size_t L) {
   this->L = L;
@@ -105,15 +106,14 @@ std::pair<int, int> MultibodyIsingModel::coordinates(size_t i) const {
   return std::make_pair(x, y);
 }
 
-dataframe::data_t MultibodyIsingModel::take_samples() {
-  dataframe::data_t samples;
+dataframe::SampleMap MultibodyIsingModel::take_samples() {
+  dataframe::SampleMap samples;
 
   double E = energy();
   double M = get_magnetization();
 
-  samples.emplace("energy", E);
-
-  samples.emplace("magnetization", std::abs(M));
+  dataframe::utils::emplace(samples, "energy", E);
+  dataframe::utils::emplace(samples, "magnetization", std::abs(M));
 
   return samples;
 }

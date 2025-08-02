@@ -1,13 +1,17 @@
 #pragma once
 
-#include "MonteCarlo.h"
+#include <MonteCarlo.h>
 
-#include <Eigen/Dense>
+#include "Lattice.hpp"
 
 #include <vector>
 #include <unordered_set>
 #include <math.h>
 #include <random>
+
+#include <finufft.h>
+
+using Spin3D = Eigen::Vector3d;
 
 class GaussianDist {
   public:
@@ -22,6 +26,9 @@ class GaussianDist {
     std::normal_distribution<> dist;
 };
 
+std::pair<std::vector<double>, std::vector<double>> split_complex_output(const std::vector<std::complex<double>>& complex_data);
+std::pair<std::vector<double>, std::vector<double>> fft2d_channel(std::vector<double>& x, std::vector<double>& y, std::vector<std::complex<double>>& input, int N, int s=1);
+
 class Spin3DModel : public MonteCarloSimulator {
   // Generic 3D Heisenberg model
   // A mutation consists of a change in spin dS on site (n1,n2,n3,s)
@@ -29,11 +36,12 @@ class Spin3DModel : public MonteCarloSimulator {
   public:
     uint64_t V;
 
-    Spin3DModel(dataframe::Params &params, uint32_t num_threads);
+    Spin3DModel(dataframe::ExperimentParams &params, uint32_t num_threads);
     virtual ~Spin3DModel()=default;
 
-    void init(uint32_t sl, uint32_t N1, uint32_t N2, uint32_t N3);
+    void init(const Lattice<Spin3D>& lattice);
 
+    // TODO change this
     virtual uint64_t system_size() const override {
       if (cluster_update) {
         return 1;
@@ -42,52 +50,19 @@ class Spin3DModel : public MonteCarloSimulator {
       return V;
     }
 
-    void set_spin(uint32_t i, Eigen::Vector3d S) { 
-      spins[i] = S; 
+    void set_spin(uint32_t i, const Spin3D& S) { 
+      lattice.spins[i] = S; 
     }
 
-    Eigen::Vector3d get_spin(uint32_t i) const { 
-      return cluster_update ? s0.transpose()*spins[i] : spins[i]; 
+    Spin3D get_spin(uint32_t i) const { 
+      Spin3D s = lattice.spins[i];
+      if (cluster_update) {
+        s = s0.transpose() * s;
+      }
+      return s;
     }
 
     void randomize_spins();
-
-    uint32_t flat_idx(uint32_t n1, uint32_t n2, uint32_t n3, uint32_t s) const {
-      return n1 + N1*(n2 + N2*(n3 + N3*s));
-    }
-
-    Eigen::Vector4i tensor_idx(uint32_t i) const {
-      uint32_t n1 = i % N1;
-      i = i / N1;
-      uint32_t n2 = i % N2;
-      i = i / N2;
-      uint32_t n3 = i % N3;
-      i = i / N3;
-      uint32_t s = i % sl;
-      Eigen::Vector4i v; v << n1, n2, n3, s;
-      return v;
-    }
-
-    void add_bond(
-      int d1, 
-      int d2, 
-      int d3, 
-      int ds, 
-      Eigen::Vector3d v, 
-      std::function<double(const Eigen::Vector3d &, const Eigen::Vector3d &)> bondfunc
-    ) {
-      add_bond(d1, d2, d3, ds, v, bondfunc, [](uint32_t, uint32_t){ return true; });
-    }
-
-    void add_bond(
-      int d1, 
-      int d2, 
-      int d3, 
-      int ds, 
-      Eigen::Vector3d v, 
-      std::function<double(const Eigen::Vector3d &, const Eigen::Vector3d &)> bondfunc,
-      std::function<bool(uint32_t, uint32_t)> bond_filter
-    );
 
     static std::vector<double> twist_terms(std::vector<double> dE);
     std::vector<double> twist_derivatives(uint32_t i) const;
@@ -110,70 +85,56 @@ class Spin3DModel : public MonteCarloSimulator {
     virtual void accept_mutation() override;
     virtual void reject_mutation() override;
 
-    virtual double onsite_func(const Eigen::Vector3d& S) const=0;
+    virtual double onsite_func(const Spin3D& S) const=0;
     virtual double onsite_energy(uint32_t i) const;
     virtual double bond_energy(uint32_t i) const;
 
+    void add_magnetization_samples(dataframe::SampleMap &samples) const;
+    void add_helicity_samples(dataframe::SampleMap &samples) const;
+    void add_spin_samples(dataframe::SampleMap& samples) const;
 
-    // Saves current spin configuration
-    void save_spins(const std::string& filename);
-    bool load_spins(const std::string& filename);
+    void add_intensityx_samples(dataframe::SampleMap& samples) const;
+    void add_intensityy_samples(dataframe::SampleMap& samples) const;
+    void add_intensityz_samples(dataframe::SampleMap& samples) const;
 
-    void add_magnetization_samples(dataframe::data_t &samples) const;
-    void add_helicity_samples(dataframe::data_t &samples) const;
-    virtual dataframe::data_t take_samples() override;
+    virtual dataframe::SampleMap take_samples() override;
+
+    LatticeGraph to_graph() const { 
+      return lattice.to_graph();
+    }
 
   protected:
+    Lattice<Spin3D> lattice;
+
     struct Spin3DMutation {
       uint32_t i;
-      Eigen::Vector3d dS;
+      Spin3D dS;
     };
-
-    struct Spin3DBond {
-      int d1;
-      int d2;
-      int d3;
-      int ds;
-      Eigen::Vector3d v;
-      std::function<double(const Eigen::Vector3d&, const Eigen::Vector3d&)> bondfunc;
-    };   
 
     bool cluster_update;
 
     // Mutation being considered is stored as an attribute of the model
     Spin3DMutation mut;
 
-    std::vector<std::vector<Bond>> neighbors;
-    std::vector<Spin3DBond> bonds;
-
     static constexpr double alpha = 0.01;
-    std::vector<Eigen::Matrix3d> R1s;
-    std::vector<Eigen::Matrix3d> R2s;
-    std::vector<Eigen::Matrix3d> R3s;
 
   private:
     bool sample_energy;
     bool sample_magnetization;
     bool sample_helicity;
+    bool sample_spins;
 
-    uint32_t sl;
-    uint32_t N1;
-    uint32_t N2;
-    uint32_t N3;
-
-    BoundaryCondition bcx;
-    BoundaryCondition bcy;
-    BoundaryCondition bcz;
+    bool sample_intensityx;
+    bool sample_intensityy;
+    bool sample_intensityz;
+    double max_L;
+    double min_L;
+    uint32_t intensity_resolution;
 
     uint64_t nsteps;
     uint64_t accepted;
     double acceptance;
     double sigma;
-    std::vector<Eigen::Vector3d> spins;
-
-    // Need to store bond filters passed to add_bond so that neighbor matrix can 
-    // be later filled out bit init
-    std::vector<std::function<bool(uint32_t, uint32_t)>> bond_filters;
 
     std::unordered_set<int> s;
     Eigen::Matrix3d s0;

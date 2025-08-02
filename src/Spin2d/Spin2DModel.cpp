@@ -1,111 +1,29 @@
 #include "Spin2DModel.h"
+
 #include <math.h>
-#include <fstream>
-
-#define DEFAULT_CLUSTER_UPDATE true
-
-#define DEFAULT_SAMPLE_ENERGY true
-#define DEFAULT_SAMPLE_MAGNETIZATION true
-#define DEFAULT_SAMPLE_HELICITY false
-
-#define DEFAULT_BOUNDARY_CONDITION "periodic"
-
-#define GHOST -1
 
 using namespace dataframe::utils;
 
-Spin2DModel::Spin2DModel(dataframe::Params &params, uint32_t num_threads) : MonteCarloSimulator(params, num_threads) {
-  cluster_update = dataframe::utils::get<int>(params, "cluster_update", DEFAULT_CLUSTER_UPDATE);
+Spin2DModel::Spin2DModel(dataframe::ExperimentParams &params, uint32_t num_threads) : MonteCarloSimulator(params, num_threads) {
+  cluster_update = dataframe::utils::get<int>(params, "cluster_update", true);
 
-  sample_energy = dataframe::utils::get<int>(params, "sample_energy", DEFAULT_SAMPLE_ENERGY);
-  sample_magnetization = dataframe::utils::get<int>(params, "sample_magnetization", DEFAULT_SAMPLE_MAGNETIZATION);
-  sample_helicity = dataframe::utils::get<int>(params, "sample_helicity", DEFAULT_SAMPLE_HELICITY);
+  sample_energy = dataframe::utils::get<int>(params, "sample_energy", true);
+  sample_magnetization = dataframe::utils::get<int>(params, "sample_magnetization", true);
+  sample_helicity = dataframe::utils::get<int>(params, "sample_helicity", false);
 
-
-  bcx = parse_boundary_condition(dataframe::utils::get<std::string>(params, "bcx", DEFAULT_BOUNDARY_CONDITION));
-  bcy = parse_boundary_condition(dataframe::utils::get<std::string>(params, "bcy", DEFAULT_BOUNDARY_CONDITION));
-  bcz = parse_boundary_condition(dataframe::utils::get<std::string>(params, "bcz", DEFAULT_BOUNDARY_CONDITION));
+  sample_intensityx = dataframe::utils::get<int>(params, "sample_intensityx", false);
+  sample_intensityy = dataframe::utils::get<int>(params, "sample_intensityy", false);
+  sample_intensityz = dataframe::utils::get<int>(params, "sample_intensityz", false);
+  max_L = dataframe::utils::get<double>(params, "max_L", 0.0);
+  min_L = dataframe::utils::get<double>(params, "min_L", 1.0);
+  intensity_resolution = dataframe::utils::get<int>(params, "intensity_resolution", 30);
 }
 
-void Spin2DModel::init(uint32_t sl, uint32_t N1, uint32_t N2=-1, uint32_t N3=-1) {
-  this->sl = sl;
-  this->N1 = N1;
+void Spin2DModel::init(const Lattice<Spin2D>& lattice) {
+  this->lattice = lattice;
+  V = lattice.system_size();
 
-  if (N2 == -1) { 
-    this->N2 = N1; 
-  } else { 
-    this->N2 = N2; 
-  }
-
-  if (N3 == -1) { 
-    this->N3 = N1; 
-  } else { 
-    this->N3 = N3; 
-  }
-
-  V = N1*N2*N3*sl;
-
-  spins = std::vector<Eigen::Vector2d>(V);
-  if (cluster_update) {
-    neighbors = std::vector<std::vector<Bond>>(V+1, std::vector<Bond>(0));
-  } else {
-    neighbors = std::vector<std::vector<Bond>>(V, std::vector<Bond>(0));
-  }
-
-  for (uint32_t n = 0; n < bonds.size(); n++) {
-    auto b = bonds[n];
-    auto bond_filter = bond_filters[n];
-
-    for (uint32_t i = 0; i < V; i++) {
-      Eigen::Vector4i idx = tensor_idx(i);
-
-      uint nx = idx[0] + b.d1;
-      uint ny = idx[1] + b.d2;
-      uint nz = idx[2] + b.d3;
-      uint ns = idx[3] + b.ds;
-
-      if (bcx == BoundaryCondition::Open) {
-        if (nx < 0 || nx >= N1) {
-          continue;
-        }
-      } else if (bcx == BoundaryCondition::Periodic) {
-        nx = mod(nx, N1);
-      }
-
-      if (bcy == BoundaryCondition::Open) {
-        if (ny < 0 || ny >= N2) {
-          continue;
-        }
-      } else if (bcx == BoundaryCondition::Periodic) {
-        ny = mod(ny, N2);
-      }
-
-      if (bcz == BoundaryCondition::Open) {
-        if (nz < 0 || nz >= N3) {
-          continue;
-        }
-      } else if (bcz == BoundaryCondition::Periodic) {
-        nz = mod(nz, N3);
-      }
-
-      uint j = flat_idx(nx, ny, nz, ns);
-      if (!bond_filter(i, j)) {
-        continue;
-      }
-
-      neighbors[i].push_back(Bond{j, n});
-    }
-  }
-
-  if (cluster_update) {
-    // Connect every site to the ghost 
-    for (uint32_t i = 0; i < V; i++) {
-      neighbors[V].push_back(Bond{i, GHOST});
-      neighbors[i].push_back(Bond{V, GHOST});
-    }
-
-    s0 = Eigen::Matrix2d::Identity();
-  }  
+  s0 = Eigen::Matrix2d::Identity();
 
   randomize_spins();
 
@@ -114,34 +32,11 @@ void Spin2DModel::init(uint32_t sl, uint32_t N1, uint32_t N2=-1, uint32_t N3=-1)
 }
 
 void Spin2DModel::randomize_spins() {
-  double p;
-  Eigen::Vector2d v;
-
   for (uint32_t i = 0; i < V; i++) {
-    p = 2*PI*randf();
-    spins[i] << std::cos(p), std::sin(p);
+    double p = 2*M_PI*randf();
+    Spin2D s; s << std::cos(p), std::sin(p);
+    set_spin(i, s);
   }
-}
-
-void Spin2DModel::add_bond(
-  int d1, 
-  int d2, 
-  int d3, 
-  int ds, 
-  Eigen::Vector3d v, 
-  std::function<double(const Eigen::Vector2d &, const Eigen::Vector2d &)> bondfunc,
-  std::function<bool(uint32_t, uint32_t)> bond_filter
-) {
-  Spin2DBond b{d1, d2, d3, ds, v, bondfunc};
-  bonds.push_back(b);
-  bond_filters.push_back(bond_filter);
-
-  Eigen::Matrix2d R;
-  R << std::cos(v[0]*alpha), -std::sin(v[0]*alpha),
-       std::sin(v[0]*alpha),  std::cos(v[0]*alpha);
-  R1s.push_back(R);
-  R2s.push_back(R*R);
-  R3s.push_back(R*R*R);
 }
 
 std::vector<double> Spin2DModel::twist_stiffness() const {
@@ -154,24 +49,23 @@ std::vector<double> Spin2DModel::twist_stiffness() const {
   double Em2 = 0.;
   double Em3 = 0.;
 
+  auto [R1s, R2s, R3s] = lattice.get_twist_matrices(alpha);
 
-  Eigen::Vector2d S1;
-  Eigen::Vector2d S2;
   for (uint32_t i = 0; i < V; i++) {
-    for (auto const &[j, b] : neighbors[i]) {
-      S1 = spins[i];
-      S2 = spins[j];
+    for (auto const &[j, b] : lattice.neighbors[i]) {
+      Spin2D S1 = get_spin(i);
+      Spin2D S2 = get_spin(j);
 
-      E0 += bonds[b].bondfunc(S1, S2);
+      E0 += lattice.bonds[b].bondfunc(S1, S2);
 
-      E1 += bonds[b].bondfunc(S1, R1s[b]*S2);
-      Em1 += bonds[b].bondfunc(S1, R1s[b].transpose()*S2);
+      E1  += lattice.bonds[b].bondfunc(S1, R1s[b]*S2);
+      Em1 += lattice.bonds[b].bondfunc(S1, R1s[b].transpose()*S2);
 
-      E2 += bonds[b].bondfunc(S1, R2s[b]*S2);
-      Em2 += bonds[b].bondfunc(S1, R2s[b].transpose()*S2);
+      E2  += lattice.bonds[b].bondfunc(S1, R2s[b]*S2);
+      Em2 += lattice.bonds[b].bondfunc(S1, R2s[b].transpose()*S2);
 
-      E3 += bonds[b].bondfunc(S1, R3s[b]*S2);
-      Em3 += bonds[b].bondfunc(S1, R3s[b].transpose()*S2);
+      E3  += lattice.bonds[b].bondfunc(S1, R3s[b]*S2);
+      Em3 += lattice.bonds[b].bondfunc(S1, R3s[b].transpose()*S2);
     }
   }
 
@@ -186,9 +80,9 @@ std::vector<double> Spin2DModel::twist_stiffness() const {
 }
 
 Eigen::Vector2d Spin2DModel::get_magnetization() const {
-  Eigen::Vector2d M = Eigen::Vector2d::Constant(0);
+  Eigen::Vector2d M = Eigen::Vector2d::Zero();
   for (uint32_t i = 0; i < V; i++) {
-    M += spins[i];
+    M += lattice.spins[i];
   }
 
   if (cluster_update) {
@@ -211,11 +105,11 @@ void Spin2DModel::cluster_mutation() {
   s.clear();
 
   std::stack<uint32_t> c;
-  uint32_t m = rand() % (V + 1);
+  uint32_t m = rand() % V;
   Eigen::Matrix2d s0_new;
   c.push(m);
 
-  double p = (double) 2*PI*rand()/RAND_MAX;
+  double p = (double) 2*M_PI*rand()/RAND_MAX;
   Eigen::Vector2d ax; ax << std::cos(p), std::sin(p);
   Eigen::Matrix2d R = Eigen::Matrix2d::Identity() - 2*ax*ax.transpose()/std::pow(ax.norm(), 2);
 
@@ -230,20 +124,20 @@ void Spin2DModel::cluster_mutation() {
       if (is_ghost) { // Site is ghost
         s0_new = R*s0;
       } else {
-        s_new = R*spins[m];
+        s_new = R*lattice.spins[m];
       }
 
-      for (auto const &[j, b] : neighbors[m]) {
+      for (auto const &[j, b] : lattice.neighbors[m]) {
         if (!s.count(j)) {
           bool neighbor_is_ghost = (j == V);
           
           double dE;
           if (neighbor_is_ghost) {
-            dE = onsite_func(s0.inverse()*s_new) - onsite_func(s0.inverse()*spins[m]);
+            dE = onsite_func(s0.inverse()*s_new) - onsite_func(s0.inverse()*lattice.spins[m]);
           } else if (is_ghost) {
-            dE = onsite_func(s0_new.inverse()*spins[j]) - onsite_func(s0.inverse()*spins[j]);
+            dE = onsite_func(s0_new.inverse()*lattice.spins[j]) - onsite_func(s0.inverse()*lattice.spins[j]);
           } else { // Normal bond
-            dE = bonds[b].bondfunc(spins[j], s_new) - bonds[b].bondfunc(spins[j], spins[m]);
+            dE = lattice.bonds[b].bondfunc(lattice.spins[j], s_new) - lattice.bonds[b].bondfunc(lattice.spins[j], lattice.spins[m]);
           }
 
           if (randf() < 1. - std::exp(-dE/temperature)) {
@@ -255,15 +149,15 @@ void Spin2DModel::cluster_mutation() {
       if (is_ghost) {
         s0 = s0_new;
       } else {
-        spins[m] = s_new;
+        lattice.spins[m] = s_new;
       }
     }
   }
 }
 
 void Spin2DModel::metropolis_mutation() {
-  double dp = sigma*(randf() - 0.5)*2.*PI;
-  Eigen::Vector2d S1 = spins[mut.i];
+  double dp = sigma*(randf() - 0.5)*2.*M_PI;
+  Eigen::Vector2d S1 = lattice.spins[mut.i];
   Eigen::Vector2d S2; S2 << std::cos(dp)*S1[0] - std::sin(dp)*S1[1],
                             std::cos(dp)*S1[1] + std::sin(dp)*S1[0];
 
@@ -278,26 +172,26 @@ void Spin2DModel::accept_mutation() {
 
 void Spin2DModel::reject_mutation() {
   if (!cluster_update) {
-    spins[mut.i] = spins[mut.i] - mut.dS;
+    lattice.spins[mut.i] = lattice.spins[mut.i] - mut.dS;
   }
 }
 
 double Spin2DModel::onsite_energy(int i) const {
   if (cluster_update) {
-    return onsite_func(s0.transpose()*spins[i]);
+    return onsite_func(s0.transpose()*lattice.spins[i]);
   } else {
-    return onsite_func(spins[i]);
+    return onsite_func(lattice.spins[i]);
   }
 }
 
 double Spin2DModel::bond_energy(int i) const {
   double E = 0.;
-  for (auto const &[j, b] : neighbors[i]) {
+  for (auto const &[j, b] : lattice.neighbors[i]) {
     if (b == GHOST) {
       continue;
     }
 
-    E += 0.5*bonds[b].bondfunc(spins[i], spins[j]);
+    E += 0.5*lattice.bonds[b].bondfunc(lattice.spins[i], lattice.spins[j]);
   }
 
   return E;
@@ -320,52 +214,55 @@ double Spin2DModel::energy_change() {
   }
 
   double E1 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
-  spins[mut.i] = spins[mut.i] + mut.dS;
+  lattice.spins[mut.i] = lattice.spins[mut.i] + mut.dS;
   double E2 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
 
   return E2 - E1;
 }
 
-void Spin2DModel::save_spins(const std::string& filename) {
-  std::ofstream output_file;
-  output_file.open(filename);
-  output_file << N1 << "\t" << N2 << "\t" << N3 << "\t" << sl << "\n";
-
-  Eigen::Vector2d S;
-  for (uint32_t i = 0; i < V; i++) {
-    if (cluster_update) {
-      S = s0.transpose()*spins[i];
-    } else {
-      S = spins[i];
-    }
-
-    output_file << S[0] << "\t" << S[1];
-    if (i < V-1) { 
-      output_file << "\t"; 
-    }
-  }
-
-  output_file.close();
-}
-
-void Spin2DModel::add_magnetization_samples(dataframe::data_t &samples) const {
+void Spin2DModel::add_magnetization_samples(dataframe::SampleMap &samples) const {
   auto m = get_magnetization();
-  samples.emplace("mx", m[0]);
-  samples.emplace("my", m[1]);
-  samples.emplace("magnetization", m.norm());
+  dataframe::utils::emplace(samples, "mx", m[0]);
+  dataframe::utils::emplace(samples, "my", m[1]);
+  dataframe::utils::emplace(samples, "magnetization", m.norm());
 }
 
-void Spin2DModel::add_helicity_samples(dataframe::data_t &samples) const {
+void Spin2DModel::add_helicity_samples(dataframe::SampleMap &samples) const {
   std::vector<double> twistd = twist_stiffness();
-  samples.emplace("d1E", twistd[2]);
-  samples.emplace("d2E", twistd[4]);
+  dataframe::utils::emplace(samples, "d1E", twistd[2]);
+  dataframe::utils::emplace(samples, "d2E", twistd[4]);
+  dataframe::utils::emplace(samples, "d1E2", twistd[8]);
 }
 
-dataframe::data_t Spin2DModel::take_samples() {
-  dataframe::data_t samples;
+void Spin2DModel::add_intensityx_samples(dataframe::SampleMap &samples) const {
+  Eigen::Vector3d q = 2*M_PI * lattice.dy.v.cross(lattice.dz.v) / lattice.dx.v.dot(lattice.dy.v.cross(lattice.dz.v));
+  Eigen::Vector3d q1 = q*min_L;
+  Eigen::Vector3d q2 = q*max_L;
+  auto intensity_samples = lattice.intensity(q1, q2, intensity_resolution);
+  dataframe::utils::emplace(samples, "intensityx", intensity_samples);
+}
+
+void Spin2DModel::add_intensityy_samples(dataframe::SampleMap &samples) const {
+  Eigen::Vector3d q = 2*M_PI * lattice.dz.v.cross(lattice.dx.v) / lattice.dx.v.dot(lattice.dy.v.cross(lattice.dz.v));
+  Eigen::Vector3d q1 = q*min_L;
+  Eigen::Vector3d q2 = q*max_L;
+  auto intensity_samples = lattice.intensity(q1, q2, intensity_resolution);
+  dataframe::utils::emplace(samples, "intensityy", intensity_samples);
+}
+
+void Spin2DModel::add_intensityz_samples(dataframe::SampleMap &samples) const {
+  Eigen::Vector3d q = 2*M_PI * lattice.dx.v.cross(lattice.dy.v) / lattice.dx.v.dot(lattice.dy.v.cross(lattice.dz.v));
+  Eigen::Vector3d q1 = q*min_L;
+  Eigen::Vector3d q2 = q*max_L;
+  auto intensity_samples = lattice.intensity(q1, q2, intensity_resolution);
+  dataframe::utils::emplace(samples, "intensityy", intensity_samples);
+}
+
+dataframe::SampleMap Spin2DModel::take_samples() {
+  dataframe::SampleMap samples;
 
   if (sample_energy) {
-    samples.emplace("energy", energy());
+    dataframe::utils::emplace(samples, "energy", energy());
   }
 
   if (sample_magnetization) {
@@ -374,6 +271,18 @@ dataframe::data_t Spin2DModel::take_samples() {
 
   if (sample_helicity) {
     add_helicity_samples(samples);
+  }
+
+  if (sample_intensityx) {
+    add_intensityx_samples(samples);
+  }
+
+  if (sample_intensityy) {
+    add_intensityy_samples(samples);
+  }
+
+  if (sample_intensityz) {
+    add_intensityz_samples(samples);
   }
 
   return samples;

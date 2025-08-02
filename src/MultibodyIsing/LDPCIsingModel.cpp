@@ -1,6 +1,6 @@
 #include "LDPCIsingModel.h"
 
-LDPCIsingModel::LDPCIsingModel(dataframe::Params &params, uint32_t num_threads) : MultibodyIsingModel(params, num_threads) {
+LDPCIsingModel::LDPCIsingModel(dataframe::ExperimentParams &params, uint32_t num_threads) : MultibodyIsingModel(params, num_threads) {
   L = dataframe::utils::get<int>(params, "system_size");
   J = dataframe::utils::get<double>(params, "J", 1.0);
   impurity = dataframe::utils::get<double>(params, "impurity", 0.0);

@@ -4,33 +4,39 @@
 
 #include "LDPCIsingModel.h"
 
-
 #include "SquareXYModel.h"
 #include "TrigonalXYModel.h"
 
 #include "XXZHeis.h"
 #include "TrigonalModel.h"
+#include "Selenium.h"
 
 #include <PyDataFrame.hpp>
+#include <PyQutils.hpp>
 
 NB_MODULE(montecarlo_bindings, m) {
   // Graph
-  EXPORT_SIMULATOR_DRIVER(SimpleGraphModel);
+  EXPORT_SIMULATOR(SimpleGraphModel);
 
   // Ising
-  EXPORT_SIMULATOR_DRIVER(SquareIsingModel);
-  EXPORT_SIMULATOR_DRIVER(LDPCIsingModel);
+  EXPORT_SIMULATOR(SquareIsingModel);
+  EXPORT_SIMULATOR(LDPCIsingModel);
 
   // Clock
-  //EXPORT_SIMULATOR_DRIVER(SquareClockModel<4>);
+  //EXPORT_SIMULATOR(SquareClockModel<4>);
 
   // Spin2D
-  EXPORT_SIMULATOR_DRIVER(SquareXYModel);
-  EXPORT_SIMULATOR_DRIVER(TrigonalXYModel);
+  EXPORT_SIMULATOR(SquareXYModel);
+  EXPORT_SIMULATOR(TrigonalXYModel);
 
   // Spin3D
-  EXPORT_SIMULATOR_DRIVER(XXZHeis);
-  EXPORT_SIMULATOR_DRIVER(TrigonalModel);
+  EXPORT_SIMULATOR(XXZHeis);
+  EXPORT_SIMULATOR(TrigonalModel);
+  EXPORT_SIMULATOR(SeleniumModel)
+    .def("to_graph", [](SeleniumModel& self) { 
+      auto graph = self.to_graph();
+      return std::make_tuple(graph.edges, graph.vals);
+    });
 }
 
 
