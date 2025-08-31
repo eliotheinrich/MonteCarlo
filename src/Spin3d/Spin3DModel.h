@@ -28,6 +28,7 @@ class GaussianDist {
 
 std::pair<std::vector<double>, std::vector<double>> split_complex_output(const std::vector<std::complex<double>>& complex_data);
 std::pair<std::vector<double>, std::vector<double>> fft2d_channel(std::vector<double>& x, std::vector<double>& y, std::vector<std::complex<double>>& input, int N, int s=1);
+std::pair<std::vector<double>, std::vector<double>> fft3d_channel(std::vector<double>& x, std::vector<double>& y, std::vector<double>& z, std::vector<std::complex<double>>& input, int N, int s=1);
 
 class Spin3DModel : public MonteCarloSimulator {
   // Generic 3D Heisenberg model
@@ -36,14 +37,19 @@ class Spin3DModel : public MonteCarloSimulator {
   public:
     uint64_t V;
 
+    static constexpr int METROPOLIS = 0;
+    static constexpr int ADAPTIVE_METROPOLIS = 1;
+    static constexpr int CLUSTER = 2;
+
     Spin3DModel(dataframe::ExperimentParams &params, uint32_t num_threads);
     virtual ~Spin3DModel()=default;
 
     void init(const Lattice<Spin3D>& lattice);
+    virtual void init() { }
 
     // TODO change this
     virtual uint64_t system_size() const override {
-      if (cluster_update) {
+      if (mutation_type == CLUSTER) {
         return 1;
       }
 
@@ -56,7 +62,7 @@ class Spin3DModel : public MonteCarloSimulator {
 
     Spin3D get_spin(uint32_t i) const { 
       Spin3D s = lattice.spins[i];
-      if (cluster_update) {
+      if (mutation_type == CLUSTER) {
         s = s0.transpose() * s;
       }
       return s;
@@ -76,8 +82,15 @@ class Spin3DModel : public MonteCarloSimulator {
 
     std::vector<double> skyrmion_correlation_function(uint32_t i) const;
 
-    void cluster_mutation();
+    static Eigen::Vector3d mutate_spin3d(const Spin3D& spin, GaussianDist& dist, double sigma) {
+      Eigen::Vector3d Gamma;
+      Gamma << dist.sample(), dist.sample(), dist.sample();
+      return (spin + sigma*Gamma).normalized();
+    }
+
     void metropolis_mutation();
+    void adaptive_metropolis_mutation();
+    void cluster_mutation();
 
     virtual double energy() const override;
     virtual double energy_change() override;
@@ -106,15 +119,20 @@ class Spin3DModel : public MonteCarloSimulator {
   protected:
     Lattice<Spin3D> lattice;
 
+    Eigen::Matrix3d s0;
+
     struct Spin3DMutation {
       uint32_t i;
       Spin3D dS;
     };
 
-    bool cluster_update;
+    int mutation_type;
 
     // Mutation being considered is stored as an attribute of the model
     Spin3DMutation mut;
+
+    // Internal normally distributed random number generator
+    GaussianDist dist;
 
     static constexpr double alpha = 0.01;
 
@@ -137,8 +155,4 @@ class Spin3DModel : public MonteCarloSimulator {
     double sigma;
 
     std::unordered_set<int> s;
-    Eigen::Matrix3d s0;
-
-    // Internal normally distributed random number generator
-    GaussianDist dist;
 };

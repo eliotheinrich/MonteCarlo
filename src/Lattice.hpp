@@ -44,7 +44,7 @@ struct SpinBond {
   }
 };
 
-using LatticeGraph = Graph<int, std::vector<double>>;
+using LatticeGraph = DirectedGraph<std::vector<double>, int>;
 
 template <typename Spin>
 struct Lattice {
@@ -76,7 +76,7 @@ struct Lattice {
           continue;
         }
 
-        graph.add_weighted_edge(i, j, n);
+        graph.add_edge(i, j, n);
       }
     }
 

@@ -1,6 +1,7 @@
 #include "Spin3DModel.h"
 
 #include <stack>
+#include <stdexcept>
 
 std::pair<std::vector<double>, std::vector<double>> split_complex_output(const std::vector<std::complex<double>>& complex_data) {
   size_t n = complex_data.size();
@@ -24,6 +25,16 @@ std::pair<std::vector<double>, std::vector<double>> fft2d_channel(std::vector<do
   return split_complex_output(output);
 }
 
+std::pair<std::vector<double>, std::vector<double>> fft3d_channel(std::vector<double>& x, std::vector<double>& y, std::vector<double>& z, std::vector<std::complex<double>>& input, int N, int s) {
+  std::vector<std::complex<double>> output(N * N * N);
+  finufft_opts opts;
+  finufft_default_opts(&opts);
+  opts.nthreads = 1;
+
+  int ier = finufft3d1(s*N*N*N, &x[0], &y[0], &z[0], &input[0], +1, 1e-6, N, N, N, &output[0], &opts);
+  return split_complex_output(output);
+}
+
 GaussianDist::GaussianDist(double mean, double std) {
   rd.seed(rand());
   gen = std::default_random_engine(rd());
@@ -35,17 +46,38 @@ double GaussianDist::sample() {
 }
 
 Spin3DModel::Spin3DModel(dataframe::ExperimentParams &params, uint32_t num_threads) : MonteCarloSimulator(params, num_threads), nsteps(0), accepted(0) {
-  cluster_update = dataframe::utils::get<int>(params, "cluster_update", true);
+  std::string mutation_str = dataframe::utils::get<std::string>(params, "mutation_type", "metropolis");
+  if (mutation_str == "metropolis") {
+    mutation_type = METROPOLIS;
+  } else if (mutation_str == "adaptive_metropolis") {
+    mutation_type = ADAPTIVE_METROPOLIS;
+  } else if (mutation_str == "cluster") {
+      mutation_type = CLUSTER;
+  } else {
+    throw std::runtime_error(fmt::format("Invalid mutation_type: {}", mutation_str));
+  }
+
+  if (mutation_type == METROPOLIS) {
+    sigma = dataframe::utils::get<double>(params, "mutation_width", 2.0);
+  } else if (mutation_type == ADAPTIVE_METROPOLIS) {
+    sigma = 0.25;
+  }
+
+  acceptance = 0.5;
 
   sample_helicity      = dataframe::utils::get<int>(params, "sample_helicity",      false);
   sample_magnetization = dataframe::utils::get<int>(params, "sample_magnetization", true);
   sample_energy        = dataframe::utils::get<int>(params, "sample_energy",        true);
   sample_spins         = dataframe::utils::get<int>(params, "sample_spins",         false);
+
+  dist = GaussianDist(0., 1.0);
 }
 
 void Spin3DModel::init(const Lattice<Spin3D>& lattice) {
+  std::srand(randi());
+
   this->lattice = lattice;
-  if (cluster_update) {
+  if (mutation_type == CLUSTER) {
     this->lattice.add_ghost();
   }
 
@@ -55,12 +87,7 @@ void Spin3DModel::init(const Lattice<Spin3D>& lattice) {
 
   randomize_spins();
 
-  acceptance = 0.5;
-  sigma = 0.25;
-
-  dist = GaussianDist(0., 1.0);
-
-  mut.i = 0;
+  mut.i = randi(0, V);
 }
 
 void Spin3DModel::randomize_spins() {
@@ -274,6 +301,14 @@ void Spin3DModel::cluster_mutation() {
 }
 
 void Spin3DModel::metropolis_mutation() {
+  // Basically random, with some small preference to nearby
+  Eigen::Vector3d S2 = mutate_spin3d(lattice.spins[mut.i], dist, sigma);
+
+  // Store mutation for consideration
+  mut.dS = S2 - lattice.spins[mut.i];
+}
+
+void Spin3DModel::adaptive_metropolis_mutation() {
   nsteps++;
   acceptance = accepted/nsteps;
   if (acceptance > 0.5) {
@@ -282,23 +317,22 @@ void Spin3DModel::metropolis_mutation() {
     sigma = std::max(0.05, 0.99*sigma);
   }
 
-  // Randomly generate mutation
-  Eigen::Vector3d Gamma;
-  Gamma << dist.sample(), dist.sample(), dist.sample();
-  Eigen::Vector3d S2 = (lattice.spins[mut.i] + sigma*Gamma).normalized();
-
+  Eigen::Vector3d S2 = mutate_spin3d(lattice.spins[mut.i], dist, sigma);
 
   // Store mutation for consideration
   mut.dS = S2 - lattice.spins[mut.i];
 }
 
 void Spin3DModel::generate_mutation() {
-  if (cluster_update) {
-    cluster_mutation();
-  } else {
+  if (mutation_type == METROPOLIS) {
     mut.i = rand() % V;
     metropolis_mutation();
-  }
+  } else if (mutation_type == ADAPTIVE_METROPOLIS) {
+    mut.i = rand() % V;
+    adaptive_metropolis_mutation();
+  } else if (mutation_type == CLUSTER) {
+    cluster_mutation();
+  } 
 }
 
 void Spin3DModel::accept_mutation() {
@@ -307,15 +341,13 @@ void Spin3DModel::accept_mutation() {
 }
 
 void Spin3DModel::reject_mutation() {
-  if (!cluster_update) {
+  if (mutation_type != CLUSTER) {
     set_spin(mut.i, lattice.spins[mut.i] - mut.dS);
   }
 }
 
 double Spin3DModel::onsite_energy(uint32_t i) const {
-  //std::cout << fmt::format("Called onsite_energy on site {}\n", i);
-  //std::cout << "S = " << lattice.spins[i] <<"\n OR \n" << get_spin(i) << "\n\n";
-  if (cluster_update) {
+  if (mutation_type == CLUSTER) {
     return onsite_func(s0.transpose()*lattice.spins[i]);
   } else {
     return onsite_func(lattice.spins[i]);
@@ -347,7 +379,7 @@ double Spin3DModel::energy() const {
 }
 
 double Spin3DModel::energy_change() {
-  if (cluster_update) {
+  if (mutation_type == CLUSTER) {
     return -1.;
   }
 
@@ -370,7 +402,7 @@ void Spin3DModel::add_magnetization_samples(dataframe::SampleMap &samples) const
 
   double mn = m.norm();
   dataframe::utils::emplace(samples, "magnetization", mn);
-  dataframe::utils::emplace(samples, "magnetization2", mn*mn);
+  dataframe::utils::emplace(samples, "magnetization_squared", mn*mn);
 }
 
 void Spin3DModel::add_helicity_samples(dataframe::SampleMap &samples) const {
@@ -397,7 +429,9 @@ dataframe::SampleMap Spin3DModel::take_samples() {
   dataframe::SampleMap samples;
 
   if (sample_energy) {
-    dataframe::utils::emplace(samples, "energy", energy());
+    double E = energy();
+    dataframe::utils::emplace(samples, "energy", E);
+    dataframe::utils::emplace(samples, "energy_squared", E*E);
   }
 
   if (sample_magnetization) {
@@ -411,6 +445,8 @@ dataframe::SampleMap Spin3DModel::take_samples() {
   if (sample_spins) {
     add_spin_samples(samples);
   }
+
+  dataframe::utils::emplace(samples, "sigma", sigma);
 
   return samples;
 }

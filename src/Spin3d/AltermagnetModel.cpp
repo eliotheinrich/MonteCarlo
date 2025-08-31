@@ -1,48 +1,55 @@
-#include "Selenium.h"
+#include "AltermagnetModel.h"
 
-SeleniumModel::SeleniumModel(dataframe::ExperimentParams &params, uint32_t num_threads) : Spin3DModel(params, num_threads) {
+AltermagnetModel::AltermagnetModel(dataframe::ExperimentParams &params, uint32_t num_threads) : Spin3DModel(params, num_threads) {
   N = dataframe::utils::get<int>(params, "system_size");
 
   J1  = dataframe::utils::get<double>(params, "J1");
   J2  = dataframe::utils::get<double>(params, "J2");
   J2p = dataframe::utils::get<double>(params, "J2p");
-  K   = dataframe::utils::get<double>(params, "K");
   D1  = dataframe::utils::get<double>(params, "D1");
   D2  = dataframe::utils::get<double>(params, "D2");
+  K   = dataframe::utils::get<double>(params, "K");
+  B   = dataframe::utils::get<double>(params, "B", 0.0);
 
-  double D1l  = D1;
-  double D2l  = D2;
-  double J1l  = J1;
-  double J2l  = J2;
-  double J2pl = J2p;
+  J1_i  = J1;
+  J2_i  = J2;
+  J2p_i = J2p;
+  D1_i  = D1;
+  D2_i  = D2;
+  K_i   = K;
+  B_i   = B;
+
+  anneal = dataframe::utils::get<int>(params, "anneal", false);
+  if (anneal) {
+    J1_f  = dataframe::utils::get<double>(params, "J1_f", J1);
+    J2_f  = dataframe::utils::get<double>(params, "J2_f", J2);
+    J2p_f = dataframe::utils::get<double>(params, "J2p_f", J2p);
+    D1_f  = dataframe::utils::get<double>(params, "D1_f", D1);
+    D2_f  = dataframe::utils::get<double>(params, "D2_f", D2);
+    K_f   = dataframe::utils::get<double>(params, "K_f", K);
+    B_f   = dataframe::utils::get<double>(params, "B_f", 0.0);
+  }
+
+  initial_state = dataframe::utils::get<std::string>(params, "initial_state", "random");
 
   sample_sublattice_magnetization = dataframe::utils::get<int>(params, "sample_sublattice_magnetization", false);
   sample_structure_factor = dataframe::utils::get<int>(params, "sample_structure_factor", false);
-  sample_staggered_structure_factor = dataframe::utils::get<int>(params, "sample_staggered_structure_factor", false);
+}
 
+void AltermagnetModel::init() {
   std::function<double(const Eigen::Vector3d &, const Eigen::Vector3d &)> bondfuncNN =
-    [J1l](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) {
-      return J1l*S1.dot(S2);
+    [this](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) {
+      return this->J1*S1.dot(S2);
     };
 
   std::function<double(const Eigen::Vector3d &, const Eigen::Vector3d &)> bondfuncAx =
-    [J2l](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) {
-      return J2l*S1.dot(S2);
+    [this](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) {
+      return this->J2*S1.dot(S2);
     };
 
   std::function<double(const Eigen::Vector3d &, const Eigen::Vector3d &)> bondfuncBx =
-    [J2pl](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) {
-      return J2pl*S1.dot(S2);
-    };
-
-  std::function<double(const Eigen::Vector3d &, const Eigen::Vector3d &)> bondfuncAy =
-    [J2pl, D1l](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) {
-      return J2pl*S1.dot(S2) + D1l*(S1[0] * S2[1] - S1[1] * S2[0]);
-    };
-
-  std::function<double(const Eigen::Vector3d &, const Eigen::Vector3d &)> bondfuncBy =
-    [J2l, D2l](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) {
-      return J2l*S1.dot(S2) + D2l*(S1[0] * S2[1] - S1[1] * S2[0]);
+    [this](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) {
+      return this->J2p*S1.dot(S2);
     };
 
   SiteFilter filterA = [](uint32_t i, uint32_t j, uint32_t k, uint32_t s) {
@@ -53,17 +60,16 @@ SeleniumModel::SeleniumModel(dataframe::ExperimentParams &params, uint32_t num_t
     return s == 1;
   };
 
-
   std::vector<SpinBond<Spin3D>> bonds = {
     SpinBond<Spin3D>( 1, 0, 0, 0, bondfuncAx, filterA), // n = 0
     SpinBond<Spin3D>(-1, 0, 0, 0, bondfuncAx, filterA), // n = 1
-    SpinBond<Spin3D>( 0, 1, 0, 0, bondfuncAy, filterA), // n = 2
-    SpinBond<Spin3D>( 0,-1, 0, 0, bondfuncAy, filterA), // n = 3
+    SpinBond<Spin3D>( 0, 1, 0, 0, [this](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) { return this->J2p*S1.dot(S2) + this->D1*(S1[0] * S2[1] - S1[1] * S2[0]); }, filterA), // n = 2
+    SpinBond<Spin3D>( 0,-1, 0, 0, [this](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) { return this->J2p*S1.dot(S2) - this->D1*(S1[0] * S2[1] - S1[1] * S2[0]); }, filterA), // n = 3
 
     SpinBond<Spin3D>( 1, 0, 0, 0, bondfuncBx, filterB), // n = 4
     SpinBond<Spin3D>(-1, 0, 0, 0, bondfuncBx, filterB), // n = 5
-    SpinBond<Spin3D>( 0, 1, 0, 0, bondfuncBy, filterB), // n = 6
-    SpinBond<Spin3D>( 0,-1, 0, 0, bondfuncBy, filterB), // n = 7
+    SpinBond<Spin3D>( 0, 1, 0, 0, [this](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) { return this->J2 *S1.dot(S2) + this->D2*(S1[0] * S2[1] - S1[1] * S2[0]); }, filterB), // n = 6
+    SpinBond<Spin3D>( 0,-1, 0, 0, [this](const Eigen::Vector3d &S1, const Eigen::Vector3d &S2) { return this->J2 *S1.dot(S2) - this->D2*(S1[0] * S2[1] - S1[1] * S2[0]); }, filterB), // n = 7
 
     SpinBond<Spin3D>( 0, 0, 0, 1, bondfuncNN),          // n = 8
     SpinBond<Spin3D>( 0,-1, 0, 1, bondfuncNN, filterA), // n = 9
@@ -83,21 +89,70 @@ SeleniumModel::SeleniumModel(dataframe::ExperimentParams &params, uint32_t num_t
   LatticeDimension dy(N, BoundaryCondition::Periodic, v2);
   LatticeDimension dz(1, BoundaryCondition::Periodic, v3);
   std::vector<Eigen::Vector3d> sublattice_vectors = {vs};
-  Lattice<Spin3D> lattice(dx, dy, dz, bonds, sublattice_vectors);
-  Spin3DModel::init(lattice);
-}
+  Lattice<Spin3D> lattice_(dx, dy, dz, bonds, sublattice_vectors);
+  Spin3DModel::init(lattice_);
 
-void SeleniumModel::generate_mutation() {
-  if (cluster_update) {
-    cluster_mutation(); 
-  } else {
-    mut.i = rand() % V;
-    metropolis_mutation();
+  Spin3D z_polarized; z_polarized << 0.0, 0.0, 1.0;
+  double sign = 1.0;
+  if (randi() % 2) {
+    sign = -1.0;
   }
+  z_polarized *= sign;
+
+  double noise = 0.2;
+
+  if (initial_state == "g_afm") {
+    for (size_t i = 0; i < V; i++) {
+      auto idxs = lattice.tensor_idx(i);
+      size_t s = idxs[3];
+      if (s == 0) {
+        lattice.spins[i] = mutate_spin3d( z_polarized, dist, noise);
+      } else {
+        lattice.spins[i] = mutate_spin3d(-z_polarized, dist, noise);
+      }
+    }
+  } else if (initial_state == "fm") {
+    for (size_t i = 0; i < V; i++) {
+      lattice.spins[i] = mutate_spin3d(z_polarized, dist, noise);
+    }
+  } else if (initial_state == "stripe_afm_x") {
+    for (size_t i = 0; i < V; i++) {
+      auto idxs = lattice.tensor_idx(i);
+      size_t s = idxs[3];
+      double sublattice_sign = 1.0;
+      if (s == 0) {
+        sublattice_sign = -1.0;
+      }
+
+      size_t x = idxs[0];
+      if (x % 2 == 0) {
+        lattice.spins[i] = mutate_spin3d( sublattice_sign*z_polarized, dist, noise);
+      } else {
+        lattice.spins[i] = mutate_spin3d(-sublattice_sign*z_polarized, dist, noise);
+      }
+    }
+  } else if (initial_state == "stripe_afm_y") {
+    for (size_t i = 0; i < V; i++) {
+      auto idxs = lattice.tensor_idx(i);
+      size_t s = idxs[3];
+      double sublattice_sign = 1.0;
+      if (s == 0) {
+        sublattice_sign = -1.0;
+      }
+
+      size_t y = idxs[0];
+      if (y % 2 == 0) {
+        lattice.spins[i] = mutate_spin3d( sublattice_sign*z_polarized, dist, noise);
+      } else {
+        lattice.spins[i] = mutate_spin3d(-sublattice_sign*z_polarized, dist, noise);
+      }
+    }
+  }
+
 }
 
 // Does not include easy-axis anisotropy. Do not use!
-void SeleniumModel::over_relaxation_mutation() {
+void AltermagnetModel::over_relaxation_mutation() {
   Eigen::Vector3d H = Eigen::Vector3d::Zero();
 
   for (auto const &[j, n] : lattice.neighbors[mut.i]) {
@@ -120,16 +175,15 @@ void SeleniumModel::over_relaxation_mutation() {
   mut.dS = -2*get_spin(mut.i) + 2.*get_spin(mut.i).dot(H)/std::pow(H.norm(),2) * H;
 }
 
-double SeleniumModel::onsite_func(const Eigen::Vector3d &S) const {
+double AltermagnetModel::onsite_func(const Eigen::Vector3d &S) const {
   double E = 0;
   E += K*S[2]*S[2];
+  E += B*S[2];
 
-  //std::cout << "S = " << S << "\n";
-  //std::cout << fmt::format("K = {}, onsite energy = {}\n", K, E);
   return E;
 }
 
-void SeleniumModel::add_sublattice_magnetization_samples(dataframe::SampleMap &samples) const {
+void AltermagnetModel::add_sublattice_magnetization_samples(dataframe::SampleMap &samples) const {
   Eigen::Vector3d M1 = Eigen::Vector3d::Zero();
   Eigen::Vector3d M2 = Eigen::Vector3d::Zero();
 
@@ -182,7 +236,7 @@ void SeleniumModel::add_sublattice_magnetization_samples(dataframe::SampleMap &s
   dataframe::utils::emplace(samples, "magnetization2", m2);
 }
 
-void SeleniumModel::add_structure_factor_samples(dataframe::SampleMap& samples) const {
+void AltermagnetModel::add_structure_factor_samples(dataframe::SampleMap& samples) const {
   std::vector<std::complex<double>> Sx(V);
   std::vector<std::complex<double>> Sy(V);
   std::vector<std::complex<double>> Sz(V);
@@ -226,57 +280,7 @@ void SeleniumModel::add_structure_factor_samples(dataframe::SampleMap& samples) 
   dataframe::utils::emplace(samples, "Sz", to_mag(Sz1, Sz2), {N, N});
 }
 
-void SeleniumModel::add_staggered_structure_factor_samples(dataframe::SampleMap& samples) const {
-  std::vector<std::complex<double>> Sx(V);
-  std::vector<std::complex<double>> Sy(V);
-  std::vector<std::complex<double>> Sz(V);
-
-  std::vector<double> x(V);
-  std::vector<double> y(V);
-
-  for (size_t i = 0; i < V; i++) {
-    auto pos = lattice.position(i);
-    x[i] = 2.0 * M_PI * pos(0) / N - M_PI;
-    y[i] = 2.0 * M_PI * pos(1) / N - M_PI;
-
-    auto spin = get_spin(i);
-
-    auto idxs = lattice.tensor_idx(i);
-    if (idxs[3] == 1) {
-      spin = -spin;
-    }
-
-    Sx[i] = spin[0];
-    Sy[i] = spin[1];
-    Sz[i] = spin[2];
-  }
-
-  auto to_mag = [](const std::vector<double>& real, const std::vector<double>& complex) {
-    size_t n = real.size();
-    std::vector<double> mag(n);
-    for (size_t i = 0; i < n; i++) {
-      mag[i] = real[i]*real[i] + complex[i]*complex[i];
-    }
-    return mag;
-  };
-
-  auto [Sx1, Sx2] = fft2d_channel(x, y, Sx, N, 2);
-  dataframe::utils::emplace(samples, "_Sx_real", Sx1, {N, N});
-  dataframe::utils::emplace(samples, "_Sx_imag", Sx2, {N, N});
-  dataframe::utils::emplace(samples, "_Sx", to_mag(Sx1, Sx2), {N, N});
-
-  auto [Sy1, Sy2] = fft2d_channel(x, y, Sy, N, 2);
-  dataframe::utils::emplace(samples, "_Sy_real", Sy1, {N, N});
-  dataframe::utils::emplace(samples, "_Sy_imag", Sy2, {N, N});
-  dataframe::utils::emplace(samples, "_Sy", to_mag(Sy1, Sy2), {N, N});
-
-  auto [Sz1, Sz2] = fft2d_channel(x, y, Sz, N, 2);
-  dataframe::utils::emplace(samples, "_Sz_real", Sz1, {N, N});
-  dataframe::utils::emplace(samples, "_Sz_imag", Sz2, {N, N});
-  dataframe::utils::emplace(samples, "_Sz", to_mag(Sz1, Sz2), {N, N});
-}
-
-dataframe::SampleMap SeleniumModel::take_samples() {
+dataframe::SampleMap AltermagnetModel::take_samples() {
   dataframe::SampleMap samples = Spin3DModel::take_samples();
 
   if (sample_sublattice_magnetization) {
@@ -285,10 +289,6 @@ dataframe::SampleMap SeleniumModel::take_samples() {
 
   if (sample_structure_factor) {
     add_structure_factor_samples(samples);
-  }
-
-  if (sample_staggered_structure_factor) {
-    add_staggered_structure_factor_samples(samples);
   }
 
   return samples;

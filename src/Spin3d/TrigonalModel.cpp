@@ -114,7 +114,7 @@ Eigen::Vector3d TrigonalModel::molecular_field(uint32_t i) const {
 }
 
 void TrigonalModel::generate_mutation() {
-  if (cluster_update) {
+  if (mutation_type == CLUSTER) {
     cluster_mutation(); 
   } else {
     mut.i = rand() % V;

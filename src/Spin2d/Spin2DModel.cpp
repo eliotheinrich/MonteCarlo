@@ -20,6 +20,8 @@ Spin2DModel::Spin2DModel(dataframe::ExperimentParams &params, uint32_t num_threa
 }
 
 void Spin2DModel::init(const Lattice<Spin2D>& lattice) {
+  std::srand(randi());
+
   this->lattice = lattice;
   V = lattice.system_size();
 

@@ -9,7 +9,8 @@
 
 #include "XXZHeis.h"
 #include "TrigonalModel.h"
-#include "Selenium.h"
+#include "AltermagnetModel.h"
+#include "HelixModel.h"
 
 #include <PyDataFrame.hpp>
 #include <PyQutils.hpp>
@@ -32,11 +33,13 @@ NB_MODULE(montecarlo_bindings, m) {
   // Spin3D
   EXPORT_SIMULATOR(XXZHeis);
   EXPORT_SIMULATOR(TrigonalModel);
-  EXPORT_SIMULATOR(SeleniumModel)
-    .def("to_graph", [](SeleniumModel& self) { 
+  EXPORT_SIMULATOR(AltermagnetModel)
+    .def("to_graph", [](AltermagnetModel& self) { 
       auto graph = self.to_graph();
       return std::make_tuple(graph.edges, graph.vals);
     });
+
+  EXPORT_SIMULATOR(HelixModel);
 }
 
 
