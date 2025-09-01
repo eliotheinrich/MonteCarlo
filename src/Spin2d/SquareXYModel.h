@@ -10,6 +10,7 @@ class SquareXYModel : public Spin2DModel {
   public:
     SquareXYModel(dataframe::ExperimentParams &params, uint32_t num_threads);
 
+    std::vector<std::pair<size_t, bool>> get_vortices() const;
     std::vector<double> vorticity() const;
 
     double p(uint32_t i) const;
@@ -22,6 +23,8 @@ class SquareXYModel : public Spin2DModel {
 
     void over_relaxation_mutation();
     virtual void generate_mutation() override;
+
+    virtual Texture get_texture() const override;
 
   private:
     uint32_t N;

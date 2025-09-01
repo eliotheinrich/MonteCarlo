@@ -9,8 +9,6 @@
 #include <math.h>
 #include <random>
 
-#include <finufft.h>
-
 using Spin3D = Eigen::Vector3d;
 
 class GaussianDist {
@@ -110,7 +108,7 @@ class Spin3DModel : public MonteCarloSimulator {
     void add_intensityy_samples(dataframe::SampleMap& samples) const;
     void add_intensityz_samples(dataframe::SampleMap& samples) const;
 
-    virtual dataframe::SampleMap take_samples() override;
+    virtual dataframe::SampleMap take_samples() const override;
 
     LatticeGraph to_graph() const { 
       return lattice.to_graph();

@@ -33,3 +33,19 @@ double SquareIsingModel::bond_energy(uint32_t i) const {
 
   return 0.5*E;
 }
+
+Texture SquareIsingModel::get_texture() const {
+  Texture texture(N, N);
+  for (size_t i = 0; i < V; i++) {
+    auto idxs = tensor_idx(i);
+    size_t x = idxs[0];
+    size_t y = idxs[1];
+    if (spins[i] == 1) {
+      texture.set(x, y, {1.0, 1.0, 1.0, 1.0});
+    } else {
+      texture.set(x, y, {0.0, 0.0, 0.0, 1.0});
+    }
+  }
+
+  return texture;
+}

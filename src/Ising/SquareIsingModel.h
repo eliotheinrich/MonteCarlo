@@ -10,6 +10,7 @@ class SquareIsingModel : public IsingModel {
 
     virtual double onsite_energy(uint32_t i) const override;
     virtual double bond_energy(uint32_t i) const override;
+    virtual Texture get_texture() const override;
 
   private:
     uint32_t N;

@@ -36,7 +36,7 @@ class GraphModel : public MonteCarloSimulator {
     uint32_t deg(uint32_t i) const;
 
     double get_connectivity() const;
-    virtual dataframe::SampleMap take_samples() const;
+    virtual dataframe::SampleMap take_samples() const override;
 
   protected:
     struct GraphMutation {

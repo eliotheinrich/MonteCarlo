@@ -13,7 +13,7 @@ class HelixModel : public Spin3DModel {
 
     void add_structure_factor_samples(dataframe::SampleMap& samples) const;
 
-    virtual dataframe::SampleMap take_samples() override;
+    virtual dataframe::SampleMap take_samples() const override;
 
     virtual void annealing_callback(int epoch, int num_epochs) override {
       if (anneal) {

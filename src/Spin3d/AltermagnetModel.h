@@ -27,7 +27,7 @@ class AltermagnetModel : public Spin3DModel {
     void add_sublattice_magnetization_samples(dataframe::SampleMap& samples) const;
     void add_structure_factor_samples(dataframe::SampleMap& samples) const;
 
-    virtual dataframe::SampleMap take_samples() override;
+    virtual dataframe::SampleMap take_samples() const override;
 
   private:
     uint32_t N;

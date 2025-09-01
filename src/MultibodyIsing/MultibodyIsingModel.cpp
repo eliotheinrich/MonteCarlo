@@ -106,7 +106,7 @@ std::pair<int, int> MultibodyIsingModel::coordinates(size_t i) const {
   return std::make_pair(x, y);
 }
 
-dataframe::SampleMap MultibodyIsingModel::take_samples() {
+dataframe::SampleMap MultibodyIsingModel::take_samples() const {
   dataframe::SampleMap samples;
 
   double E = energy();

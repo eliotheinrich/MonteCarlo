@@ -260,7 +260,7 @@ void Spin2DModel::add_intensityz_samples(dataframe::SampleMap &samples) const {
   dataframe::utils::emplace(samples, "intensityy", intensity_samples);
 }
 
-dataframe::SampleMap Spin2DModel::take_samples() {
+dataframe::SampleMap Spin2DModel::take_samples() const {
   dataframe::SampleMap samples;
 
   if (sample_energy) {

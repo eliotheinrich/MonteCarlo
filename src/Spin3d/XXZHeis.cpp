@@ -112,7 +112,7 @@ void XXZHeis::add_structure_factor_samples(dataframe::SampleMap& samples) const 
   dataframe::utils::emplace(samples, "Sz_imag", Sz2);
 }
 
-dataframe::SampleMap XXZHeis::take_samples() {
+dataframe::SampleMap XXZHeis::take_samples() const {
   dataframe::SampleMap samples = Spin3DModel::take_samples();
 
   if (sample_structure_factor) {

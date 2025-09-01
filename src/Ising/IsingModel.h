@@ -41,7 +41,7 @@ class IsingModel : public MonteCarloSimulator {
     virtual double energy() const override;
     virtual double energy_change() override;
 
-    virtual dataframe::SampleMap take_samples() override;
+    virtual dataframe::SampleMap take_samples() const override;
 
     void save_spins(const std::string& filename);
 
