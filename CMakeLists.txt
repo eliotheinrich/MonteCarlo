@@ -15,8 +15,7 @@ message("Compiler: " ${CMAKE_CXX_COMPILER})
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-#set(CMAKE_DEBUG_POSTFIX "d")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-unused-function -Wno-deprecated-declarations -pthread -fopenmp")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-unused-function -Wno-deprecated-declarations -pthread")
 
 # Ignore annoying Intel warnings
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
@@ -58,7 +57,7 @@ execute_process(
 list(APPEND CMAKE_PREFIX_PATH "${NB_DIR}")
 find_package(nanobind CONFIG REQUIRED)
 
-if (DEFINED QUTILS_SOURCE) 
+if (DEFINED QUTILS_SOURCE)
     set(qutils_SOURCE_DIR ${QUTILS_SOURCE})
     add_subdirectory(${qutils_SOURCE_DIR} ${CMAKE_BINARY_DIR}/qutils-build)
 else()

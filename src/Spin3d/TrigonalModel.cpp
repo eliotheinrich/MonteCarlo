@@ -263,7 +263,7 @@ void TrigonalModel::add_intensityz_samples(dataframe::SampleMap &samples) const 
   dataframe::utils::emplace(samples, "intensityz", intensity_samples);
 }
 
-dataframe::SampleMap TrigonalModel::take_samples() {
+dataframe::SampleMap TrigonalModel::take_samples() const {
   dataframe::SampleMap samples = Spin3DModel::take_samples();
 
   if (sample_intensityx) {

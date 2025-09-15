@@ -12,6 +12,9 @@
 constexpr uint32_t GHOST = -1;
 
 struct LatticeDimension {
+  LatticeDimension()=default;
+  LatticeDimension(size_t N, BoundaryCondition bc, Eigen::Vector3d v) : N(N), bc(bc), v(v) { }
+
   size_t N;
   BoundaryCondition bc;
   Eigen::Vector3d v;

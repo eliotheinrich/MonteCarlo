@@ -26,7 +26,7 @@ class TrigonalModel : public Spin3DModel {
     void add_intensityz_samples(dataframe::SampleMap &samples) const;
     void add_layer_magnetization_samples(dataframe::SampleMap &samples) const;
 
-    virtual dataframe::SampleMap take_samples() override;
+    virtual dataframe::SampleMap take_samples() const override;
 
   private:
     uint32_t N;

@@ -41,44 +41,57 @@ SquareXYModel::SquareXYModel(dataframe::ExperimentParams &params, uint32_t num_t
     Spin2DModel::init(lattice);
 }
 
-std::vector<double> SquareXYModel::vorticity() const {
-  double v1 = 0;
-  double v2 = 0;
-
+std::vector<std::pair<size_t, bool>> SquareXYModel::get_vortices() const {
   std::vector<std::vector<std::vector<double>>> phi = std::vector<std::vector<std::vector<double>>>(N,
       std::vector<std::vector<double>>(N,
         std::vector<double>(L)));
 
-  uint32_t i;
   for (uint32_t n1 = 0; n1 < N; n1++) {
     for (uint32_t n2 = 0; n2 < N; n2++) {
       for (uint32_t n3 = 0; n3 < L; n3++) {
-        i = lattice.flat_idx(n1, n2, n3, 0);
-        phi[n1][n2][n3] = 0.;
+        uint32_t i = lattice.flat_idx(n1, n2, n3, 0);
         phi[n1][n2][n3] = std::atan2(get_spin(i)[1], get_spin(i)[0]);
       }
     }
   }
 
-  double p1; double p2; double p3; double p4;
-  double w;
+  std::vector<std::pair<size_t, bool>> vortex_indices;
   for (uint32_t n1 = 0; n1 < N; n1++) {
     for (uint32_t n2 = 0; n2 < N; n2++) {
       for (uint32_t n3 = 0; n3 < L; n3++) {
-        p1 = phi[n1][n2][n3]; p2 = phi[(n1+1)%N][n2][n3];
-        p3 = phi[(n1+1)%N][(n2+1)%N][n3]; p4 = phi[n1][(n2+1)%N][n3];
-        w = arg(exp(std::complex<double>(0., p2 - p1))) + arg(exp(std::complex<double>(0., p3 - p2)))
-          + arg(exp(std::complex<double>(0., p4 - p3))) + arg(exp(std::complex<double>(0., p1 - p4)));
-        if (w > 0) { 
-          v1 += w; 
-        } else { 
-          v2 += w; 
+        size_t i = lattice.flat_idx(n1, n2, n3, 0);
+        double p1 = phi[n1][n2][n3]; 
+        double p2 = phi[(n1+1)%N][n2][n3];
+        double p3 = phi[(n1+1)%N][(n2+1)%N][n3]; 
+        double p4 = phi[n1][(n2+1)%N][n3];
+        double w = (arg(exp(std::complex<double>(0., p2 - p1))) + arg(exp(std::complex<double>(0., p3 - p2)))
+                  + arg(exp(std::complex<double>(0., p4 - p3))) + arg(exp(std::complex<double>(0., p1 - p4))))/(2*M_PI);
+        if (w > 1e-4) { 
+          vortex_indices.push_back(std::make_pair(i, true));
+        } else if (w < -1e-4) { 
+          vortex_indices.push_back(std::make_pair(i, false));
         }
       }
     }
   }
 
-  return std::vector<double>{v1/(2*M_PI*N*N*L), v2/(2*M_PI*N*N*L)};
+  return vortex_indices; 
+}
+
+std::vector<double> SquareXYModel::vorticity() const {
+  auto vortex_locations = get_vortices();
+
+  double v1 = 0.0;
+  double v2 = 0.0;
+  for (const auto& [idx, v] : vortex_locations) {
+    if (v) {
+      v1 += 1;
+    } else {
+      v2 += 1;
+    }
+  }
+
+  return std::vector<double>{v1/(N*N*L), v2/(N*N*L)};
 }
 
 double SquareXYModel::p(uint32_t i) const {
@@ -179,4 +192,37 @@ void SquareXYModel::generate_mutation() {
       mut_mode = 0;
     }
   }
+}
+
+Texture SquareXYModel::get_texture() const {
+  Texture texture(N, N);
+  for (size_t i = 0; i < V; i++) {
+    auto idxs = lattice.tensor_idx(i);
+    size_t x = idxs[0];
+    size_t y = idxs[1];
+    double phi = std::atan2(get_spin(i)[1], get_spin(i)[0]);
+    float c = (std::sin(phi) + 1.0)/2.0;
+    texture.set(x, y, {c, c, c, 1.0});
+  }
+
+  auto vortices = get_vortices();
+  for (const auto& [i, v] : vortices) {
+    auto idxs = lattice.tensor_idx(i);
+    size_t x = idxs[0];
+    size_t y = idxs[1];
+
+    if (v) {
+      texture.set(x, y, {1.0, 0.0, 0.0, 1.0});
+      texture.set(mod(x+1, N), y, {1.0, 0.0, 0.0, 1.0});
+      texture.set(mod(x-1, N), y, {1.0, 0.0, 0.0, 1.0});
+      texture.set(x, mod(y+1, N), {1.0, 0.0, 0.0, 1.0});
+      texture.set(x, mod(y-1, N), {1.0, 0.0, 0.0, 1.0});
+    } else {
+      texture.set(x, y, {0.0, 0.0, 1.0, 1.0});
+      texture.set(mod(x+1, N), y, {0.0, 0.0, 1.0, 1.0});
+      texture.set(mod(x-1, N), y, {0.0, 0.0, 1.0, 1.0});
+    }
+  }
+
+  return texture;
 }

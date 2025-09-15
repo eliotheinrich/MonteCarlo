@@ -1,19 +1,19 @@
-#include "SimpleGraphModel.h"
+#include "Graph/SimpleGraphModel.h"
 
-#include "SquareIsingModel.h"
+#include "Ising/SquareIsingModel.h"
 
-#include "LDPCIsingModel.h"
+#include "MultibodyIsing/LDPCIsingModel.h"
 
-#include "SquareXYModel.h"
-#include "TrigonalXYModel.h"
+#include "Spin2d/SquareXYModel.h"
+#include "Spin2d/TrigonalXYModel.h"
 
-#include "XXZHeis.h"
-#include "TrigonalModel.h"
-#include "AltermagnetModel.h"
-#include "HelixModel.h"
+#include "Spin3d/XXZHeis.h"
+#include "Spin3d/TrigonalModel.h"
+#include "Spin3d/AltermagnetModel.h"
+#include "Spin3d/HelixModel.h"
 
 #include <PyDataFrame.hpp>
-#include <PyQutils.hpp>
+#include <PyUtils.hpp>
 
 NB_MODULE(montecarlo_bindings, m) {
   // Graph

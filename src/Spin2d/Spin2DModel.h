@@ -66,7 +66,7 @@ class Spin2DModel : public MonteCarloSimulator {
     void add_intensityy_samples(dataframe::SampleMap& samples) const;
     void add_intensityz_samples(dataframe::SampleMap& samples) const;
 
-    virtual dataframe::SampleMap take_samples() override;
+    virtual dataframe::SampleMap take_samples() const override;
 
   protected:
     Lattice<Spin2D> lattice;

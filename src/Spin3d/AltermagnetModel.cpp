@@ -290,7 +290,7 @@ void AltermagnetModel::add_structure_factor_samples(dataframe::SampleMap& sample
   dataframe::utils::emplace(samples, fmt::format("{}Sz", prefix),      to_mag(Sz1, Sz2), {N, N});
 }
 
-dataframe::SampleMap AltermagnetModel::take_samples() {
+dataframe::SampleMap AltermagnetModel::take_samples() const {
   dataframe::SampleMap samples = Spin3DModel::take_samples();
 
   if (sample_sublattice_magnetization) {

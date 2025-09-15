@@ -14,7 +14,7 @@ class XXZHeis : public Spin3DModel {
 
     virtual double onsite_func(const Eigen::Vector3d &S) const override;
 
-    virtual dataframe::SampleMap take_samples() override;
+    virtual dataframe::SampleMap take_samples() const override;
 
   private: 
     uint32_t N;

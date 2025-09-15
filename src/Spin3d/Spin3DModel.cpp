@@ -3,6 +3,8 @@
 #include <stack>
 #include <stdexcept>
 
+#include <finufft.h>
+
 std::pair<std::vector<double>, std::vector<double>> split_complex_output(const std::vector<std::complex<double>>& complex_data) {
   size_t n = complex_data.size();
   std::vector<double> real(n);
@@ -425,7 +427,7 @@ void Spin3DModel::add_spin_samples(dataframe::SampleMap& samples) const {
   dataframe::utils::emplace(samples, "spins", spins, {3, lattice.num_sublattices, lattice.dz.N, lattice.dy.N, lattice.dx.N});
 }
 
-dataframe::SampleMap Spin3DModel::take_samples() {
+dataframe::SampleMap Spin3DModel::take_samples() const {
   dataframe::SampleMap samples;
 
   if (sample_energy) {
