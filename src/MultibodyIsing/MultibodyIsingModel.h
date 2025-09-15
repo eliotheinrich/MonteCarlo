@@ -46,7 +46,7 @@ class MultibodyIsingModel : public MonteCarloSimulator {
     virtual double energy() const override;
     virtual double energy_change() override;
 
-    virtual dataframe::SampleMap take_samples() override;
+    virtual dataframe::SampleMap take_samples() const override;
 
   protected:
     struct MultibodyIsingMutation {

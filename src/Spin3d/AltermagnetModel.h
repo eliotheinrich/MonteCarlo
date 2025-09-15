@@ -21,6 +21,7 @@ class AltermagnetModel : public Spin3DModel {
         J2p = J2p_i + alpha * (J2p_i - J2p_f);
         D1  =  D1_i + alpha * (D1_i - D1_f);
         D2  =  D2_i + alpha * (D2_i - D2_f);
+        temperature = T_i + alpha * (T_i - T_f);
       }
     }
 
@@ -31,6 +32,9 @@ class AltermagnetModel : public Spin3DModel {
 
   private:
     uint32_t N;
+
+    double T_i;
+    double T_f;
 
     double J1;
     double J2;
@@ -58,6 +62,7 @@ class AltermagnetModel : public Spin3DModel {
 
     bool sample_sublattice_magnetization;
     bool sample_structure_factor;
+    bool sample_staggered_structure_factor;
 
     bool anneal;
 

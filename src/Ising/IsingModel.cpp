@@ -82,7 +82,7 @@ Eigen::Vector3i IsingModel::tensor_idx(uint32_t i) const {
   return v;
 }
 
-dataframe::SampleMap IsingModel::take_samples() {
+dataframe::SampleMap IsingModel::take_samples() const {
   dataframe::SampleMap samples;
 
   double E = energy();

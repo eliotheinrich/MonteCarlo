@@ -10,6 +10,7 @@ AltermagnetModel::AltermagnetModel(dataframe::ExperimentParams &params, uint32_t
   D2  = dataframe::utils::get<double>(params, "D2");
   K   = dataframe::utils::get<double>(params, "K");
   B   = dataframe::utils::get<double>(params, "B", 0.0);
+  T_i  = dataframe::utils::get<double>(params, "Ti", temperature);
 
   J1_i  = J1;
   J2_i  = J2;
@@ -21,6 +22,7 @@ AltermagnetModel::AltermagnetModel(dataframe::ExperimentParams &params, uint32_t
 
   anneal = dataframe::utils::get<int>(params, "anneal", false);
   if (anneal) {
+    T_f = dataframe::utils::get<double>(params, "Tf", T_i);
     J1_f  = dataframe::utils::get<double>(params, "J1_f", J1);
     J2_f  = dataframe::utils::get<double>(params, "J2_f", J2);
     J2p_f = dataframe::utils::get<double>(params, "J2p_f", J2p);
@@ -34,6 +36,7 @@ AltermagnetModel::AltermagnetModel(dataframe::ExperimentParams &params, uint32_t
 
   sample_sublattice_magnetization = dataframe::utils::get<int>(params, "sample_sublattice_magnetization", false);
   sample_structure_factor = dataframe::utils::get<int>(params, "sample_structure_factor", false);
+  sample_staggered_structure_factor = dataframe::utils::get<int>(params, "sample_staggered_structure_factor", false);
 }
 
 void AltermagnetModel::init() {
@@ -236,7 +239,7 @@ void AltermagnetModel::add_sublattice_magnetization_samples(dataframe::SampleMap
   dataframe::utils::emplace(samples, "magnetization2", m2);
 }
 
-void AltermagnetModel::add_structure_factor_samples(dataframe::SampleMap& samples) const {
+void AltermagnetModel::add_structure_factor_samples(dataframe::SampleMap& samples, bool staggered=false) const {
   std::vector<std::complex<double>> Sx(V);
   std::vector<std::complex<double>> Sy(V);
   std::vector<std::complex<double>> Sz(V);
@@ -249,7 +252,12 @@ void AltermagnetModel::add_structure_factor_samples(dataframe::SampleMap& sample
     x[i] = 2.0 * M_PI * pos(0) / N - M_PI;
     y[i] = 2.0 * M_PI * pos(1) / N - M_PI;
 
+    auto idxs = lattice.tensor_idx(i);
     auto spin = get_spin(i);
+    if (staggered && idxs[3] == 0) {
+      spin = -spin;
+    }
+
     Sx[i] = spin[0];
     Sy[i] = spin[1];
     Sz[i] = spin[2];
@@ -264,20 +272,22 @@ void AltermagnetModel::add_structure_factor_samples(dataframe::SampleMap& sample
     return mag;
   };
 
+  std::string prefix = staggered ? "s_" : "";
+
   auto [Sx1, Sx2] = fft2d_channel(x, y, Sx, N, 2);
-  dataframe::utils::emplace(samples, "Sx_real", Sx1, {N, N});
-  dataframe::utils::emplace(samples, "Sx_imag", Sx2, {N, N});
-  dataframe::utils::emplace(samples, "Sx", to_mag(Sx1, Sx2), {N, N});
+  dataframe::utils::emplace(samples, fmt::format("{}Sx_real", prefix), Sx1,              {N, N});
+  dataframe::utils::emplace(samples, fmt::format("{}Sx_imag", prefix), Sx2,              {N, N});
+  dataframe::utils::emplace(samples, fmt::format("{}Sx",      prefix), to_mag(Sx1, Sx2), {N, N});
 
   auto [Sy1, Sy2] = fft2d_channel(x, y, Sy, N, 2);
-  dataframe::utils::emplace(samples, "Sy_real", Sy1, {N, N});
-  dataframe::utils::emplace(samples, "Sy_imag", Sy2, {N, N});
-  dataframe::utils::emplace(samples, "Sy", to_mag(Sy1, Sy2), {N, N});
+  dataframe::utils::emplace(samples, fmt::format("{}Sy_real", prefix), Sy1,              {N, N});
+  dataframe::utils::emplace(samples, fmt::format("{}Sy_imag", prefix), Sy2,              {N, N});
+  dataframe::utils::emplace(samples, fmt::format("{}Sy", prefix),      to_mag(Sy1, Sy2), {N, N});
 
   auto [Sz1, Sz2] = fft2d_channel(x, y, Sz, N, 2);
-  dataframe::utils::emplace(samples, "Sz_real", Sz1, {N, N});
-  dataframe::utils::emplace(samples, "Sz_imag", Sz2, {N, N});
-  dataframe::utils::emplace(samples, "Sz", to_mag(Sz1, Sz2), {N, N});
+  dataframe::utils::emplace(samples, fmt::format("{}Sz_real", prefix), Sz1,              {N, N});
+  dataframe::utils::emplace(samples, fmt::format("{}Sz_imag", prefix), Sz2,              {N, N});
+  dataframe::utils::emplace(samples, fmt::format("{}Sz", prefix),      to_mag(Sz1, Sz2), {N, N});
 }
 
 dataframe::SampleMap AltermagnetModel::take_samples() {
@@ -288,7 +298,11 @@ dataframe::SampleMap AltermagnetModel::take_samples() {
   }
 
   if (sample_structure_factor) {
-    add_structure_factor_samples(samples);
+    add_structure_factor_samples(samples, false);
+  }
+
+  if (sample_staggered_structure_factor) {
+    add_structure_factor_samples(samples, true);
   }
 
   return samples;
