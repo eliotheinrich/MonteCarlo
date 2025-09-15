@@ -28,6 +28,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3")
 
 set(CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
 string(REPLACE ":" ";" CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
+list(APPEND CMAKE_PREFIX_PATH $ENV{CONDA_PREFIX})
 
 # -------------------------------- #
 # ------ Fetching externals ------ #
@@ -56,6 +57,19 @@ execute_process(
 )
 list(APPEND CMAKE_PREFIX_PATH "${NB_DIR}")
 find_package(nanobind CONFIG REQUIRED)
+
+if (DEFINED QUTILS_SOURCE) 
+    set(qutils_SOURCE_DIR ${QUTILS_SOURCE})
+    add_subdirectory(${qutils_SOURCE_DIR} ${CMAKE_BINARY_DIR}/qutils-build)
+else()
+    FetchContent_Declare(
+        qutils
+        GIT_REPOSITORY https://github.com/eliotheinrich/qutils.git
+        GIT_TAG main
+        GIT_SHALLOW TRUE
+    )
+    list(APPEND EXTERNALS qutils)
+endif()
 
 if (DEFINED UTILS_SOURCE) 
     set(utils_SOURCE_DIR ${UTILS_SOURCE})
@@ -118,6 +132,7 @@ include_directories(
     ${glaze_SOURCE_DIR}/include
     ${dataframe_SOURCE_DIR}/src
     ${utils_SOURCE_DIR}/src
+    ${qutils_SOURCE_DIR}/src
     ${eigen_SOURCE_DIR}
 )
 
