@@ -14,19 +14,19 @@ class AltermagnetModel : public Spin3DModel {
     virtual void annealing_callback(int epoch, int num_epochs) override {
       if (anneal) {
         double alpha = static_cast<double>(epoch)/num_epochs;
-        B   =   B_i + alpha * (B_i - B_f);
-        K   =   K_i + alpha * (K_i - K_f);
-        J1  =  J1_i + alpha * (J1_i - J1_f);
-        J2  =  J2_i + alpha * (J2_i - J2_f);
-        J2p = J2p_i + alpha * (J2p_i - J2p_f);
-        D1  =  D1_i + alpha * (D1_i - D1_f);
-        D2  =  D2_i + alpha * (D2_i - D2_f);
-        temperature = T_i + alpha * (T_i - T_f);
+        B   =         B_i + alpha * (B_f - B_i);
+        K   =         K_i + alpha * (K_f - K_i);
+        J1  =        J1_i + alpha * (J1_f - J1_i);
+        J2  =        J2_i + alpha * (J2_f - J2_i);
+        J2p =       J2p_i + alpha * (J2p_f - J2p_i);
+        D1  =        D1_i + alpha * (D1_f - D1_i);
+        D2  =        D2_i + alpha * (D2_f - D2_i);
+        temperature = T_i + alpha * (T_f - T_i);
       }
     }
 
     void add_sublattice_magnetization_samples(dataframe::SampleMap& samples) const;
-    void add_structure_factor_samples(dataframe::SampleMap& samples) const;
+    void add_structure_factor_samples(dataframe::SampleMap& samples, bool staggered=false) const;
 
     virtual dataframe::SampleMap take_samples() const override;
 

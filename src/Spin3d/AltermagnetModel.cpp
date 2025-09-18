@@ -10,7 +10,6 @@ AltermagnetModel::AltermagnetModel(dataframe::ExperimentParams &params, uint32_t
   D2  = dataframe::utils::get<double>(params, "D2");
   K   = dataframe::utils::get<double>(params, "K");
   B   = dataframe::utils::get<double>(params, "B", 0.0);
-  T_i  = dataframe::utils::get<double>(params, "Ti", temperature);
 
   J1_i  = J1;
   J2_i  = J2;
@@ -19,10 +18,11 @@ AltermagnetModel::AltermagnetModel(dataframe::ExperimentParams &params, uint32_t
   D2_i  = D2;
   K_i   = K;
   B_i   = B;
+  T_i = temperature;
 
   anneal = dataframe::utils::get<int>(params, "anneal", false);
   if (anneal) {
-    T_f = dataframe::utils::get<double>(params, "Tf", T_i);
+    T_f = dataframe::utils::get<double>(params, "T_f", T_i);
     J1_f  = dataframe::utils::get<double>(params, "J1_f", J1);
     J2_f  = dataframe::utils::get<double>(params, "J2_f", J2);
     J2p_f = dataframe::utils::get<double>(params, "J2p_f", J2p);
@@ -239,7 +239,7 @@ void AltermagnetModel::add_sublattice_magnetization_samples(dataframe::SampleMap
   dataframe::utils::emplace(samples, "magnetization2", m2);
 }
 
-void AltermagnetModel::add_structure_factor_samples(dataframe::SampleMap& samples, bool staggered=false) const {
+void AltermagnetModel::add_structure_factor_samples(dataframe::SampleMap& samples, bool staggered) const {
   std::vector<std::complex<double>> Sx(V);
   std::vector<std::complex<double>> Sy(V);
   std::vector<std::complex<double>> Sz(V);
