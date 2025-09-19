@@ -8,7 +8,7 @@
 
 class SquareXYModel : public Spin2DModel {
   public:
-    SquareXYModel(dataframe::ExperimentParams &params, uint32_t num_threads);
+    SquareXYModel(Params &params, uint32_t num_threads);
 
     std::vector<std::pair<size_t, bool>> get_vortices() const;
     std::vector<double> vorticity() const;

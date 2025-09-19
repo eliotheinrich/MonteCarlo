@@ -5,7 +5,7 @@
 
 class AltermagnetModel : public Spin3DModel {
   public:
-    AltermagnetModel(dataframe::ExperimentParams &params, uint32_t num_threads);
+    AltermagnetModel(Params &params, uint32_t num_threads);
     virtual void init() override;
 
     void over_relaxation_mutation();
@@ -24,11 +24,6 @@ class AltermagnetModel : public Spin3DModel {
         temperature = T_i + alpha * (T_f - T_i);
       }
     }
-
-    void add_sublattice_magnetization_samples(dataframe::SampleMap& samples) const;
-    void add_structure_factor_samples(dataframe::SampleMap& samples, bool staggered=false) const;
-
-    virtual dataframe::SampleMap take_samples() const override;
 
   private:
     uint32_t N;
@@ -59,10 +54,6 @@ class AltermagnetModel : public Spin3DModel {
     double D1_f;
     double D2_f;
     double B_f;
-
-    bool sample_sublattice_magnetization;
-    bool sample_structure_factor;
-    bool sample_staggered_structure_factor;
 
     bool anneal;
 

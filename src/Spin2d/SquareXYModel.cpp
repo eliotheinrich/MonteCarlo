@@ -2,13 +2,13 @@
 #include <complex>
 #include <functional>
 
-SquareXYModel::SquareXYModel(dataframe::ExperimentParams &params, uint32_t num_threads) : Spin2DModel(params, num_threads) {
-    N = dataframe::utils::get<int>(params, "system_size");
-    L = dataframe::utils::get<int>(params, "layers", DEFAULT_LAYERS);
+SquareXYModel::SquareXYModel(Params &params, uint32_t num_threads) : Spin2DModel(params, num_threads) {
+    N = get<int>(params, "system_size");
+    L = get<int>(params, "layers", DEFAULT_LAYERS);
 
-    J = dataframe::utils::get<double>(params, "J");
-    B = dataframe::utils::get<double>(params, "B");
-    Bp = dataframe::utils::get<double>(params, "Bp");
+    J = get<double>(params, "J");
+    B = get<double>(params, "B");
+    Bp = get<double>(params, "Bp");
     Bx = B*cos(Bp);
     By = B*sin(Bp);
 

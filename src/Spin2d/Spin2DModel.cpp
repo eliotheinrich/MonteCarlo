@@ -2,21 +2,8 @@
 
 #include <math.h>
 
-using namespace dataframe::utils;
-
-Spin2DModel::Spin2DModel(dataframe::ExperimentParams &params, uint32_t num_threads) : MonteCarloSimulator(params, num_threads) {
-  cluster_update = dataframe::utils::get<int>(params, "cluster_update", true);
-
-  sample_energy = dataframe::utils::get<int>(params, "sample_energy", true);
-  sample_magnetization = dataframe::utils::get<int>(params, "sample_magnetization", true);
-  sample_helicity = dataframe::utils::get<int>(params, "sample_helicity", false);
-
-  sample_intensityx = dataframe::utils::get<int>(params, "sample_intensityx", false);
-  sample_intensityy = dataframe::utils::get<int>(params, "sample_intensityy", false);
-  sample_intensityz = dataframe::utils::get<int>(params, "sample_intensityz", false);
-  max_L = dataframe::utils::get<double>(params, "max_L", 0.0);
-  min_L = dataframe::utils::get<double>(params, "min_L", 1.0);
-  intensity_resolution = dataframe::utils::get<int>(params, "intensity_resolution", 30);
+Spin2DModel::Spin2DModel(Params &params, uint32_t num_threads) : MonteCarloSimulator(params, num_threads) {
+  cluster_update = get<int>(params, "cluster_update", true);
 }
 
 void Spin2DModel::init(const Lattice<Spin2D>& lattice) {
@@ -220,72 +207,4 @@ double Spin2DModel::energy_change() {
   double E2 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
 
   return E2 - E1;
-}
-
-void Spin2DModel::add_magnetization_samples(dataframe::SampleMap &samples) const {
-  auto m = get_magnetization();
-  dataframe::utils::emplace(samples, "mx", m[0]);
-  dataframe::utils::emplace(samples, "my", m[1]);
-  dataframe::utils::emplace(samples, "magnetization", m.norm());
-}
-
-void Spin2DModel::add_helicity_samples(dataframe::SampleMap &samples) const {
-  std::vector<double> twistd = twist_stiffness();
-  dataframe::utils::emplace(samples, "d1E", twistd[2]);
-  dataframe::utils::emplace(samples, "d2E", twistd[4]);
-  dataframe::utils::emplace(samples, "d1E2", twistd[8]);
-}
-
-void Spin2DModel::add_intensityx_samples(dataframe::SampleMap &samples) const {
-  Eigen::Vector3d q = 2*M_PI * lattice.dy.v.cross(lattice.dz.v) / lattice.dx.v.dot(lattice.dy.v.cross(lattice.dz.v));
-  Eigen::Vector3d q1 = q*min_L;
-  Eigen::Vector3d q2 = q*max_L;
-  auto intensity_samples = lattice.intensity(q1, q2, intensity_resolution);
-  dataframe::utils::emplace(samples, "intensityx", intensity_samples);
-}
-
-void Spin2DModel::add_intensityy_samples(dataframe::SampleMap &samples) const {
-  Eigen::Vector3d q = 2*M_PI * lattice.dz.v.cross(lattice.dx.v) / lattice.dx.v.dot(lattice.dy.v.cross(lattice.dz.v));
-  Eigen::Vector3d q1 = q*min_L;
-  Eigen::Vector3d q2 = q*max_L;
-  auto intensity_samples = lattice.intensity(q1, q2, intensity_resolution);
-  dataframe::utils::emplace(samples, "intensityy", intensity_samples);
-}
-
-void Spin2DModel::add_intensityz_samples(dataframe::SampleMap &samples) const {
-  Eigen::Vector3d q = 2*M_PI * lattice.dx.v.cross(lattice.dy.v) / lattice.dx.v.dot(lattice.dy.v.cross(lattice.dz.v));
-  Eigen::Vector3d q1 = q*min_L;
-  Eigen::Vector3d q2 = q*max_L;
-  auto intensity_samples = lattice.intensity(q1, q2, intensity_resolution);
-  dataframe::utils::emplace(samples, "intensityy", intensity_samples);
-}
-
-dataframe::SampleMap Spin2DModel::take_samples() const {
-  dataframe::SampleMap samples;
-
-  if (sample_energy) {
-    dataframe::utils::emplace(samples, "energy", energy());
-  }
-
-  if (sample_magnetization) {
-    add_magnetization_samples(samples);
-  }
-
-  if (sample_helicity) {
-    add_helicity_samples(samples);
-  }
-
-  if (sample_intensityx) {
-    add_intensityx_samples(samples);
-  }
-
-  if (sample_intensityy) {
-    add_intensityy_samples(samples);
-  }
-
-  if (sample_intensityz) {
-    add_intensityz_samples(samples);
-  }
-
-  return samples;
 }

@@ -1,11 +1,11 @@
 #include "TrigonalXYModel.h"
 #include <functional>
 
-TrigonalXYModel::TrigonalXYModel(dataframe::ExperimentParams &params, uint32_t num_threads) : Spin2DModel(params, num_threads) {
-  N = dataframe::utils::get<int>(params, "system_size");
-  L = dataframe::utils::get<int>(params, "layers", DEFAULT_LAYERS);
-  J = dataframe::utils::get<double>(params, "J");
-  A = dataframe::utils::get<double>(params, "A");
+TrigonalXYModel::TrigonalXYModel(Params &params, uint32_t num_threads) : Spin2DModel(params, num_threads) {
+  N = get<int>(params, "system_size");
+  L = get<int>(params, "layers", DEFAULT_LAYERS);
+  J = get<double>(params, "J");
+  A = get<double>(params, "A");
 
   double Jt = J;
   std::function<double(const Eigen::Vector2d &, const Eigen::Vector2d &)> dotfunc = 

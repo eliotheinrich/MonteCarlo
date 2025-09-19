@@ -1,6 +1,6 @@
 #pragma once
 
-#include <MonteCarlo.h>
+#include "MonteCarlo.hpp"
 
 #include "Lattice.hpp"
 
@@ -14,7 +14,7 @@ class Spin2DModel : public MonteCarloSimulator {
   public:
     uint32_t V;
 
-    Spin2DModel(dataframe::ExperimentParams &params, uint32_t num_threads);
+    Spin2DModel(Params &params, uint32_t num_threads);
     virtual ~Spin2DModel()=default;
 
     void init(const Lattice<Spin2D>& lattice);
@@ -60,14 +60,6 @@ class Spin2DModel : public MonteCarloSimulator {
 
     virtual double onsite_func(const Eigen::Vector2d& S) const = 0;
 
-    void add_magnetization_samples(dataframe::SampleMap &samples) const;
-    void add_helicity_samples(dataframe::SampleMap &samples) const;
-    void add_intensityx_samples(dataframe::SampleMap& samples) const;
-    void add_intensityy_samples(dataframe::SampleMap& samples) const;
-    void add_intensityz_samples(dataframe::SampleMap& samples) const;
-
-    virtual dataframe::SampleMap take_samples() const override;
-
   protected:
     Lattice<Spin2D> lattice;
 
@@ -86,17 +78,6 @@ class Spin2DModel : public MonteCarloSimulator {
     Spin2DMutation mut;
 
   private:
-    bool sample_energy;
-    bool sample_magnetization;
-    bool sample_helicity;
-
-    bool sample_intensityx;
-    bool sample_intensityy;
-    bool sample_intensityz;
-    double max_L;
-    double min_L;
-    uint32_t intensity_resolution;
-
     double acceptance;
     double sigma;
 

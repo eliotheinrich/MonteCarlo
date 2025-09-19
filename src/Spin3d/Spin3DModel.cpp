@@ -3,40 +3,6 @@
 #include <stack>
 #include <stdexcept>
 
-#include <finufft.h>
-
-std::pair<std::vector<double>, std::vector<double>> split_complex_output(const std::vector<std::complex<double>>& complex_data) {
-  size_t n = complex_data.size();
-  std::vector<double> real(n);
-  std::vector<double> imag(n);
-  for (size_t i = 0; i < n; ++i) {
-    real[i] = complex_data[i].real();
-    imag[i] = complex_data[i].imag();
-  }
-
-  return std::make_pair(real, imag);
-}
-
-std::pair<std::vector<double>, std::vector<double>> fft2d_channel(std::vector<double>& x, std::vector<double>& y, std::vector<std::complex<double>>& input, int N, int s) {
-  std::vector<std::complex<double>> output(N * N);
-  finufft_opts opts;
-  finufft_default_opts(&opts);
-  opts.nthreads = 1;
-
-  int ier = finufft2d1(s*N*N, &x[0], &y[0], &input[0], +1, 1e-6, N, N, &output[0], &opts);
-  return split_complex_output(output);
-}
-
-std::pair<std::vector<double>, std::vector<double>> fft3d_channel(std::vector<double>& x, std::vector<double>& y, std::vector<double>& z, std::vector<std::complex<double>>& input, int N, int s) {
-  std::vector<std::complex<double>> output(N * N * N);
-  finufft_opts opts;
-  finufft_default_opts(&opts);
-  opts.nthreads = 1;
-
-  int ier = finufft3d1(s*N*N*N, &x[0], &y[0], &z[0], &input[0], +1, 1e-6, N, N, N, &output[0], &opts);
-  return split_complex_output(output);
-}
-
 GaussianDist::GaussianDist(double mean, double std) {
   rd.seed(rand());
   gen = std::default_random_engine(rd());
@@ -47,8 +13,8 @@ double GaussianDist::sample() {
   return dist(gen);
 }
 
-Spin3DModel::Spin3DModel(dataframe::ExperimentParams &params, uint32_t num_threads) : MonteCarloSimulator(params, num_threads), nsteps(0), accepted(0) {
-  std::string mutation_str = dataframe::utils::get<std::string>(params, "mutation_type", "metropolis");
+Spin3DModel::Spin3DModel(Params &params, uint32_t num_threads) : MonteCarloSimulator(params, num_threads), nsteps(0), accepted(0) {
+  std::string mutation_str = get<std::string>(params, "mutation_type", "metropolis");
   if (mutation_str == "metropolis") {
     mutation_type = METROPOLIS;
   } else if (mutation_str == "adaptive_metropolis") {
@@ -56,21 +22,16 @@ Spin3DModel::Spin3DModel(dataframe::ExperimentParams &params, uint32_t num_threa
   } else if (mutation_str == "cluster") {
       mutation_type = CLUSTER;
   } else {
-    throw std::runtime_error(fmt::format("Invalid mutation_type: {}", mutation_str));
+    throw std::runtime_error(std::format("Invalid mutation_type: {}", mutation_str));
   }
 
   if (mutation_type == METROPOLIS) {
-    sigma = dataframe::utils::get<double>(params, "mutation_width", 2.0);
+    sigma = get<double>(params, "mutation_width", 2.0);
   } else if (mutation_type == ADAPTIVE_METROPOLIS) {
     sigma = 0.25;
   }
 
   acceptance = 0.5;
-
-  sample_helicity      = dataframe::utils::get<int>(params, "sample_helicity",      false);
-  sample_magnetization = dataframe::utils::get<int>(params, "sample_magnetization", true);
-  sample_energy        = dataframe::utils::get<int>(params, "sample_energy",        true);
-  sample_spins         = dataframe::utils::get<int>(params, "sample_spins",         false);
 
   dist = GaussianDist(0., 1.0);
 }
@@ -390,65 +351,4 @@ double Spin3DModel::energy_change() {
   double E2 = onsite_energy(mut.i) + 2*bond_energy(mut.i);
 
   return E2 - E1;
-}
-
-void Spin3DModel::add_magnetization_samples(dataframe::SampleMap &samples) const {
-  Eigen::Vector3d m = get_magnetization();
-  dataframe::utils::emplace(samples, "mx", m[0]);
-  dataframe::utils::emplace(samples, "my", m[1]);
-  dataframe::utils::emplace(samples, "mz", m[2]);
-
-  dataframe::utils::emplace(samples, "mx_mag", std::abs(m[0]));
-  dataframe::utils::emplace(samples, "my_mag", std::abs(m[1]));
-  dataframe::utils::emplace(samples, "mz_mag", std::abs(m[2]));
-
-  double mn = m.norm();
-  dataframe::utils::emplace(samples, "magnetization", mn);
-  dataframe::utils::emplace(samples, "magnetization_squared", mn*mn);
-}
-
-void Spin3DModel::add_helicity_samples(dataframe::SampleMap &samples) const {
-  std::vector<double> tterms = twist_derivatives();
-  dataframe::utils::emplace(samples, "d1E", tterms[0]);
-  dataframe::utils::emplace(samples, "d2E", tterms[1]);
-  dataframe::utils::emplace(samples, "d3E", tterms[2]);
-  dataframe::utils::emplace(samples, "d4E", tterms[3]);
-}
-
-void Spin3DModel::add_spin_samples(dataframe::SampleMap& samples) const {
-  std::vector<double> spins(3*V);
-  for (size_t i = 0; i < V; i++) {
-    auto spin = get_spin(i);
-    spins[i]     = spin(0);
-    spins[i+V]   = spin(1);
-    spins[i+2*V] = spin(2);
-  }
-
-  dataframe::utils::emplace(samples, "spins", spins, {3, lattice.num_sublattices, lattice.dz.N, lattice.dy.N, lattice.dx.N});
-}
-
-dataframe::SampleMap Spin3DModel::take_samples() const {
-  dataframe::SampleMap samples;
-
-  if (sample_energy) {
-    double E = energy();
-    dataframe::utils::emplace(samples, "energy", E);
-    dataframe::utils::emplace(samples, "energy_squared", E*E);
-  }
-
-  if (sample_magnetization) {
-    add_magnetization_samples(samples);
-  }
-
-  if (sample_helicity) {
-    add_helicity_samples(samples);
-  }
-
-  if (sample_spins) {
-    add_spin_samples(samples);
-  }
-
-  dataframe::utils::emplace(samples, "sigma", sigma);
-
-  return samples;
 }

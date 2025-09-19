@@ -1,6 +1,6 @@
 #pragma once
 
-#include <MonteCarlo.h>
+#include "MonteCarlo.hpp"
 
 #include <Eigen/Dense>
 
@@ -18,7 +18,7 @@ class IsingModel : public MonteCarloSimulator {
     double acceptance;
     std::vector<double> spins;
 
-    IsingModel(dataframe::ExperimentParams &params, uint32_t num_threads) : MonteCarloSimulator(params, num_threads) {}
+    IsingModel(Params &params, uint32_t num_threads) : MonteCarloSimulator(params, num_threads) {}
     IsingModel()=default;
     virtual ~IsingModel()=default;
 
@@ -40,10 +40,6 @@ class IsingModel : public MonteCarloSimulator {
     virtual void reject_mutation() override;
     virtual double energy() const override;
     virtual double energy_change() override;
-
-    virtual dataframe::SampleMap take_samples() const override;
-
-    void save_spins(const std::string& filename);
 
   protected:
     struct IsingMutation {

@@ -5,15 +5,11 @@
 
 class HelixModel : public Spin3DModel {
   public:
-    HelixModel(dataframe::ExperimentParams &params, uint32_t num_threads);
+    HelixModel(Params &params, uint32_t num_threads);
 
     virtual double onsite_func(const Eigen::Vector3d &S) const override {
       return 0.0;
     }
-
-    void add_structure_factor_samples(dataframe::SampleMap& samples) const;
-
-    virtual dataframe::SampleMap take_samples() const override;
 
     virtual void annealing_callback(int epoch, int num_epochs) override {
       if (anneal) {
@@ -33,6 +29,4 @@ class HelixModel : public Spin3DModel {
     bool anneal;
     double min_temp;
     double max_temp;
-
-    bool sample_structure_factor;
 };

@@ -16,29 +16,20 @@
 #define c_bond 7.7072
 #define a_bond 4.6926
 
-TrigonalModel::TrigonalModel(dataframe::ExperimentParams &params, uint32_t num_threads) : Spin3DModel(params, num_threads) {
-  N = dataframe::utils::get<int>(params, "system_size");
-  L = dataframe::utils::get<int>(params, "layers", DEFAULT_LAYERS);
+TrigonalModel::TrigonalModel(Params &params, uint32_t num_threads) : Spin3DModel(params, num_threads) {
+  N = get<int>(params, "system_size");
+  L = get<int>(params, "layers", DEFAULT_LAYERS);
 
-  J1 = dataframe::utils::get<double>(params, "J1");
-  J2 = dataframe::utils::get<double>(params, "J2");
-  J3 = dataframe::utils::get<double>(params, "J3", J2);
-  K1 = dataframe::utils::get<double>(params, "K1");
-  K2 = dataframe::utils::get<double>(params, "K2");
-  K3 = dataframe::utils::get<double>(params, "K3");
-  Eigen::Vector3d Bt; Bt << dataframe::utils::get<double>(params, "Bx"), dataframe::utils::get<double>(params, "By"), dataframe::utils::get<double>(params, "Bz");
+  J1 = get<double>(params, "J1");
+  J2 = get<double>(params, "J2");
+  J3 = get<double>(params, "J3", J2);
+  K1 = get<double>(params, "K1");
+  K2 = get<double>(params, "K2");
+  K3 = get<double>(params, "K3");
+  Eigen::Vector3d Bt; Bt << get<double>(params, "Bx"), get<double>(params, "By"), get<double>(params, "Bz");
   B = Bt;
 
-  fm_layers = dataframe::utils::get<int>(params, "fm_layers", DEFAULT_FM_LAYERS);
-
-  sample_layer_magnetization = dataframe::utils::get<int>(params, "sample_layer_magnetization", DEFAULT_SAMPLE_LAYER_MAGNETIZATION);
-
-  sample_intensityx = dataframe::utils::get<int>(params, "sample_intensityx", DEFAULT_SAMPLE_INTENSITYX);
-  sample_intensityy = dataframe::utils::get<int>(params, "sample_intensityy", DEFAULT_SAMPLE_INTENSITYY);
-  sample_intensityz = dataframe::utils::get<int>(params, "sample_intensityz", DEFAULT_SAMPLE_INTENSITYZ);
-  max_L = dataframe::utils::get<double>(params, "max_L", DEFAULT_MAX_L);
-  min_L = dataframe::utils::get<double>(params, "min_L", DEFAULT_MIN_L);
-  intensity_resolution = dataframe::utils::get<int>(params, "intensity_resolution", DEFAULT_INTENSITY_RESOLUTION);
+  fm_layers = get<int>(params, "fm_layers", DEFAULT_FM_LAYERS);
 
   mut_mode = 0;
   mut_counter = 0; 
@@ -203,85 +194,3 @@ void TrigonalModel::dynamic_step(double dt) {
     set_spin(i, cos(dT)*spin + sin(dT)*H[i].cross(spin)/Hm + (1 - cos(dT))*H[i].dot(spin)*H[i]/pow(Hm, 2));
   }
 }
-
-double TrigonalModel::intensity(Eigen::Vector3d Q) const {
-  Eigen::Vector3cd structure_factor; structure_factor << 0., 0., 0.;
-  for (uint32_t i = 0; i < V; i++) {
-    structure_factor += get_spin(i)*std::exp(std::complex<double>(0., Q.dot(lattice.position(i))));
-  }
-
-  return std::pow(std::abs(structure_factor.norm())/V, 2);
-}
-
-void TrigonalModel::add_layer_magnetization_samples(dataframe::SampleMap &samples) const {
-  std::vector<Eigen::Vector3d> magnetization(L, Eigen::Vector3d::Constant(0.));
-  for (uint32_t i = 0; i < V; i++) {
-    auto idx = lattice.tensor_idx(i);
-    uint layer = idx[2];
-    magnetization[layer] += get_spin(i);
-  }
-
-  for (uint32_t layer = 0; layer < L; layer++) {
-    magnetization[layer] /= V/L;
-    dataframe::utils::emplace(samples, fmt::format("magnetization_{}x", layer), magnetization[layer][0]);
-    dataframe::utils::emplace(samples, fmt::format("magnetization_{}y", layer), magnetization[layer][1]);
-    dataframe::utils::emplace(samples, fmt::format("magnetization_{}z", layer), magnetization[layer][2]);
-  }
-}
-
-void TrigonalModel::add_intensityx_samples(dataframe::SampleMap &samples) const {
-  std::vector<double> intensity_samples(intensity_resolution);
-  for (uint32_t i = 0; i < intensity_resolution; i++) {
-    double L = (i*max_L + (intensity_resolution - i)*min_L)/intensity_resolution;
-    double d = 2.*M_PI*L/a_bond;
-    Eigen::Vector3d q; q << d, d/std::sqrt(3), 0;
-    intensity_samples[i] = intensity(q);
-  }
-
-  dataframe::utils::emplace(samples, "intensityx", intensity_samples);
-}
-
-void TrigonalModel::add_intensityy_samples(dataframe::SampleMap &samples) const {
-  std::vector<double> intensity_samples(intensity_resolution);
-  for (uint32_t i = 0; i < intensity_resolution; i++) {
-    double L = (i*max_L + (intensity_resolution - i)*min_L)/intensity_resolution;
-    Eigen::Vector3d q; q << 0, 4.*M_PI*L/(std::sqrt(3)*a_bond), 0;
-    intensity_samples[i] = intensity(q);
-  }
-
-  dataframe::utils::emplace(samples, "intensityy", intensity_samples);
-}
-
-void TrigonalModel::add_intensityz_samples(dataframe::SampleMap &samples) const {
-  std::vector<double> intensity_samples(intensity_resolution);
-  for (uint32_t i = 0; i < intensity_resolution; i++) {
-    double L = (i*max_L + (intensity_resolution - i)*min_L)/intensity_resolution;
-    Eigen::Vector3d q; q << 0., 0., 2.*M_PI*L/c_bond;
-    intensity_samples[i] = intensity(q);
-  }
-
-  dataframe::utils::emplace(samples, "intensityz", intensity_samples);
-}
-
-dataframe::SampleMap TrigonalModel::take_samples() const {
-  dataframe::SampleMap samples = Spin3DModel::take_samples();
-
-  if (sample_intensityx) {
-    add_intensityx_samples(samples);
-  }
-
-  if (sample_intensityy) {
-    add_intensityy_samples(samples);
-  }
-
-  if (sample_intensityz) {
-    add_intensityz_samples(samples);
-  }
-
-  if (sample_layer_magnetization) {
-    add_layer_magnetization_samples(samples);
-  }
-
-  return samples;
-}
-

@@ -6,7 +6,7 @@
 
 class SquareIsingModel : public IsingModel {
   public:
-    SquareIsingModel(dataframe::ExperimentParams &params, uint32_t num_threads);
+    SquareIsingModel(Params &params, uint32_t num_threads);
 
     virtual double onsite_energy(uint32_t i) const override;
     virtual double bond_energy(uint32_t i) const override;

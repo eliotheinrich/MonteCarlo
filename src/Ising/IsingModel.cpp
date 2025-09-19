@@ -81,37 +81,3 @@ Eigen::Vector3i IsingModel::tensor_idx(uint32_t i) const {
   Eigen::Vector3i v; v << n1, n2, n3;
   return v;
 }
-
-dataframe::SampleMap IsingModel::take_samples() const {
-  dataframe::SampleMap samples;
-
-  double E = energy();
-  double M = get_magnetization();
-
-  dataframe::utils::emplace(samples, "energy", E);
-  dataframe::utils::emplace(samples, "energy_second_moment", std::pow(E, 2));
-  dataframe::utils::emplace(samples, "energy_third_moment",  std::pow(E, 3));
-  dataframe::utils::emplace(samples, "energy_fourth_moment", std::pow(E, 4));
-
-  dataframe::utils::emplace(samples, "magnetization", std::abs(M));
-  dataframe::utils::emplace(samples, "signed_magnetization", M);
-  dataframe::utils::emplace(samples, "magnetization_second_moment", std::pow(std::abs(M), 2));
-  dataframe::utils::emplace(samples, "magnetization_third_moment",  std::pow(std::abs(M), 3));
-  dataframe::utils::emplace(samples, "magnetization_fourth_moment", std::pow(std::abs(M), 4));
-
-  return samples;
-}
-
-// Saves current spin configuration
-void IsingModel::save_spins(const std::string& filename) {
-  std::ofstream output_file;
-  output_file.open(filename);
-  output_file << N1 << "\t" << N2 << "\t" << N3 << "\n";
-  for (uint32_t i = 0; i < V; i++) {
-    output_file << spins[i];
-    if (i < V-1) { 
-      output_file << "\t"; 
-    }
-  }
-  output_file.close();
-}        

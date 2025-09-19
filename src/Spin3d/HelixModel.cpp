@@ -1,18 +1,16 @@
 #include "HelixModel.h"
 
-HelixModel::HelixModel(dataframe::ExperimentParams &params, uint32_t num_threads) : Spin3DModel(params, num_threads) {
-  N = dataframe::utils::get<int>(params, "system_size");
+HelixModel::HelixModel(Params &params, uint32_t num_threads) : Spin3DModel(params, num_threads) {
+  N = get<int>(params, "system_size");
 
-  J1  = dataframe::utils::get<double>(params, "J1");
-  J2  = dataframe::utils::get<double>(params, "J2");
-  D1  = dataframe::utils::get<double>(params, "D1");
-  D2  = dataframe::utils::get<double>(params, "D2");
+  J1  = get<double>(params, "J1");
+  J2  = get<double>(params, "J2");
+  D1  = get<double>(params, "D1");
+  D2  = get<double>(params, "D2");
 
-  anneal = dataframe::utils::get<int>(params, "anneal", 0);
-  min_temp = dataframe::utils::get<double>(params, "min_temp", temperature);
-  max_temp = dataframe::utils::get<double>(params, "max_temp", temperature);
-
-  sample_structure_factor = dataframe::utils::get<int>(params, "sample_structure_factor", false);
+  anneal = get<int>(params, "anneal", 0);
+  min_temp = get<double>(params, "min_temp", temperature);
+  max_temp = get<double>(params, "max_temp", temperature);
 
   Eigen::Vector3d xhat; xhat << 1.0, 0.0, 0.0;
   Eigen::Vector3d yhat; yhat << 0.0, 1.0, 0.0;
@@ -50,60 +48,3 @@ HelixModel::HelixModel(dataframe::ExperimentParams &params, uint32_t num_threads
   Lattice<Spin3D> lattice(dx, dy, dz, bonds);
   Spin3DModel::init(lattice);
 }
-
-void HelixModel::add_structure_factor_samples(dataframe::SampleMap& samples) const {
-  std::vector<std::complex<double>> Sx(V);
-  std::vector<std::complex<double>> Sy(V);
-  std::vector<std::complex<double>> Sz(V);
-
-  std::vector<double> x(V);
-  std::vector<double> y(V);
-  std::vector<double> z(V);
-
-  for (size_t i = 0; i < V; i++) {
-    auto pos = lattice.position(i);
-    x[i] = 2.0 * M_PI * pos(0) / N - M_PI;
-    y[i] = 2.0 * M_PI * pos(1) / N - M_PI;
-    z[i] = 2.0 * M_PI * pos(2) / N - M_PI;
-
-    auto spin = get_spin(i);
-    Sx[i] = spin[0];
-    Sy[i] = spin[1];
-    Sz[i] = spin[2];
-  }
-
-  auto to_mag = [](const std::vector<double>& real, const std::vector<double>& complex) {
-    size_t n = real.size();
-    std::vector<double> mag(n);
-    for (size_t i = 0; i < n; i++) {
-      mag[i] = real[i]*real[i] + complex[i]*complex[i];
-    }
-    return mag;
-  };
-
-  auto [Sx1, Sx2] = fft3d_channel(x, y, z, Sx, N, 1);
-  dataframe::utils::emplace(samples, "Sx_real", Sx1, {N, N, N});
-  dataframe::utils::emplace(samples, "Sx_imag", Sx2, {N, N, N});
-  dataframe::utils::emplace(samples, "Sx", to_mag(Sx1, Sx2), {N, N, N});
-
-  auto [Sy1, Sy2] = fft3d_channel(x, y, z, Sy, N, 1);
-  dataframe::utils::emplace(samples, "Sy_real", Sy1, {N, N, N});
-  dataframe::utils::emplace(samples, "Sy_imag", Sy2, {N, N, N});
-  dataframe::utils::emplace(samples, "Sy", to_mag(Sy1, Sy2), {N, N, N});
-
-  auto [Sz1, Sz2] = fft3d_channel(x, y, z, Sz, N, 1);
-  dataframe::utils::emplace(samples, "Sz_real", Sz1, {N, N, N});
-  dataframe::utils::emplace(samples, "Sz_imag", Sz2, {N, N, N});
-  dataframe::utils::emplace(samples, "Sz", to_mag(Sz1, Sz2), {N, N, N});
-}
-
-dataframe::SampleMap HelixModel::take_samples() const {
-  dataframe::SampleMap samples = Spin3DModel::take_samples();
-
-  if (sample_structure_factor) {
-    add_structure_factor_samples(samples);
-  }
-
-  return samples;
-}
-

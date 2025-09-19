@@ -1,14 +1,12 @@
 #include "XXZHeis.h"
 
-XXZHeis::XXZHeis(dataframe::ExperimentParams &params, uint32_t num_threads) : Spin3DModel(params, num_threads) {
-  N = dataframe::utils::get<int>(params, "system_size");
-  L = dataframe::utils::get<int>(params, "layers", DEFAULT_LAYERS);
+XXZHeis::XXZHeis(Params &params, uint32_t num_threads) : Spin3DModel(params, num_threads) {
+  N = get<int>(params, "system_size");
+  L = get<int>(params, "layers", DEFAULT_LAYERS);
 
-  J = dataframe::utils::get<double>(params, "J");
-  K = dataframe::utils::get<double>(params, "K");
-  A = dataframe::utils::get<double>(params, "A");
-
-  sample_structure_factor = dataframe::utils::get<int>(params, "sample_structure_factor", false);
+  J = get<double>(params, "J");
+  K = get<double>(params, "K");
+  A = get<double>(params, "A");
 
   double Kt = K;
   double Jt = J;
@@ -80,44 +78,3 @@ double XXZHeis::onsite_func(const Eigen::Vector3d &S) const {
   return A*S[2]*S[2];
 }
 
-void XXZHeis::add_structure_factor_samples(dataframe::SampleMap& samples) const {
-  std::vector<std::complex<double>> Sx(V);
-  std::vector<std::complex<double>> Sy(V);
-  std::vector<std::complex<double>> Sz(V);
-
-  std::vector<double> x(V);
-  std::vector<double> y(V);
-
-  for (size_t i = 0; i < V; i++) {
-    auto pos = lattice.position(i);
-    x[i] = 2.0 * M_PI * pos(0) / N - M_PI;
-    y[i] = 2.0 * M_PI * pos(1) / N - M_PI;
-
-    auto spin = get_spin(i);
-    Sx[i] = spin[0];
-    Sy[i] = spin[1];
-    Sz[i] = spin[2];
-  }
-
-  auto [Sx1, Sx2] = fft2d_channel(x, y, Sx, N);
-  dataframe::utils::emplace(samples, "Sx_real", Sx1);
-  dataframe::utils::emplace(samples, "Sx_imag", Sx2);
-
-  auto [Sy1, Sy2] = fft2d_channel(x, y, Sy, N);
-  dataframe::utils::emplace(samples, "Sy_real", Sy1);
-  dataframe::utils::emplace(samples, "Sy_imag", Sy2);
-
-  auto [Sz1, Sz2] = fft2d_channel(x, y, Sz, N);
-  dataframe::utils::emplace(samples, "Sz_real", Sz1);
-  dataframe::utils::emplace(samples, "Sz_imag", Sz2);
-}
-
-dataframe::SampleMap XXZHeis::take_samples() const {
-  dataframe::SampleMap samples = Spin3DModel::take_samples();
-
-  if (sample_structure_factor) {
-    add_structure_factor_samples(samples);
-  }
-
-  return samples;
-}

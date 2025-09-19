@@ -1,6 +1,6 @@
 #pragma once
 
-#include <MonteCarlo.h>
+#include "MonteCarlo.hpp"
 
 #include "Lattice.hpp"
 
@@ -24,10 +24,6 @@ class GaussianDist {
     std::normal_distribution<> dist;
 };
 
-std::pair<std::vector<double>, std::vector<double>> split_complex_output(const std::vector<std::complex<double>>& complex_data);
-std::pair<std::vector<double>, std::vector<double>> fft2d_channel(std::vector<double>& x, std::vector<double>& y, std::vector<std::complex<double>>& input, int N, int s=1);
-std::pair<std::vector<double>, std::vector<double>> fft3d_channel(std::vector<double>& x, std::vector<double>& y, std::vector<double>& z, std::vector<std::complex<double>>& input, int N, int s=1);
-
 class Spin3DModel : public MonteCarloSimulator {
   // Generic 3D Heisenberg model
   // A mutation consists of a change in spin dS on site (n1,n2,n3,s)
@@ -39,7 +35,7 @@ class Spin3DModel : public MonteCarloSimulator {
     static constexpr int ADAPTIVE_METROPOLIS = 1;
     static constexpr int CLUSTER = 2;
 
-    Spin3DModel(dataframe::ExperimentParams &params, uint32_t num_threads);
+    Spin3DModel(Params &params, uint32_t num_threads);
     virtual ~Spin3DModel()=default;
 
     void init(const Lattice<Spin3D>& lattice);
@@ -100,16 +96,6 @@ class Spin3DModel : public MonteCarloSimulator {
     virtual double onsite_energy(uint32_t i) const;
     virtual double bond_energy(uint32_t i) const;
 
-    void add_magnetization_samples(dataframe::SampleMap &samples) const;
-    void add_helicity_samples(dataframe::SampleMap &samples) const;
-    void add_spin_samples(dataframe::SampleMap& samples) const;
-
-    void add_intensityx_samples(dataframe::SampleMap& samples) const;
-    void add_intensityy_samples(dataframe::SampleMap& samples) const;
-    void add_intensityz_samples(dataframe::SampleMap& samples) const;
-
-    virtual dataframe::SampleMap take_samples() const override;
-
     LatticeGraph to_graph() const { 
       return lattice.to_graph();
     }
@@ -135,18 +121,6 @@ class Spin3DModel : public MonteCarloSimulator {
     static constexpr double alpha = 0.01;
 
   private:
-    bool sample_energy;
-    bool sample_magnetization;
-    bool sample_helicity;
-    bool sample_spins;
-
-    bool sample_intensityx;
-    bool sample_intensityy;
-    bool sample_intensityz;
-    double max_L;
-    double min_L;
-    uint32_t intensity_resolution;
-
     uint64_t nsteps;
     uint64_t accepted;
     double acceptance;
