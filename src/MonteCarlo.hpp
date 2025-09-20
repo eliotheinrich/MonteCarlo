@@ -152,7 +152,7 @@ class MonteCarloSimulator {
       }
     }
 
-    virtual void key_callback(int key);
+    virtual void key_callback(const std::string& key);
 
     // To be overridden by child classes
     virtual double energy() const=0;

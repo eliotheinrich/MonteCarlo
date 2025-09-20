@@ -10,8 +10,7 @@ class Shader {
     unsigned int ID;
 
     Shader()=default;
-
-    Shader(const char* source, const char* vertex_path, const char* fragment_path);
+    static Shader make();
 
     void use() const;
 

@@ -1,12 +1,10 @@
 #include "Animator.h"
+#include <chrono>
 #include <unistd.h>
 #include <map>
 
 #include <functional>
 #include <future>
-
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
 
 #define SIMULATOR_DISPLAY_PATH "/Users/eliotheinrich/Projects/MonteCarlo/src/SimulatorDisplay"
 
@@ -70,6 +68,7 @@ class Animator::InputProcessImpl {
 };
 
 Animator::Animator(std::shared_ptr<MonteCarloSimulator> simulator, const Color& background_color) : simulator(simulator), background_color(background_color) {
+  glfwInit();
   // Setting up state variables
   paused = false;
 
@@ -138,12 +137,9 @@ void Animator::init_buffers() {
   std::cout << "Loading shaders at path " << SIMULATOR_DISPLAY_PATH << "\n";
   shader = Shader(SIMULATOR_DISPLAY_PATH, "vertex_texture_shader.vs", "fragment_texture_shader.fs");
   shader.set_int("tex", 0);
-
-  input_processor = std::make_unique<InputProcessImpl>();
 }
 
-void Animator::start(size_t width, size_t height) {
-  glfwInit();
+void Animator::start(size_t width, size_t height, size_t steps_per_frame, size_t fps) {
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -174,6 +170,33 @@ void Animator::start(size_t width, size_t height) {
   glfwSetWindowUserPointer(window->impl, this);
   auto key_callback = input_processor->get_key_callback();
   glfwSetKeyCallback(window->impl, key_callback);
+
+  while (true) {
+    auto start = std::chrono::high_resolution_clock::now();
+
+    if (!is_paused()) {
+      simulator->timesteps(steps_per_frame);
+    }
+
+    Texture texture = simulator->get_texture();
+    FrameData frame_data = new_frame(texture);
+    for (const auto key : frame_data.keys) {
+      simulator->key_callback(key);
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+
+    double dt = std::chrono::duration_cast<std::chrono::duration<double>>(end - start).count();
+    double target_dt = 1.0/fps;
+
+    if (dt < target_dt) {
+      sleep(target_dt - dt);
+    }
+
+    if (frame_data.status_code == 0) {
+      break;
+    }
+  }
 }
 
 FrameData Animator::new_frame(const Texture& new_data) {

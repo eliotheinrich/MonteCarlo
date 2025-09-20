@@ -1,60 +1,55 @@
 #include "Shader.h"
 
 #include <format>
-#include <glad/glad.h>
+#include <GLES3/gl3.h>
 
-Shader::Shader(const char* source, const char* vertex_path, const char* fragment_path) {
-  std::string vertex_code;
-  std::string fragment_code;
-  std::ifstream vertex_shader_file;
-  std::ifstream fragment_shader_file;
+Shader Shader::make() {
+#ifdef EMSCRIPTEN
+  const char* vertex_shader_code = R"(#version 300 es
+precision mediump float;
+in vec3 aPos;
+in vec2 aTexCoord;
+out vec2 TexCoord;
+void main() {
+    gl_Position = vec4(aPos, 1.0);
+    TexCoord = aTexCoord;
+})";
 
-  vertex_shader_file.exceptions (std::ifstream::failbit | std::ifstream::badbit);
-  fragment_shader_file.exceptions (std::ifstream::failbit | std::ifstream::badbit);
-  try {
-    std::string source_dir = std::format("{}/", source);
-    vertex_shader_file.open(source_dir + vertex_path);
-    fragment_shader_file.open(source_dir + fragment_path);
-    std::stringstream vertex_shader_stream, fragment_shader_stream;
-
-    vertex_shader_stream << vertex_shader_file.rdbuf();
-    fragment_shader_stream << fragment_shader_file.rdbuf();
-
-    vertex_shader_file.close();
-    fragment_shader_file.close();
-
-    vertex_code   = vertex_shader_stream.str();
-    fragment_code = fragment_shader_stream.str();
-
-  }
-
-  catch (std::ifstream::failure& e) {
-    std::cout << "ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ: " << e.what() << std::endl;
-  }
-
-  const char* vertex_shader_code = vertex_code.c_str();
-  const char* fragment_shader_code = fragment_code.c_str();
+const char* fragment_shader_code = R"(#version 300 es
+precision mediump float;
+in vec2 TexCoord;
+out vec4 FragColor;
+uniform sampler2D tex;
+void main() {
+    FragColor = texture(tex, TexCoord);
+})";
+#else
+  const char* vertex_shader_code = "#version 330 core\nlayout (location = 0) in vec3 aPos;\nlayout (location = 1) in vec2 aTexCoord;\nout vec2 TexCoord;\nvoid main() { gl_Position = vec4(aPos, 1.0); TexCoord = aTexCoord; };";
+  const char* fragment_shader_code = "#version 330 core\nout vec4 FragColor;\nin vec2 TexCoord;\nuniform sampler2D tex;\nvoid main() {\nFragColor = texture(tex, TexCoord);\n}";
+#endif
 
   unsigned int vertex, fragment;
+  Shader shader;
 
   vertex = glCreateShader(GL_VERTEX_SHADER);
   glShaderSource(vertex, 1, &vertex_shader_code, NULL);
   glCompileShader(vertex);
-  check_compile_errors(vertex, "VERTEX");
+  shader.check_compile_errors(vertex, "VERTEX");
 
   fragment = glCreateShader(GL_FRAGMENT_SHADER);
   glShaderSource(fragment, 1, &fragment_shader_code, NULL);
   glCompileShader(fragment);
-  check_compile_errors(fragment, "FRAGMENT");
+  shader.check_compile_errors(fragment, "FRAGMENT");
 
-  ID = glCreateProgram();
-  glAttachShader(ID, vertex);
-  glAttachShader(ID, fragment);
-  glLinkProgram(ID);
-  check_compile_errors(ID, "PROGRAM");
+  shader.ID = glCreateProgram();
+  glAttachShader(shader.ID, vertex);
+  glAttachShader(shader.ID, fragment);
+  glLinkProgram(shader.ID);
+  shader.check_compile_errors(shader.ID, "PROGRAM");
 
   glDeleteShader(vertex);
   glDeleteShader(fragment);
+  return shader;
 }
 
 void Shader::use() const { 
